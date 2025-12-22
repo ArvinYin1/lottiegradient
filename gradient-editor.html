@@ -27,6 +27,7 @@
             --border-color: #e0e0e0;
             --border-dark: #ddd;
             --btn-primary: #007bff;
+            --btn-success: #28a745;
             --btn-danger: #dc3545;
             --btn-secondary: #6c757d;
             --checkered-color: #ccc;
@@ -43,6 +44,7 @@
             --border-color: #444444;
             --border-dark: #555555;
             --btn-primary: #0069d9;
+            --btn-success: #218838;
             --btn-danger: #c82333;
             --btn-secondary: #5a6268;
             --checkered-color: #555555;
@@ -58,132 +60,137 @@
             margin: 20px;
             background-color: var(--bg-primary);
             color: var(--text-primary);
-        }
-        .playground {
+            height: calc(100vh - 40px);
             display: flex;
-            gap: 20px;
-            margin: 20px 0;
+            flex-direction: column;
+            overflow: hidden;
         }
-        /* Change playground-columns to horizontal layout */
-        .playground-columns {
-            /* Removed flex-direction: column; to use default row layout */
-            flex-wrap: wrap;
-        }
-        
-        /* Ensure each section takes appropriate width */
-        #editor {
-            flex: 1;
-            min-width: 300px;
-            background-color: var(--bg-secondary);
-            padding: 20px;
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-        }
-        
-        .json-viewer {
-            display: none;
-            flex: 1;
-            min-width: 300px;
-        }
-        .alpha_checkered {
-            background-image: linear-gradient(45deg, var(--checkered-color) 25%, transparent 25%), 
-                              linear-gradient(-45deg, var(--checkered-color) 25%, transparent 25%), 
-                              linear-gradient(45deg, transparent 75%, var(--checkered-color) 75%), 
-                              linear-gradient(-45deg, transparent 75%, var(--checkered-color) 75%);
-            background-size: 20px 20px;
-            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
-        }
-        .gradient-preview {
-            height: 50px;
-            width: 100%;
-            border-radius: 4px;
-        }
-        .gradient-editor {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-            margin: 10px 0;
-        }
-        .gradient-editor input {
-            padding: 5px;
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            background-color: var(--bg-input);
-            color: var(--text-primary);
-        }
-        .gradient-editor input[type="color"] {
-            width: 50px;
-            height: 30px;
-            padding: 0;
-            border: none;
-        }
-        .gradient-editor input[type="number"] {
-            width: 80px;
-        }
-        .btn {
-            padding: 5px 10px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-        }
-        .btn-primary {
-            background-color: var(--btn-primary);
-            color: white;
-        }
-        .btn-danger {
-            background-color: var(--btn-danger);
-            color: white;
-        }
-        .btn-sm {
-            padding: 3px 8px;
-            font-size: 12px;
-        }
-        pre {
-            background-color: var(--bg-secondary);
-            padding: 10px;
-            border-radius: 4px;
-            overflow-x: auto;
-            white-space: pre-wrap;
-            color: var(--text-primary);
-        }
-        code {
-            font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
-        }
-        .json-viewer {
-            margin-top: 20px;
-        }
-        
+
         /* Lottie Player styles */
         .lottie-player-container {
-            margin-top: 50px;
+            margin-top: 0;
             padding: 20px;
             border: 1px solid var(--border-color);
             border-radius: 8px;
             background-color: var(--bg-tertiary);
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
         }
         
         .lottie-player-header {
             margin-bottom: 20px;
         }
         
+        .header-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .title-section {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .controls-section {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
         .file-upload {
-            margin: 20px 0;
+            margin: 0;
             display: flex;
             align-items: center;
             gap: 10px;
         }
-        
-        .file-input-label {
-            display: inline-block;
-            padding: 10px 20px;
-            background-color: #007bff;
-            color: white;
+
+        .btn {
+            padding: 8px 16px;
             border: none;
-            border-radius: 4px;
+            border-radius: 6px; /* Rounded corners */
             cursor: pointer;
             font-size: 14px;
-            margin-right: 10px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            line-height: 1.2;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-primary {
+            background-color: var(--btn-primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: #0056b3;
+        }
+
+        .btn-success {
+            background-color: var(--btn-success);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background-color: #1e7e34;
+        }
+        
+        .btn-danger {
+            background-color: var(--btn-danger);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background-color: #c82333;
+        }
+
+        .btn-sm {
+            padding: 4px 10px;
+            font-size: 12px;
+            border-radius: 4px;
+        }
+        
+        .header-btn {
+            height: 36px;
+            padding: 0 16px;
+            font-size: 14px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            white-space: nowrap;
+            border-radius: 6px; /* Ensure rounded corners */
+        }
+
+        .header-btn i {
+            font-size: 14px;
+            width: 16px; /* Ensure fixed width for icons to prevent layout shift */
+            text-align: center;
+        }
+
+        .file-input-label {
+             /* Styles will be replaced by general button styles below */
+             margin-right: 0;
+             line-height: 1.2;
         }
         
         .file-input {
@@ -191,9 +198,7 @@
         }
         
         .export-btn {
-            padding: 10px 20px;
-            font-size: 14px;
-            margin-left: 10px;
+             /* Styles will be replaced by general button styles below */
         }
         
         .file-info {
@@ -205,11 +210,15 @@
         
         .lottie-animation {
             width: 100%;
-            height: 400px;
+            height: 100%; /* Fill available space */
             background-color: var(--bg-primary);
             border: 1px solid var(--border-dark);
             border-radius: 4px;
-            margin-top: 20px;
+            margin-top: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex: 1;
         }
         
         /* Lottie and JSON Editor layout */
@@ -273,6 +282,20 @@
             box-shadow: inset 0 0 0 2px #007bff;
         }
         
+        .btn-flat-primary {
+            background-color: var(--btn-primary);
+            color: white;
+            border: none;
+            box-shadow: none !important;
+            transform: none !important; /* Disable lift effect */
+        }
+
+        .btn-flat-primary:hover {
+            background-color: #0056b3;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+
         /* Button secondary style */
         .btn-secondary {
             background-color: var(--btn-secondary);
@@ -284,16 +307,20 @@
             display: flex;
             gap: 20px;
             margin-top: 20px;
+            flex: 1;
+            min-height: 0; /* Important for nested flex scroll */
         }
         
         /* Left preview section */
         .preview-section {
-            flex: 1;
+            flex: 2; /* Increased width for player */
             min-width: 300px;
             background-color: var(--bg-secondary);
             padding: 20px;
             border: 1px solid var(--border-color);
             border-radius: 8px;
+            display: flex;
+            flex-direction: column;
         }
         
         .preview-section h3 {
@@ -302,41 +329,80 @@
         }
         
         /* Right editor section */
+        .editor-section {
+            flex: 2; /* Increased width to accommodate horizontal layout */
+            min-width: 500px;
+            display: flex;
+            flex-direction: row; /* Changed to row for horizontal layout */
+            gap: 20px;
+            overflow: hidden; /* Prevent outer scroll */
+        }
+
         .json-editor-section-full {
             display: none;
-            flex: 2;
-            min-width: 400px;
-        }
-        
-        /* Hide JSON editor container */
-        .json-editor-section-full .json-editor-container {
-            display: none;
+            /* Moved styles to general structure */
         }
         
         /* Gradient Names section */
         .gradient-names-section {
-            flex: 1;
-            min-width: 250px;
             background-color: var(--bg-secondary);
             padding: 20px;
             border: 1px solid var(--border-color);
             border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            flex: 1; /* Take up half width */
+            overflow: hidden; /* Contain scroll */
+        }
+        
+        /* Color Editor section */
+        .editor-container {
+            background-color: var(--bg-secondary);
+            padding: 20px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            flex: 1; /* Take up half width */
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        #editor-title {
+            margin-top: 0;
+            margin-bottom: 20px;
+            flex-shrink: 0;
+        }
+
+        #editor {
+            overflow-y: auto; /* Allow scrolling within editor if needed */
+            flex: 1;
+        }
+
+        /* Generated JSON section */
+        .json-viewer {
+            display: none;
+            /* Moved logic */
         }
         
         /* Main gradient section in the top editor area */
         .main-gradient-section {
-            max-height: 400px;
-            overflow-y: auto;
-            margin-right: 20px;
+            /* Removed max-height */
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            flex: 1;
         }
         
         .gradient-names-section h3 {
             margin-top: 0;
             margin-bottom: 20px;
+            flex-shrink: 0;
         }
         
         .gradient-names-list {
-            max-height: 400px;
+            /* Remove fixed height, use flex to fill available space */
+            height: auto;
+            flex: 1;
             overflow-y: auto;
             background-color: var(--bg-primary);
             border: 1px solid var(--border-dark);
@@ -359,6 +425,11 @@
             cursor: pointer;
             background-color: var(--bg-secondary);
             transition: background-color 0.2s;
+            text-decoration: none !important; /* Ensure no underline */
+        }
+        
+        .gradient-item-header * {
+            text-decoration: none !important;
         }
         
         .gradient-item-header:hover {
@@ -388,6 +459,46 @@
             padding: 15px;
             background-color: var(--bg-tertiary);
             border-top: 1px solid var(--border-color);
+        }
+
+        .gradient-editor {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+            padding: 15px;
+            background-color: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px; /* Rounded corners for the row */
+        }
+        
+        .gradient-editor input[type="number"] {
+            padding: 8px 4px; /* Reduced padding to fit text */
+            border: 1px solid var(--border-color);
+            border-radius: 6px; /* Rounded corners for inputs */
+            background-color: var(--bg-input);
+            color: var(--text-primary);
+            width: 40px; /* Reduced from 60px to 40px (safer than 30px for readability) */
+            font-size: 14px;
+            text-align: center; /* Center text for better look in small input */
+            -moz-appearance: textfield; /* Hide spinner in Firefox */
+        }
+
+        /* Hide spinner in Chrome, Safari, Edge, Opera */
+        .gradient-editor input[type="number"]::-webkit-outer-spin-button,
+        .gradient-editor input[type="number"]::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        .gradient-editor input[type="color"] {
+            width: 60px;
+            height: 34px;
+            padding: 2px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px; /* Rounded corners for color picker */
+            cursor: pointer;
+            background-color: var(--bg-input);
         }
         
         .gradient-data {
@@ -423,6 +534,16 @@
             display: flex;
             align-items: center;
             justify-content: center;
+        }
+
+        .alpha_checkered {
+            background-color: transparent !important;
+            background-image: linear-gradient(45deg, var(--checkered-color) 25%, transparent 25%), 
+                              linear-gradient(-45deg, var(--checkered-color) 25%, transparent 25%), 
+                              linear-gradient(45deg, transparent 75%, var(--checkered-color) 75%), 
+                              linear-gradient(-45deg, transparent 75%, var(--checkered-color) 75%) !important;
+            background-size: 20px 20px !important;
+            background-position: 0 0, 0 10px, 10px -10px, -10px 0px !important;
         }
         
         /* Responsive design */
@@ -472,37 +593,142 @@
                 background: var(--btn-secondary);
             }
         }
+
+        /* Animation Controls */
+        .animation-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+            padding: 10px;
+            background-color: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+        }
+        
+        #animation-progress {
+            flex: 1;
+            cursor: pointer;
+            accent-color: var(--btn-primary);
+        }
+        
+        #time-display {
+            font-family: monospace;
+            font-size: 12px;
+            min-width: 85px;
+            text-align: right;
+            color: var(--text-primary);
+        }
+
+        .bg-controls {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            margin-left: 10px;
+            padding-left: 10px;
+            border-left: 1px solid var(--border-color);
+        }
+        
+        .bg-color-picker {
+            width: 25px;
+            height: 25px;
+            padding: 0;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            cursor: pointer;
+            background: none;
+        }
+        
+        .bg-btn {
+            width: 25px;
+            height: 25px;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            cursor: pointer;
+            background-color: var(--bg-input);
+            color: var(--text-primary);
+        }
+        
+        .bg-btn:hover {
+            background-color: var(--border-color);
+        }
+        
+        .bg-btn.active {
+            background-color: var(--btn-primary);
+            color: white;
+            border-color: var(--btn-primary);
+        }
     </style>
 </head>
 <body>
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-        <h1>渐变编辑器</h1>
-        <button id="theme-toggle" class="btn btn-secondary">
-            <i class="fa-solid fa-moon"></i> 深色模式
-        </button>
-    </div>
-    <!-- Lottie Player and JSON Editor Module -->
     <div class="lottie-player-container">
-        <h2 class="lottie-player-header">Lottie 动画播放器</h2>
-        
-        <div class="file-upload">
-            <label for="lottie-file" class="file-input-label">
-                <i class="fa-solid fa-upload"></i> 上传 Lottie JSON 文件
-            </label>
-            <input type="file" id="lottie-file" class="file-input" accept=".json">
-            <button id="export-btn" class="btn btn-primary export-btn">
-                <i class="fa-solid fa-download"></i> 导出 JSON
-            </button>
-            <span id="file-info" class="file-info">未选择文件</span>
+        <div class="header-container">
+            <div class="title-section">
+                <h1 style="margin: 0; font-size: 24px;">Lottie渐变编辑器</h1>
+            </div>
+            
+            <div class="controls-section">
+                <div class="file-upload">
+                    <label for="lottie-file" class="btn btn-flat-primary header-btn file-input-label">
+                        <i class="fa-solid fa-upload"></i> 导入 JSON
+                    </label>
+                    <input type="file" id="lottie-file" class="file-input" accept=".json">
+                    <button id="export-btn" class="btn btn-flat-primary header-btn export-btn" style="margin: 0;">
+                        <i class="fa-solid fa-download"></i> 导出 JSON
+                    </button>
+                    <span id="file-info" class="file-info" style="display: none;">未选择文件</span>
+                </div>
+                
+                <button id="theme-toggle" class="btn btn-flat-primary header-btn">
+                    <i class="fa-solid fa-moon"></i> 深色模式
+                </button>
+            </div>
         </div>
         
         <!-- Combined Preview and Editor Section -->
         <div class="playground-container">
             <!-- Left Side: Lottie Animation Preview -->
-            <div id="lottie-animation" class="preview-section lottie-animation"></div>
+            <div class="preview-section">
+                <div id="lottie-animation" class="lottie-animation alpha_checkered"></div>
+                <div class="animation-controls">
+                    <button id="play-pause-btn" class="btn btn-secondary btn-sm" title="播放/暂停" style="width: 32px; height: 32px; padding: 0;">
+                        <i class="fa-solid fa-pause"></i>
+                    </button>
+                    <input type="range" id="animation-progress" min="0" max="100" value="0" step="0.1">
+                    <span id="time-display">00:00 / 00:00</span>
+                    
+                    <div class="bg-controls">
+                        <input type="color" id="bg-color-picker" class="bg-color-picker" title="背景颜色" value="#ffffff">
+                        <button id="bg-alpha-btn" class="bg-btn active" title="透明背景 (Alpha)">
+                            <i class="fa-solid fa-border-all"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
             
-            <!-- Middle: JSON Editor -->
-            <div class="json-editor-section-full">
+            <!-- Right Side: Editor Section -->
+            <div class="editor-section">
+                <!-- Gradient List -->
+                <div class="gradient-names-section main-gradient-section">
+                    <h3>渐变列表</h3>
+                    <div id="gradient-names-list" class="gradient-names-list">
+                        <p>未找到渐变。上传 JSON 文件以查看渐变。</p>
+                    </div>
+                </div>
+                
+                <!-- Color Editor -->
+                <div id="editor-container" class="editor-container">
+                    <h3 id="editor-title">未选择渐变</h3>
+                    <div id="editor"></div>
+                </div>
+            </div>
+            
+            <!-- Hidden elements -->
+            <div class="json-editor-section-full" style="display: none;">
                 <h3>JSON 编辑器</h3>
                 <div class="json-editor-controls">
                     <button id="format-json-btn" class="btn btn-primary btn-sm">
@@ -519,22 +745,21 @@
                     <textarea id="json-editor" placeholder="上传文件或在此处编辑 JSON..." style="display: none;"></textarea>
                 </div>
             </div>
-            
-
         </div>
     </div>
 
-    <div class="playground playground-columns">
+    <!-- Hidden legacy structure -->
+    <div class="playground playground-columns" style="display: none;">
         <!-- Left Side: Adobe Gradients -->
         <div class="gradient-names-section main-gradient-section">
             <h3>渐变列表</h3>
-            <div id="gradient-names-list" class="gradient-names-list">
+            <div id="gradient-names-list-legacy" class="gradient-names-list">
                 <p>未找到渐变。上传 JSON 文件以查看渐变。</p>
             </div>
         </div>
         
         <!-- Middle: Color Editor -->
-        <div id="editor"></div>
+        <div id="editor-legacy"></div>
         
         <!-- Right Side: Generated JSON -->
         <div class="json-viewer">
@@ -615,7 +840,7 @@
 
                 if (dynamic_count) {
                     let btn = parent.appendChild(document.createElement("button"));
-                    btn.setAttribute("class", "btn btn-primary btn-sm");
+                    btn.setAttribute("class", "btn btn-success btn-sm");
                     btn.title = "添加色标";
                     btn.innerHTML = "<i class='fa-solid fa-plus'></i> 添加色标";
                     btn.addEventListener("click", () => {
@@ -892,6 +1117,21 @@
             const formatJsonBtn = document.getElementById('format-json-btn');
             const updateAnimationBtn = document.getElementById('update-animation-btn');
             
+            // Animation controls
+            const playPauseBtn = document.getElementById('play-pause-btn');
+            const progressBar = document.getElementById('animation-progress');
+            const timeDisplay = document.getElementById('time-display');
+            const playIcon = '<i class="fa-solid fa-play"></i>';
+            const pauseIcon = '<i class="fa-solid fa-pause"></i>';
+            let isDragging = false;
+            
+            // Background controls
+            const bgColorPicker = document.getElementById('bg-color-picker');
+            const bgAlphaBtn = document.getElementById('bg-alpha-btn');
+            
+            // Editor title
+            const editorTitle = document.getElementById('editor-title');
+            
             // Initialize Monaco Editor
             function initMonacoEditor() {
                 require.config({
@@ -992,6 +1232,10 @@
                         animation = null;
                     }
 
+                    // Reset controls
+                    if (playPauseBtn) playPauseBtn.innerHTML = pauseIcon;
+                    if (progressBar) progressBar.value = 0;
+
                     // Load new animation
                     console.log('Creating new animation with bodymovin');
                     animation = bodymovin.loadAnimation({
@@ -1006,6 +1250,15 @@
                     // Add animation event listeners for debugging
                     animation.addEventListener('DOMLoaded', () => {
                         console.log('Animation DOMLoaded event fired');
+                        updateTimeDisplay();
+                    });
+                    
+                    animation.addEventListener('enterFrame', () => {
+                        if (!isDragging && animation && progressBar) {
+                            const progress = (animation.currentFrame / animation.totalFrames) * 100;
+                            progressBar.value = progress;
+                            updateTimeDisplay();
+                        }
                     });
                     
                     animation.addEventListener('loopComplete', () => {
@@ -1014,6 +1267,7 @@
                     
                     animation.addEventListener('complete', () => {
                         console.log('Animation complete event fired');
+                        if (playPauseBtn) playPauseBtn.innerHTML = playIcon;
                     });
                     
                     animation.addEventListener('error', (error) => {
@@ -1162,14 +1416,13 @@
                                 gradientItem.className = 'gradient-name-item';
                                 gradientItem.innerHTML = `
                                     <div class="gradient-item-header">
-                                        <span class="gradient-name-index">${index + 1}.</span>
                                         <span class="gradient-name">${gradient.name}</span>
                                     </div>
                                 `;
                                 
                                 // Add click event for navigation
-                                const gradientNameElement = gradientItem.querySelector('.gradient-name');
-                                gradientNameElement.addEventListener('click', function() {
+                                const gradientHeader = gradientItem.querySelector('.gradient-item-header');
+                                gradientHeader.addEventListener('click', function() {
                                     const gradientName = gradient.name;
                                     console.log('Clicked gradient:', gradientName);
                                     
@@ -1178,6 +1431,11 @@
                                         name: gradient.name,
                                         gradientData: gradient.gradientData
                                     };
+                                    
+                                    // Update Editor Title
+                                    if (editorTitle) {
+                                        editorTitle.textContent = gradient.name;
+                                    }
                                     
                                     // Update Gradient Editor with the clicked gradient's data
                                     if (gradientEditorInstance && gradient.gradientData && gradient.gradientData.k) {
@@ -1422,6 +1680,9 @@
                             // Reset gradient names list
                             const gradientNamesList = document.getElementById('gradient-names-list');
                             gradientNamesList.innerHTML = '<p>未找到渐变。上传 JSON 文件以查看渐变。</p>';
+                            
+                            // Reset editor title
+                            if (editorTitle) editorTitle.textContent = '未选择渐变';
                         }
                     };
                     reader.readAsText(file);
@@ -1436,6 +1697,9 @@
                     // 重置渐变名称列表
                     const gradientNamesList = document.getElementById('gradient-names-list');
                     gradientNamesList.innerHTML = '<p>未找到渐变。上传 JSON 文件以查看渐变。</p>';
+                    
+                    // Reset editor title
+                    if (editorTitle) editorTitle.textContent = '未选择渐变';
                 }
             });
 
@@ -1472,6 +1736,96 @@
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url);
             });
+            
+            // Helper function to update time display
+            function updateTimeDisplay() {
+                if (!animation) return;
+                // Get total frames and frame rate
+                const totalFrames = animation.totalFrames || 0;
+                const frameRate = animation.frameRate || 30;
+                const currentFrame = animation.currentFrame || 0;
+                
+                const currentTime = currentFrame / frameRate;
+                const totalTime = totalFrames / frameRate;
+                
+                if (timeDisplay) {
+                    timeDisplay.textContent = `${formatTime(currentTime)} / ${formatTime(totalTime)}`;
+                }
+            }
+            
+            function formatTime(seconds) {
+                if (!isFinite(seconds) || isNaN(seconds)) return "00:00";
+                const m = Math.floor(seconds / 60);
+                const s = Math.floor(seconds % 60);
+                return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+            }
+
+            // Animation Control Event Listeners
+            if (playPauseBtn) {
+                playPauseBtn.addEventListener('click', () => {
+                    if (!animation) return;
+                    if (animation.isPaused) {
+                        animation.play();
+                        playPauseBtn.innerHTML = pauseIcon;
+                    } else {
+                        animation.pause();
+                        playPauseBtn.innerHTML = playIcon;
+                    }
+                });
+            }
+            
+            if (progressBar) {
+                progressBar.addEventListener('input', () => {
+                    isDragging = true;
+                    if (!animation) return;
+                    const frame = (progressBar.value / 100) * animation.totalFrames;
+                    animation.goToAndStop(frame, true);
+                    updateTimeDisplay();
+                });
+                
+                progressBar.addEventListener('change', () => {
+                    isDragging = false;
+                    if (!animation) return;
+                    // If the button shows pause icon, it means it should be playing
+                    if (playPauseBtn && playPauseBtn.innerHTML.includes('fa-pause')) {
+                        animation.play();
+                    }
+                });
+            }
+            
+            // Background Control Event Listeners
+            if (bgColorPicker && bgAlphaBtn) {
+                // Initial state
+                if (animationContainer.classList.contains('alpha_checkered')) {
+                    bgAlphaBtn.classList.add('active');
+                } else {
+                    // Try to get background color
+                    const style = window.getComputedStyle(animationContainer);
+                    // Use a simple default or try to parse
+                }
+
+                bgColorPicker.addEventListener('input', (e) => {
+                    const color = e.target.value;
+                    animationContainer.style.backgroundColor = color;
+                    animationContainer.classList.remove('alpha_checkered');
+                    bgAlphaBtn.classList.remove('active');
+                });
+                
+                bgAlphaBtn.addEventListener('click', () => {
+                    if (animationContainer.classList.contains('alpha_checkered')) {
+                        // If already active, switch back to color
+                        animationContainer.classList.remove('alpha_checkered');
+                        bgAlphaBtn.classList.remove('active');
+                        animationContainer.style.backgroundColor = bgColorPicker.value;
+                    } else {
+                        // Enable alpha
+                        animationContainer.classList.add('alpha_checkered');
+                        bgAlphaBtn.classList.add('active');
+                        // Clear background color to let pattern show
+                        animationContainer.style.backgroundColor = 'transparent';
+                    }
+                });
+            }
             
             // Expose functions to global scope so they can be called from outside initializeLottiePlayer
             window.getJsonContent = getJsonContent;
