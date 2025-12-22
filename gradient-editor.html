@@ -15,9 +15,49 @@
     <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.41.0/min/vs/editor/editor.main.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.41.0/min/vs/loader.js"></script>
     <style>
+        /* CSS Variables for Theme Colors */
+        :root {
+            /* Light Theme */
+            --bg-primary: #ffffff;
+            --bg-secondary: #f8f9fa;
+            --bg-tertiary: #fafafa;
+            --bg-input: #ffffff;
+            --text-primary: #343a40;
+            --text-secondary: #6c757d;
+            --border-color: #e0e0e0;
+            --border-dark: #ddd;
+            --btn-primary: #007bff;
+            --btn-danger: #dc3545;
+            --btn-secondary: #6c757d;
+            --checkered-color: #ccc;
+        }
+        
+        /* Dark Theme */
+        [data-theme="dark"] {
+            --bg-primary: #1a1a1a;
+            --bg-secondary: #2d2d2d;
+            --bg-tertiary: #242424;
+            --bg-input: #333333;
+            --text-primary: #e0e0e0;
+            --text-secondary: #b0b0b0;
+            --border-color: #444444;
+            --border-dark: #555555;
+            --btn-primary: #0069d9;
+            --btn-danger: #c82333;
+            --btn-secondary: #5a6268;
+            --checkered-color: #555555;
+        }
+        
+        /* Apply theme variables to all elements */
+        * {
+            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+        }
+        
         body {
             font-family: Arial, sans-serif;
             margin: 20px;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
         }
         .playground {
             display: flex;
@@ -34,9 +74,9 @@
         #editor {
             flex: 1;
             min-width: 300px;
-            background-color: #f8f9fa;
+            background-color: var(--bg-secondary);
             padding: 20px;
-            border: 1px solid #e0e0e0;
+            border: 1px solid var(--border-color);
             border-radius: 8px;
         }
         
@@ -46,10 +86,10 @@
             min-width: 300px;
         }
         .alpha_checkered {
-            background-image: linear-gradient(45deg, #ccc 25%, transparent 25%), 
-                              linear-gradient(-45deg, #ccc 25%, transparent 25%), 
-                              linear-gradient(45deg, transparent 75%, #ccc 75%), 
-                              linear-gradient(-45deg, transparent 75%, #ccc 75%);
+            background-image: linear-gradient(45deg, var(--checkered-color) 25%, transparent 25%), 
+                              linear-gradient(-45deg, var(--checkered-color) 25%, transparent 25%), 
+                              linear-gradient(45deg, transparent 75%, var(--checkered-color) 75%), 
+                              linear-gradient(-45deg, transparent 75%, var(--checkered-color) 75%);
             background-size: 20px 20px;
             background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
         }
@@ -66,8 +106,10 @@
         }
         .gradient-editor input {
             padding: 5px;
-            border: 1px solid #ccc;
+            border: 1px solid var(--border-color);
             border-radius: 4px;
+            background-color: var(--bg-input);
+            color: var(--text-primary);
         }
         .gradient-editor input[type="color"] {
             width: 50px;
@@ -86,11 +128,11 @@
             font-size: 14px;
         }
         .btn-primary {
-            background-color: #007bff;
+            background-color: var(--btn-primary);
             color: white;
         }
         .btn-danger {
-            background-color: #dc3545;
+            background-color: var(--btn-danger);
             color: white;
         }
         .btn-sm {
@@ -98,11 +140,12 @@
             font-size: 12px;
         }
         pre {
-            background-color: #f8f9fa;
+            background-color: var(--bg-secondary);
             padding: 10px;
             border-radius: 4px;
             overflow-x: auto;
             white-space: pre-wrap;
+            color: var(--text-primary);
         }
         code {
             font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
@@ -115,9 +158,9 @@
         .lottie-player-container {
             margin-top: 50px;
             padding: 20px;
-            border: 1px solid #e0e0e0;
+            border: 1px solid var(--border-color);
             border-radius: 8px;
-            background-color: #fafafa;
+            background-color: var(--bg-tertiary);
         }
         
         .lottie-player-header {
@@ -157,14 +200,14 @@
             display: inline-block;
             margin-left: 10px;
             font-style: italic;
-            color: #666;
+            color: var(--text-secondary);
         }
         
         .lottie-animation {
             width: 100%;
             height: 400px;
-            background-color: white;
-            border: 1px solid #ddd;
+            background-color: var(--bg-primary);
+            border: 1px solid var(--border-dark);
             border-radius: 4px;
             margin-top: 20px;
         }
@@ -200,7 +243,7 @@
         
         .json-editor-container {
             height: 400px;
-            border: 1px solid #ddd;
+            border: 1px solid var(--border-dark);
             border-radius: 4px;
             overflow: hidden;
         }
@@ -220,7 +263,8 @@
             font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
             font-size: 14px;
             line-height: 1.5;
-            background-color: white;
+            background-color: var(--bg-input);
+            color: var(--text-primary);
             box-sizing: border-box;
         }
         
@@ -231,7 +275,7 @@
         
         /* Button secondary style */
         .btn-secondary {
-            background-color: #6c757d;
+            background-color: var(--btn-secondary);
             color: white;
         }
         
@@ -246,9 +290,9 @@
         .preview-section {
             flex: 1;
             min-width: 300px;
-            background-color: #f8f9fa;
+            background-color: var(--bg-secondary);
             padding: 20px;
-            border: 1px solid #e0e0e0;
+            border: 1px solid var(--border-color);
             border-radius: 8px;
         }
         
@@ -273,9 +317,9 @@
         .gradient-names-section {
             flex: 1;
             min-width: 250px;
-            background-color: #f8f9fa;
+            background-color: var(--bg-secondary);
             padding: 20px;
-            border: 1px solid #e0e0e0;
+            border: 1px solid var(--border-color);
             border-radius: 8px;
         }
         
@@ -294,18 +338,18 @@
         .gradient-names-list {
             max-height: 400px;
             overflow-y: auto;
-            background-color: white;
-            border: 1px solid #ddd;
+            background-color: var(--bg-primary);
+            border: 1px solid var(--border-dark);
             border-radius: 4px;
             padding: 15px;
         }
         
         .gradient-name-item {
             margin-bottom: 10px;
-            border: 1px solid #e0e0e0;
+            border: 1px solid var(--border-color);
             border-radius: 4px;
             overflow: hidden;
-            background-color: white;
+            background-color: var(--bg-primary);
         }
         
         .gradient-item-header {
@@ -313,37 +357,37 @@
             align-items: center;
             padding: 10px 15px;
             cursor: pointer;
-            background-color: #f8f9fa;
+            background-color: var(--bg-secondary);
             transition: background-color 0.2s;
         }
         
         .gradient-item-header:hover {
-            background-color: #e9ecef;
+            background-color: var(--border-color);
         }
         
         .gradient-name-index {
             font-weight: bold;
             margin-right: 10px;
-            color: #007bff;
+            color: var(--btn-primary);
         }
         
         .gradient-name {
             flex: 1;
             cursor: pointer;
             text-decoration: underline;
-            color: #007bff;
+            color: var(--btn-primary);
         }
         
         .gradient-toggle-icon {
             font-size: 12px;
-            color: #6c757d;
+            color: var(--text-secondary);
             transition: transform 0.2s;
         }
         
         .gradient-expandable-content {
             padding: 15px;
-            background-color: #fafafa;
-            border-top: 1px solid #e0e0e0;
+            background-color: var(--bg-tertiary);
+            border-top: 1px solid var(--border-color);
         }
         
         .gradient-data {
@@ -354,14 +398,14 @@
             margin-top: 0;
             margin-bottom: 10px;
             font-size: 14px;
-            color: #343a40;
+            color: var(--text-primary);
         }
         
         .gradient-data pre {
             margin: 0;
             padding: 10px;
-            background-color: white;
-            border: 1px solid #e0e0e0;
+            background-color: var(--bg-input);
+            border: 1px solid var(--border-color);
             border-radius: 4px;
             overflow-x: auto;
             font-size: 12px;
@@ -372,8 +416,8 @@
         .lottie-animation {
             width: 100%;
             height: 400px;
-            background-color: white;
-            border: 1px solid #ddd;
+            background-color: var(--bg-primary);
+            border: 1px solid var(--border-dark);
             border-radius: 4px;
             margin-top: 0;
             display: flex;
@@ -393,10 +437,50 @@
                 min-width: auto;
             }
         }
+        
+        /* Theme transition for smooth changes */
+        html {
+            transition: background-color 0.3s ease;
+        }
+        
+        /* Additional styles for dark theme */
+        [data-theme="dark"] {
+            /* Ensure proper contrast for text inputs */
+            input[type="text"],
+            input[type="number"],
+            textarea {
+                color: var(--text-primary);
+                background-color: var(--bg-input);
+            }
+            
+            /* Improve contrast for scrollbars */
+            ::-webkit-scrollbar {
+                width: 8px;
+                height: 8px;
+            }
+            
+            ::-webkit-scrollbar-track {
+                background: var(--bg-secondary);
+            }
+            
+            ::-webkit-scrollbar-thumb {
+                background: var(--border-dark);
+                border-radius: 4px;
+            }
+            
+            ::-webkit-scrollbar-thumb:hover {
+                background: var(--btn-secondary);
+            }
+        }
     </style>
 </head>
 <body>
-    <h1>渐变编辑器</h1>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h1>渐变编辑器</h1>
+        <button id="theme-toggle" class="btn btn-secondary">
+            <i class="fa-solid fa-moon"></i> 深色模式
+        </button>
+    </div>
     <!-- Lottie Player and JSON Editor Module -->
     <div class="lottie-player-container">
         <h2 class="lottie-player-header">Lottie 动画播放器</h2>
@@ -666,6 +750,47 @@
         let animation = null; // Global reference to Lottie animation
         
         document.addEventListener('DOMContentLoaded', () => {
+            // Theme Toggle Logic
+            const themeToggle = document.getElementById('theme-toggle');
+            const body = document.body;
+            
+            // Check for saved theme in localStorage or use system preference
+            const savedTheme = localStorage.getItem('theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            
+            // Set initial theme
+            const initialTheme = savedTheme || (prefersDark ? 'dark' : 'light');
+            body.setAttribute('data-theme', initialTheme);
+            
+            // Update button text and icon based on current theme
+            const updateThemeButton = () => {
+                const currentTheme = body.getAttribute('data-theme');
+                if (currentTheme === 'dark') {
+                    themeToggle.innerHTML = '<i class="fa-solid fa-sun"></i> 浅色模式';
+                } else {
+                    themeToggle.innerHTML = '<i class="fa-solid fa-moon"></i> 深色模式';
+                }
+            };
+            
+            // Call once to set initial button state
+            updateThemeButton();
+            
+            // Add click event listener for theme toggle
+            themeToggle.addEventListener('click', () => {
+                const currentTheme = body.getAttribute('data-theme');
+                const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+                
+                // Update theme attribute on body
+                body.setAttribute('data-theme', newTheme);
+                
+                // Save theme preference to localStorage
+                localStorage.setItem('theme', newTheme);
+                
+                // Update button text and icon
+                updateThemeButton();
+            });
+            
+            // Initialize Gradient Editor
             gradientEditorInstance = GradientPreviewEditor.stand_alone(document.getElementById("editor"), (lottie) => {
                 var raw_json = JSON.stringify(lottie, undefined, 4);
                 document.getElementById("json_viewer").innerHTML = raw_json;
@@ -711,13 +836,25 @@
                 // If it's the gradient object, update its "k" property
                 if (jsonData.ty === 'gf' && jsonData.nm === gradientInfo.name) {
                     if (jsonData.g) {
+                        // Calculate new color count based on newGradientData length
+                        // Each color stop has 4 values (offset, r, g, b) without alpha
+                        const newColorCount = Math.floor(newGradientData.length / 4);
+                        
                         // Update the gradient data
                         if (jsonData.g.k && typeof jsonData.g.k === 'object' && 'k' in jsonData.g.k) {
                             // Handle nested k structure: g.k is an object with a k property
                             jsonData.g.k.k = newGradientData;
+                            // Update the color count (p property) in the gradient
+                            if (jsonData.g.p !== undefined) {
+                                jsonData.g.p = newColorCount;
+                            }
                         } else {
                             // Handle direct k structure: g.k is the array directly
                             jsonData.g.k = newGradientData;
+                            // Update the color count (p property) in the gradient
+                            if (jsonData.g.p !== undefined) {
+                                jsonData.g.p = newColorCount;
+                            }
                         }
                         updated = true;
                     }
