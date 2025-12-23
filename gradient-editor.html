@@ -802,18 +802,38 @@
                 // For gradients without alpha: [offset, r, g, b, offset, r, g, b, ...]
                 // For gradients with alpha: [offset, r, g, b, offset, r, g, b, ..., offset, a, offset, a, ...]
                 
-                // First calculate RGB color count (each RGB stop has 4 values)
-                const rgbStopCount = Math.floor(lottie.length / 4);
+                let rgbStopCount;
+                this.with_alpha = false;
                 
-                // Check if there's alpha data
-                // Alpha data length should be rgbStopCount * 2
-                this.with_alpha = lottie.length === rgbStopCount * 6;
-                
-                // Use the RGB stop count as the actual color count
-                color_count = rgbStopCount;
+                // Check if it's a gradient with alpha
+                // For n color stops with alpha, total length is n * 4 + n * 2 = n * 6
+                if (lottie.length % 6 === 0) {
+                    // Has alpha: each color stop contributes 6 values (4 for RGB, 2 for alpha)
+                    this.with_alpha = true;
+                    color_count = lottie.length / 6;
+                    rgbStopCount = color_count;
+                } 
+                // Check if it's a gradient without alpha
+                // For n color stops without alpha, total length is n * 4
+                else if (lottie.length % 4 === 0) {
+                    // No alpha: each color stop contributes 4 values (offset, r, g, b)
+                    this.with_alpha = false;
+                    color_count = lottie.length / 4;
+                    rgbStopCount = color_count;
+                } 
+                else {
+                    // Invalid gradient data length
+                    console.error('Invalid gradient data length:', lottie.length);
+                    // Default to no alpha and calculate color count from length
+                    this.with_alpha = false;
+                    color_count = Math.floor(lottie.length / 4);
+                    rgbStopCount = color_count;
+                }
 
                 let self = this;
                 this.colors = [];
+                // Initialize debounce timer
+                this.debounceTimer = null;
 
                 // First create preview container and gradient-preview div
                 let preview_cont = parent.appendChild(document.createElement("div"));
@@ -826,11 +846,11 @@
                 // Then create the label with checkbox
                 let label = parent.appendChild(document.createElement("p"))
                     .appendChild(document.createElement("label"));
-                let check_apha = label.appendChild(document.createElement("input"));
-                check_apha.type = "checkbox";
-                check_apha.checked = this.with_alpha;
-                check_apha.addEventListener("input", () => {
-                    self.with_alpha = check_apha.checked;
+                this.check_alpha = label.appendChild(document.createElement("input"));
+                this.check_alpha.type = "checkbox";
+                this.check_alpha.checked = this.with_alpha;
+                this.check_alpha.addEventListener("input", () => {
+                    self.with_alpha = self.check_alpha.checked;
                     for (let color of self.colors) {
                         color.alpha_input.style.display = self.with_alpha ? "inline-block" : "none";
                     }
@@ -892,7 +912,13 @@
                 in_off.value = color.offset;
                 in_off.addEventListener("input", () => {
                     color.offset = Number(in_off.value);
-                    self._on_change();
+                    // Debounce _on_change to improve performance during drag
+                    if (self.debounceTimer) {
+                        clearTimeout(self.debounceTimer);
+                    }
+                    self.debounceTimer = setTimeout(() => {
+                        self._on_change();
+                    }, 100);
                 });
 
                 let in_col = p.appendChild(document.createElement("input"));
@@ -900,7 +926,13 @@
                 in_col.value = color.color;
                 in_col.addEventListener("input", () => {
                     color.color = in_col.value;
-                    self._on_change();
+                    // Debounce _on_change to improve performance during color selection
+                    if (self.debounceTimer) {
+                        clearTimeout(self.debounceTimer);
+                    }
+                    self.debounceTimer = setTimeout(() => {
+                        self._on_change();
+                    }, 100);
                 });
 
                 let in_alpha = p.appendChild(document.createElement("input"));
@@ -913,7 +945,13 @@
                 in_alpha.style.display = this.with_alpha ? "inline-block" : "none";
                 in_alpha.addEventListener("input", () => {
                     color.alpha = Number(in_alpha.value);
-                    self._on_change();
+                    // Debounce _on_change to improve performance during alpha adjustment
+                    if (self.debounceTimer) {
+                        clearTimeout(self.debounceTimer);
+                    }
+                    self.debounceTimer = setTimeout(() => {
+                        self._on_change();
+                    }, 100);
                 });
                 color.alpha_input = in_alpha;
 
@@ -967,15 +1005,33 @@
                 // For gradients without alpha: [offset, r, g, b, offset, r, g, b, ...]
                 // For gradients with alpha: [offset, r, g, b, offset, r, g, b, ..., offset, a, offset, a, ...]
                 
-                // First calculate RGB color count (each RGB stop has 4 values)
-                const rgbStopCount = Math.floor(lottie.length / 4);
+                let rgbStopCount;
+                this.with_alpha = false;
                 
-                // Check if there's alpha data
-                // Alpha data length should be rgbStopCount * 2
-                this.with_alpha = lottie.length === rgbStopCount * 6;
-                
-                // Use the RGB stop count as the actual color count
-                color_count = rgbStopCount;
+                // Check if it's a gradient with alpha
+                // For n color stops with alpha, total length is n * 4 + n * 2 = n * 6
+                if (lottie.length % 6 === 0) {
+                    // Has alpha: each color stop contributes 6 values (4 for RGB, 2 for alpha)
+                    this.with_alpha = true;
+                    color_count = lottie.length / 6;
+                    rgbStopCount = color_count;
+                } 
+                // Check if it's a gradient without alpha
+                // For n color stops without alpha, total length is n * 4
+                else if (lottie.length % 4 === 0) {
+                    // No alpha: each color stop contributes 4 values (offset, r, g, b)
+                    this.with_alpha = false;
+                    color_count = lottie.length / 4;
+                    rgbStopCount = color_count;
+                } 
+                else {
+                    // Invalid gradient data length
+                    console.error('Invalid gradient data length:', lottie.length);
+                    // Default to no alpha and calculate color count from length
+                    this.with_alpha = false;
+                    color_count = Math.floor(lottie.length / 4);
+                    rgbStopCount = color_count;
+                }
                 
                 // Recreate color inputs
                 for (let i = 0; i < color_count; i++) {
@@ -1001,6 +1057,11 @@
                 
                 // Update the preview
                 this._on_change();
+                
+                // Update the checkbox state to match with_alpha property
+                if (this.check_alpha) {
+                    this.check_alpha.checked = this.with_alpha;
+                }
             }
             
             static stand_alone(parent, on_change) {
