@@ -797,10 +797,20 @@
         class GradientPreviewEditor {
             constructor(parent, lottie, color_count, on_change, dynamic_count = false) {
                 this.on_change = on_change;
-                this.with_alpha = lottie.length >= color_count * 6;
-                if (lottie.length < color_count * 4) {
-                    color_count = Math.floor(lottie.length / 4);
-                }
+                
+                // Calculate the correct color count based on Lottie gradient format
+                // For gradients without alpha: [offset, r, g, b, offset, r, g, b, ...]
+                // For gradients with alpha: [offset, r, g, b, offset, r, g, b, ..., offset, a, offset, a, ...]
+                
+                // First calculate RGB color count (each RGB stop has 4 values)
+                const rgbStopCount = Math.floor(lottie.length / 4);
+                
+                // Check if there's alpha data
+                // Alpha data length should be rgbStopCount * 2
+                this.with_alpha = lottie.length === rgbStopCount * 6;
+                
+                // Use the RGB stop count as the actual color count
+                color_count = rgbStopCount;
 
                 let self = this;
                 this.colors = [];
@@ -830,10 +840,22 @@
 
                 this.parent = parent.appendChild(document.createElement("div"));
                 for (let i = 0; i < color_count; i++) {
+                    // Parse RGB values
+                    const offset = lottie[i * 4];
+                    const rgb = lottie.slice(i * 4 + 1, i * 4 + 4);
+                    
+                    // Parse alpha value if available
+                    let alpha = 1;
+                    if (this.with_alpha) {
+                        // Alpha data starts after RGB data, each alpha stop has 2 values (offset, alpha)
+                        const alphaOffsetIndex = color_count * 4 + i * 2;
+                        alpha = lottie[alphaOffsetIndex + 1]; // alpha value is the second in the pair
+                    }
+                    
                     this.add_color(
-                        lottie[i * 4],
-                        color_lottie_to_hex(lottie.slice(i * 4 + 1, i * 4 + 4)),
-                        this.with_alpha ? lottie[4 * color_count + i * 2 + 1] : 1,
+                        offset,
+                        color_lottie_to_hex(rgb),
+                        alpha,
                         dynamic_count
                     );
                 }
@@ -941,18 +963,38 @@
                 this.parent.innerHTML = '';
                 this.colors = [];
                 
-                // Recalculate alpha support
-                this.with_alpha = lottie.length >= color_count * 6;
-                if (lottie.length < color_count * 4) {
-                    color_count = Math.floor(lottie.length / 4);
-                }
+                // Calculate the correct color count based on Lottie gradient format
+                // For gradients without alpha: [offset, r, g, b, offset, r, g, b, ...]
+                // For gradients with alpha: [offset, r, g, b, offset, r, g, b, ..., offset, a, offset, a, ...]
+                
+                // First calculate RGB color count (each RGB stop has 4 values)
+                const rgbStopCount = Math.floor(lottie.length / 4);
+                
+                // Check if there's alpha data
+                // Alpha data length should be rgbStopCount * 2
+                this.with_alpha = lottie.length === rgbStopCount * 6;
+                
+                // Use the RGB stop count as the actual color count
+                color_count = rgbStopCount;
                 
                 // Recreate color inputs
                 for (let i = 0; i < color_count; i++) {
+                    // Parse RGB values
+                    const offset = lottie[i * 4];
+                    const rgb = lottie.slice(i * 4 + 1, i * 4 + 4);
+                    
+                    // Parse alpha value if available
+                    let alpha = 1;
+                    if (this.with_alpha) {
+                        // Alpha data starts after RGB data, each alpha stop has 2 values (offset, alpha)
+                        const alphaOffsetIndex = color_count * 4 + i * 2;
+                        alpha = lottie[alphaOffsetIndex + 1]; // alpha value is the second in the pair
+                    }
+                    
                     this.add_color(
-                        lottie[i * 4],
-                        color_lottie_to_hex(lottie.slice(i * 4 + 1, i * 4 + 4)),
-                        this.with_alpha ? lottie[4 * color_count + i * 2 + 1] : 1,
+                        offset,
+                        color_lottie_to_hex(rgb),
+                        alpha,
                         true // dynamic_count
                     );
                 }
@@ -1061,9 +1103,62 @@
                 // If it's the gradient object, update its "k" property
                 if (jsonData.ty === 'gf' && jsonData.nm === gradientInfo.name) {
                     if (jsonData.g) {
-                        // Calculate new color count based on newGradientData length
-                        // Each color stop has 4 values (offset, r, g, b) without alpha
-                        const newColorCount = Math.floor(newGradientData.length / 4);
+                        // Calculate new color count correctly
+                        // Gradient data format: [offset1, r1, g1, b1, offset2, r2, g2, b2, ..., offset1, alpha1, offset2, alpha2, ...]
+                        // So first part is RGB data (color_count * 4), then alpha data (color_count * 2) if alpha is enabled
+                        // For color_count color stops:
+                        // - Without alpha: length = color_count * 4
+                        // - With alpha: length = color_count * 4 + color_count * 2 = color_count * 6
+                        
+                        // The correct way to calculate color count is to always divide by 4
+                        // because the RGB data is always the first part of the array
+                        // and each color stop has exactly 4 values in the RGB data
+                        // This works for both cases:
+                        // - Without alpha: length / 4 = color_count
+                        // - With alpha: length = color_count * 6, so length / 4 = color_count * 1.5
+                        // Wait, no! That's wrong. Wait, no. Wait, for 2 color stops with alpha, length is 12
+                        // 12 / 4 = 3, but there are only 2 color stops. Oh, right! So that's wrong.
+                        
+                        // So I need to calculate it differently. Let's think:
+                        // When we have alpha enabled, we have color_count color stops, and for each color stop,
+                        // we have 4 values in RGB data and 2 values in alpha data. So total length is color_count * 6.
+                        // When we have alpha disabled, we have color_count color stops, and for each color stop,
+                        // we have 4 values in RGB data. So total length is color_count * 4.
+                        
+                        // So if the length is divisible by 6, then it's a gradient with alpha, and color_count = length / 6.
+                        // If the length is divisible by 4, then it's a gradient without alpha, and color_count = length / 4.
+                        // If neither, then we have an invalid gradient data length.
+                        
+                        // But wait, let's look at the _on_change method to see how the gradient data is generated:
+                        // _on_change() {
+                        //     let lottie = [];
+                        //     let alpha = [];
+                        //     for (let color of this.colors) {
+                        //         lottie.push(color.offset, ...color_hex_to_lottie(color.color));
+                        //         if (this.with_alpha) {
+                        //             alpha.push(color.offset, color.alpha);
+                        //         }
+                        //     }
+                        //     this.on_change(lottie.concat(alpha));
+                        // }
+                        // So for n color stops, with alpha enabled, lottie has n * 4 values, alpha has n * 2 values.
+                        // So total length is n * 4 + n * 2 = n * 6, which is divisible by 6.
+                        // With alpha disabled, alpha is empty, so total length is n * 4, which is divisible by 4.
+                        // So the gradient data should always have a length divisible by 4 or 6.
+                        
+                        // So the correct way to calculate color_count is:
+                        let newColorCount;
+                        if (newGradientData.length % 6 === 0) {
+                            // Has alpha: each color stop contributes 6 values
+                            newColorCount = newGradientData.length / 6;
+                        } else if (newGradientData.length % 4 === 0) {
+                            // No alpha: each color stop contributes 4 values
+                            newColorCount = newGradientData.length / 4;
+                        } else {
+                            // Invalid gradient data length
+                            console.error('Invalid gradient data length:', newGradientData.length);
+                            return updated;
+                        }
                         
                         // Update the gradient data
                         if (jsonData.g.k && typeof jsonData.g.k === 'object' && 'k' in jsonData.g.k) {
