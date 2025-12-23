@@ -395,8 +395,32 @@
         
         .gradient-names-section h3 {
             margin-top: 0;
-            margin-bottom: 20px;
+            margin-bottom: 10px;
             flex-shrink: 0;
+        }
+        
+        .gradient-search-container {
+            margin-bottom: 15px;
+            flex-shrink: 0;
+            padding: 0 15px;
+        }
+        
+        .gradient-search-input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            background-color: var(--bg-input);
+            color: var(--text-primary);
+            font-size: 14px;
+            transition: border-color 0.2s ease;
+            box-sizing: border-box;
+        }
+        
+        .gradient-search-input:focus {
+            outline: none;
+            border-color: var(--btn-primary);
+            box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
         }
         
         .gradient-names-list {
@@ -436,6 +460,16 @@
             background-color: var(--border-color);
         }
         
+        /* Highlight style for selected gradient item */
+        .gradient-name-item.selected {
+            border-color: var(--btn-primary);
+            background-color: rgba(0, 123, 255, 0.1);
+        }
+        
+        .gradient-name-item.selected .gradient-item-header {
+            background-color: rgba(0, 123, 255, 0.15);
+        }
+        
         .gradient-name-index {
             font-weight: bold;
             margin-right: 10px;
@@ -463,13 +497,41 @@
 
         .gradient-editor {
             display: flex;
-            align-items: center;
+            flex-direction: column;
             gap: 10px;
             margin-bottom: 10px;
             padding: 15px;
             background-color: var(--bg-tertiary);
             border: 1px solid var(--border-color);
             border-radius: 8px; /* Rounded corners for the row */
+        }
+        
+        .gradient-editor-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .gradient-editor-label {
+            font-size: 14px;
+            color: var(--text-primary);
+            white-space: nowrap;
+        }
+        
+        /* Styles for disabled state */
+        .gradient-editor input:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .gradient-editor input:disabled + label,
+        .gradient-editor input:disabled ~ label {
+            opacity: 0.6;
+        }
+        
+        .btn-delete {
+            width: auto;
+            margin-left: auto;
         }
         
         .gradient-editor input[type="number"] {
@@ -492,13 +554,25 @@
         }
 
         .gradient-editor input[type="color"] {
-            width: 60px;
+            width: 100%;
             height: 34px;
             padding: 2px;
-            border: 1px solid var(--border-color);
+            border: none;
             border-radius: 6px; /* Rounded corners for color picker */
             cursor: pointer;
-            background-color: var(--bg-input);
+            background-color: transparent;
+        }
+        
+        .gradient-preview {
+            width: 100%;
+            height: 34px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            border: 1px solid var(--border-color);
+            /* Ensure the gradient background is properly displayed over the alpha checkered pattern */
+            background-size: 100% 100% !important;
+            background-repeat: no-repeat !important;
+            background-position: 0 0 !important;
         }
         
         .gradient-data {
@@ -699,7 +773,7 @@
                         <i class="fa-solid fa-pause"></i>
                     </button>
                     <input type="range" id="animation-progress" min="0" max="100" value="0" step="0.1">
-                    <span id="time-display">00:00 / 00:00</span>
+                    <span id="time-display">0 / 0</span>
                     
                     <div class="bg-controls">
                         <input type="color" id="bg-color-picker" class="bg-color-picker" title="背景颜色" value="#ffffff">
@@ -715,6 +789,9 @@
                 <!-- Gradient List -->
                 <div class="gradient-names-section main-gradient-section">
                     <h3>渐变列表</h3>
+                    <div class="gradient-search-container">
+                        <input type="text" id="gradient-search" placeholder="搜索渐变..." class="gradient-search-input">
+                    </div>
                     <div id="gradient-names-list" class="gradient-names-list">
                         <p>未找到渐变。上传 JSON 文件以查看渐变。</p>
                     </div>
@@ -852,37 +929,42 @@
                 this.check_alpha.addEventListener("input", () => {
                     self.with_alpha = self.check_alpha.checked;
                     for (let color of self.colors) {
-                        color.alpha_input.style.display = self.with_alpha ? "inline-block" : "none";
+                        color.alpha_input.disabled = !self.with_alpha;
+                        color.alpha_label.style.opacity = self.with_alpha ? "1" : "0.6";
                     }
                     self._on_change();
                 });
                 label.appendChild(document.createTextNode(" 启用 Alpha"));
 
                 this.parent = parent.appendChild(document.createElement("div"));
-                for (let i = 0; i < color_count; i++) {
-                    // Parse RGB values
-                    const offset = lottie[i * 4];
-                    const rgb = lottie.slice(i * 4 + 1, i * 4 + 4);
-                    
-                    // Parse alpha value if available
-                    let alpha = 1;
-                    if (this.with_alpha) {
-                        // Alpha data starts after RGB data, each alpha stop has 2 values (offset, alpha)
-                        const alphaOffsetIndex = color_count * 4 + i * 2;
-                        alpha = lottie[alphaOffsetIndex + 1]; // alpha value is the second in the pair
+                
+                // Only process gradient data if we have some
+                if (lottie && lottie.length > 0) {
+                    for (let i = 0; i < color_count; i++) {
+                        // Parse RGB values
+                        const offset = lottie[i * 4];
+                        const rgb = lottie.slice(i * 4 + 1, i * 4 + 4);
+                        
+                        // Parse alpha value if available
+                        let alpha = 1;
+                        if (this.with_alpha) {
+                            // Alpha data starts after RGB data, each alpha stop has 2 values (offset, alpha)
+                            const alphaOffsetIndex = color_count * 4 + i * 2;
+                            alpha = lottie[alphaOffsetIndex + 1]; // alpha value is the second in the pair
+                        }
+                        
+                        this.add_color(
+                            offset,
+                            color_lottie_to_hex(rgb),
+                            alpha,
+                            dynamic_count
+                        );
                     }
-                    
-                    this.add_color(
-                        offset,
-                        color_lottie_to_hex(rgb),
-                        alpha,
-                        dynamic_count
-                    );
                 }
 
                 if (dynamic_count) {
                     let btn = parent.appendChild(document.createElement("button"));
-                    btn.setAttribute("class", "btn btn-success btn-sm");
+                    btn.setAttribute("class", "btn btn-success btn-sm btn-delete");
                     btn.title = "添加色标";
                     btn.innerHTML = "<i class='fa-solid fa-plus'></i> 添加色标";
                     btn.addEventListener("click", () => {
@@ -903,25 +985,13 @@
 
                 let p = this.parent.appendChild(document.createElement("p"));
                 p.classList.add("gradient-editor");
-                let in_off = p.appendChild(document.createElement("input"));
-                in_off.title = "Offset";
-                in_off.type = "number";
-                in_off.min = 0;
-                in_off.max = 1;
-                in_off.step = 0.01;
-                in_off.value = color.offset;
-                in_off.addEventListener("input", () => {
-                    color.offset = Number(in_off.value);
-                    // Debounce _on_change to improve performance during drag
-                    if (self.debounceTimer) {
-                        clearTimeout(self.debounceTimer);
-                    }
-                    self.debounceTimer = setTimeout(() => {
-                        self._on_change();
-                    }, 100);
-                });
-
-                let in_col = p.appendChild(document.createElement("input"));
+                
+                // First row: Color block and Delete button
+                let row1 = p.appendChild(document.createElement("div"));
+                row1.classList.add("gradient-editor-row");
+                
+                // Color block
+                let in_col = row1.appendChild(document.createElement("input"));
                 in_col.type = "color";
                 in_col.value = color.color;
                 in_col.addEventListener("input", () => {
@@ -934,17 +1004,80 @@
                         self._on_change();
                     }, 100);
                 });
-
-                let in_alpha = p.appendChild(document.createElement("input"));
+                
+                // Delete button
+                if (dynamic_count) {
+                    let btn = row1.appendChild(document.createElement("button"));
+                    btn.setAttribute("class", "btn btn-danger btn-sm btn-delete");
+                    btn.title = "删除色标";
+                    btn.innerHTML = "<i class='fa-solid fa-trash'></i>";
+                    btn.style.width = "auto";
+                    btn.addEventListener("click", () => {
+                        self.parent.removeChild(p);
+                        self.colors.splice(self.colors.indexOf(color), 1);
+                        self._on_change();
+                    });
+                }
+                
+                // Second row: Position and Alpha
+                let row2 = p.appendChild(document.createElement("div"));
+                row2.classList.add("gradient-editor-row");
+                
+                // Position label and input
+                let posLabel = row2.appendChild(document.createElement("label"));
+                posLabel.classList.add("gradient-editor-label");
+                posLabel.textContent = "位置:";
+                let in_off = row2.appendChild(document.createElement("input"));
+                in_off.title = "Offset";
+                in_off.type = "number";
+                in_off.min = 0;
+                in_off.max = 1;
+                in_off.step = 0.01;
+                in_off.value = color.offset;
+                in_off.addEventListener("input", () => {
+                    let value = Number(in_off.value);
+                    // Ensure value is between 0 and 1
+                    if (isNaN(value) || value < 0) {
+                        value = 0;
+                        in_off.value = value;
+                    } else if (value > 1) {
+                        value = 1;
+                        in_off.value = value;
+                    }
+                    color.offset = value;
+                    // Debounce _on_change to improve performance during drag
+                    if (self.debounceTimer) {
+                        clearTimeout(self.debounceTimer);
+                    }
+                    self.debounceTimer = setTimeout(() => {
+                        self._on_change();
+                    }, 100);
+                });
+                
+                // Alpha label and input
+                let alphaLabel = row2.appendChild(document.createElement("label"));
+                alphaLabel.classList.add("gradient-editor-label");
+                alphaLabel.textContent = "透明度:";
+                let in_alpha = row2.appendChild(document.createElement("input"));
                 in_alpha.title = "Alpha";
                 in_alpha.type = "number";
                 in_alpha.min = 0;
                 in_alpha.max = 1;
                 in_alpha.step = 0.01;
                 in_alpha.value = color.alpha;
-                in_alpha.style.display = this.with_alpha ? "inline-block" : "none";
+                in_alpha.disabled = !this.with_alpha;
+                alphaLabel.style.opacity = this.with_alpha ? "1" : "0.6";
                 in_alpha.addEventListener("input", () => {
-                    color.alpha = Number(in_alpha.value);
+                    let value = Number(in_alpha.value);
+                    // Ensure value is between 0 and 1
+                    if (isNaN(value) || value < 0) {
+                        value = 0;
+                        in_alpha.value = value;
+                    } else if (value > 1) {
+                        value = 1;
+                        in_alpha.value = value;
+                    }
+                    color.alpha = value;
                     // Debounce _on_change to improve performance during alpha adjustment
                     if (self.debounceTimer) {
                         clearTimeout(self.debounceTimer);
@@ -954,18 +1087,7 @@
                     }, 100);
                 });
                 color.alpha_input = in_alpha;
-
-                if (dynamic_count) {
-                    let btn = p.appendChild(document.createElement("button"));
-                    btn.setAttribute("class", "btn btn-danger btn-sm");
-                    btn.title = "删除色标";
-                    btn.innerHTML = "<i class='fa-solid fa-minus'></i> 删除";
-                    btn.addEventListener("click", () => {
-                        self.parent.removeChild(p);
-                        self.colors.splice(self.colors.indexOf(color), 1);
-                        self._on_change();
-                    });
-                }
+                color.alpha_label = alphaLabel;
             }
 
             to_css() {
@@ -977,6 +1099,10 @@
                     }
                     stop += " " + (color.offset * 100) + "%";
                     items.push(stop);
+                }
+                // Return transparent if no colors
+                if (items.length === 0) {
+                    return "transparent";
                 }
                 return "linear-gradient(90deg, " + items.join(",") + ")";
             }
@@ -1000,6 +1126,12 @@
                 // Clear existing colors and UI
                 this.parent.innerHTML = '';
                 this.colors = [];
+                
+                // If no gradient data is provided, just clear the editor
+                if (!lottie || lottie.length === 0) {
+                    this.preview.setAttribute("style", "background: transparent");
+                    return;
+                }
                 
                 // Calculate the correct color count based on Lottie gradient format
                 // For gradients without alpha: [offset, r, g, b, offset, r, g, b, ...]
@@ -1055,8 +1187,9 @@
                     );
                 }
                 
-                // Update the preview
-                this._on_change();
+                // Update the preview directly without calling _on_change()
+                // This prevents animation restart when just selecting a gradient from the list
+                this.preview.setAttribute("style", "background:" + this.to_css());
                 
                 // Update the checkbox state to match with_alpha property
                 if (this.check_alpha) {
@@ -1065,9 +1198,17 @@
             }
             
             static stand_alone(parent, on_change) {
-                let initial = [0, 0.161, 0.184, 0.459, 0.5, 0.196, 0.314, 0.69, 1, 0.769, 0.851, 0.961];
-                on_change(initial);
-                return new GradientPreviewEditor(parent, initial, 3, on_change, true);
+                // Initialize with empty gradient
+                let initial = [];
+                return new GradientPreviewEditor(parent, initial, 0, on_change, true);
+            }
+            
+            // Method to clear the gradient editor
+            clear() {
+                // Clear existing colors and UI
+                this.parent.innerHTML = '';
+                this.colors = [];
+                this.preview.setAttribute("style", "background: transparent");
             }
         }
 
@@ -1076,6 +1217,7 @@
         let selectedGradientInfo = null; // Store information about the currently selected gradient
         let monacoEditor = null; // Global reference to Monaco Editor
         let animation = null; // Global reference to Lottie animation
+        let isProgrammaticUpdate = false; // Flag to prevent duplicate animation updates
         
         document.addEventListener('DOMContentLoaded', () => {
             // Theme Toggle Logic
@@ -1146,10 +1288,18 @@
                     
                     // Update the Monaco Editor with the modified JSON
                     const updatedJsonContent = JSON.stringify(jsonData, null, 2);
-                    monacoEditor.setValue(updatedJsonContent);
                     
-                    // Auto-update the animation preview
-                    updateAnimationFromEditor();
+                    // Check if content has actually changed before updating
+                    if (updatedJsonContent !== jsonContent) {
+                        isProgrammaticUpdate = true;
+                        monacoEditor.setValue(updatedJsonContent);
+                        
+                        // Auto-update the animation preview only when content actually changes
+                        // This allows users to see the updated gradient immediately
+                        updateAnimationFromEditor();
+                    }
+                    // If content hasn't changed, it means we're just selecting a gradient, not modifying it
+                    // So we don't need to update the animation
                 } catch (error) {
                     console.error('Error updating gradient in JSON:', error);
                 }
@@ -1347,9 +1497,13 @@
                             clearTimeout(debounceTimer);
                         }
                         debounceTimer = setTimeout(function() {
-                            updateAnimationFromEditor();
+                            if (!isProgrammaticUpdate) {
+                                updateAnimationFromEditor();
+                            }
                             // Update gradient names list when editor content changes
                             updateGradientNamesList();
+                            // Reset the flag for next change
+                            isProgrammaticUpdate = false;
                         }, 500); // 500ms debounce
                     });
                 });
@@ -1363,6 +1517,49 @@
                 // Fallback if require is not available (older browsers)
                 document.getElementById('json-editor').style.display = 'block';
                 document.getElementById('monaco-editor-container').style.display = 'none';
+            }
+            
+            // Initialize gradient search functionality
+            const gradientSearch = document.getElementById('gradient-search');
+            if (gradientSearch) {
+                gradientSearch.addEventListener('input', function() {
+                    const searchTerm = gradientSearch.value.toLowerCase().trim();
+                    const gradientItems = document.querySelectorAll('.gradient-name-item');
+                    
+                    let visibleItems = 0;
+                    gradientItems.forEach(item => {
+                        const gradientName = item.querySelector('.gradient-name').textContent.toLowerCase();
+                        if (gradientName.includes(searchTerm)) {
+                            item.style.display = 'block';
+                            visibleItems++;
+                        } else {
+                            item.style.display = 'none';
+                        }
+                    });
+                    
+                    // Check if any gradient items are visible
+                    const noResultsMsg = document.getElementById('no-results-msg');
+                    if (visibleItems === 0) {
+                        // Create no results message if it doesn't exist
+                        if (!noResultsMsg) {
+                            const gradientNamesList = document.getElementById('gradient-names-list');
+                            const msg = document.createElement('div');
+                            msg.id = 'no-results-msg';
+                            msg.textContent = '未找到匹配的渐变。';
+                            msg.style.textAlign = 'center';
+                            msg.style.padding = '20px';
+                            msg.style.color = 'var(--text-secondary)';
+                            gradientNamesList.appendChild(msg);
+                        } else {
+                            noResultsMsg.style.display = 'block';
+                        }
+                    } else {
+                        // Hide no results message if it exists
+                        if (noResultsMsg) {
+                            noResultsMsg.style.display = 'none';
+                        }
+                    }
+                });
             }
             
             // Add a check to ensure editor content is properly synced
@@ -1553,6 +1750,16 @@
             function updateGradientNamesList() {
                 const gradientNamesList = document.getElementById('gradient-names-list');
                 
+                // Reset search input and remove any no results message
+                const gradientSearch = document.getElementById('gradient-search');
+                if (gradientSearch) {
+                    gradientSearch.value = '';
+                }
+                const noResultsMsg = document.getElementById('no-results-msg');
+                if (noResultsMsg) {
+                    noResultsMsg.remove();
+                }
+                
                 try {
                     // First try to use animationData (already parsed JSON from animation)
                     if (animation && animation.animationData) {
@@ -1561,6 +1768,8 @@
                         
                         if (gradients.length === 0) {
                             gradientNamesList.innerHTML = '<p>JSON 文件中未找到渐变。</p>';
+                            // Clear selected gradient if no gradients found
+                            clearSelectedGradient();
                         } else {
                             // Clear existing content
                             gradientNamesList.innerHTML = '';
@@ -1570,6 +1779,12 @@
                                 // Create main gradient item
                                 const gradientItem = document.createElement('div');
                                 gradientItem.className = 'gradient-name-item';
+                                
+                                // Check if this gradient is currently selected
+                                if (selectedGradientInfo && selectedGradientInfo.name === gradient.name) {
+                                    gradientItem.classList.add('selected');
+                                }
+                                
                                 gradientItem.innerHTML = `
                                     <div class="gradient-item-header">
                                         <span class="gradient-name">${gradient.name}</span>
@@ -1592,6 +1807,15 @@
                                     if (editorTitle) {
                                         editorTitle.textContent = gradient.name;
                                     }
+                                    
+                                    // Remove selected class from all gradient items
+                                    const allGradientItems = document.querySelectorAll('.gradient-name-item');
+                                    allGradientItems.forEach(item => {
+                                        item.classList.remove('selected');
+                                    });
+                                    
+                                    // Add selected class to the clicked gradient item
+                                    gradientItem.classList.add('selected');
                                     
                                     // Update Gradient Editor with the clicked gradient's data
                                     if (gradientEditorInstance && gradient.gradientData && gradient.gradientData.k) {
@@ -1683,6 +1907,12 @@
                             // Create main gradient item
                             const gradientItem = document.createElement('div');
                             gradientItem.className = 'gradient-name-item';
+                            
+                            // Check if this gradient is currently selected
+                            if (selectedGradientInfo && selectedGradientInfo.name === gradient.name) {
+                                gradientItem.classList.add('selected');
+                            }
+                            
                             gradientItem.innerHTML = `
                                 <div class="gradient-item-header">
                                     <span class="gradient-name-index">${index + 1}.</span>
@@ -1695,6 +1925,26 @@
                             gradientNameElement.addEventListener('click', function() {
                                 const gradientName = gradient.name;
                                 console.log('Clicked gradient:', gradientName);
+                                
+                                // Store information about the selected gradient
+                                selectedGradientInfo = {
+                                    name: gradient.name,
+                                    gradientData: gradient.gradientData
+                                };
+                                
+                                // Update Editor Title
+                                if (editorTitle) {
+                                    editorTitle.textContent = gradient.name;
+                                }
+                                
+                                // Remove selected class from all gradient items
+                                const allGradientItems = document.querySelectorAll('.gradient-name-item');
+                                allGradientItems.forEach(item => {
+                                    item.classList.remove('selected');
+                                });
+                                
+                                // Add selected class to the clicked gradient item
+                                gradientItem.classList.add('selected');
                                 
                                 // Update Gradient Editor with the clicked gradient's data
                                 if (gradientEditorInstance && gradient.gradientData && gradient.gradientData.k) {
@@ -1765,6 +2015,8 @@
                     console.error('updateGradientNamesList 错误:', error.message);
                     // 显示友好的错误信息，而不是无效的 JSON
                     gradientNamesList.innerHTML = '<p>JSON 文件中未找到渐变。</p>';
+                    // Clear selected gradient if there's an error
+                    clearSelectedGradient();
                 }
             }
             
@@ -1816,13 +2068,20 @@
                             const jsonData = JSON.parse(e.target.result);
                             console.log('Successfully parsed JSON file, data type:', typeof jsonData);
                             
+                            // Update JSON editor first
+                            updateJsonEditor(jsonData);
+                            
                             // Load animation
                             loadAnimation(jsonData);
-                            // Update JSON editor
-                            updateJsonEditor(jsonData);
                             
                             // Update gradient names list - use the new reliable function
                             updateGradientNamesList();
+                            
+                            // Clear any pending debounce timer to prevent duplicate animation loading
+                            if (debounceTimer) {
+                                clearTimeout(debounceTimer);
+                                debounceTimer = null;
+                            }
                             
                         } catch (error) {
                             console.error('Error parsing JSON file:', error);
@@ -1893,27 +2152,16 @@
                 URL.revokeObjectURL(url);
             });
             
-            // Helper function to update time display
+            // Helper function to update frame display
             function updateTimeDisplay() {
                 if (!animation) return;
-                // Get total frames and frame rate
-                const totalFrames = animation.totalFrames || 0;
-                const frameRate = animation.frameRate || 30;
-                const currentFrame = animation.currentFrame || 0;
-                
-                const currentTime = currentFrame / frameRate;
-                const totalTime = totalFrames / frameRate;
+                // Get total frames and current frame
+                const totalFrames = Math.round(animation.totalFrames || 0);
+                const currentFrame = Math.round(animation.currentFrame || 0);
                 
                 if (timeDisplay) {
-                    timeDisplay.textContent = `${formatTime(currentTime)} / ${formatTime(totalTime)}`;
+                    timeDisplay.textContent = `${currentFrame} / ${totalFrames}`;
                 }
-            }
-            
-            function formatTime(seconds) {
-                if (!isFinite(seconds) || isNaN(seconds)) return "00:00";
-                const m = Math.floor(seconds / 60);
-                const s = Math.floor(seconds % 60);
-                return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
             }
 
             // Animation Control Event Listeners
