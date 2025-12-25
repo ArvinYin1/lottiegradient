@@ -66,10 +66,11 @@
             margin: 20px;
             background-color: var(--bg-primary);
             color: var(--text-primary);
-            height: calc(100vh - 40px);
             display: flex;
             flex-direction: column;
-            overflow: hidden;
+            overflow: auto;
+            min-height: 100vh;
+            box-sizing: border-box;
         }
 
         /* Lottie Player styles */
@@ -82,7 +83,8 @@
             flex: 1;
             display: flex;
             flex-direction: column;
-            overflow: hidden;
+            overflow: auto;
+            min-height: 0;
         }
         
         .lottie-player-header {
@@ -225,6 +227,27 @@
             align-items: center;
             justify-content: center;
             flex: 1;
+            overflow: hidden; /* Clip animation that exceeds container bounds */
+            position: relative;
+        }
+        
+        /* Ensure Lottie animation scales properly within its container */
+        .lottie-animation > div,
+        .lottie-animation > svg {
+            max-width: 100% !important;
+            max-height: 100% !important;
+            width: auto !important;
+            height: auto !important;
+            object-fit: contain !important;
+        }
+        
+        /* Additional Lottie animation container fixes */
+        .lottie-animation > div > svg {
+            max-width: 100% !important;
+            max-height: 100% !important;
+            width: auto !important;
+            height: auto !important;
+            object-fit: contain !important;
         }
         
         /* Lottie and JSON Editor layout */
@@ -321,19 +344,21 @@
         .preview-section {
             flex: 2; /* Increased width for player */
             min-width: 300px;
+            max-height: 70vh; /* Limit maximum height to prevent pushing content off-screen */
             background-color: var(--bg-secondary);
             padding: 20px;
             border: 1px solid var(--border-color);
             border-radius: 8px;
             display: flex;
             flex-direction: column;
+            overflow: auto; /* Allow scrolling within preview section if needed */
         }
-        
+
         .preview-section h3 {
             margin-top: 0;
             margin-bottom: 20px;
         }
-        
+
         /* Right editor section */
         .editor-section {
             flex: 2; /* Increased width to accommodate horizontal layout */
@@ -341,14 +366,14 @@
             display: flex;
             flex-direction: row; /* Changed to row for horizontal layout */
             gap: 20px;
-            overflow: hidden; /* Prevent outer scroll */
+            overflow: auto; /* Allow scrolling if needed */
         }
 
         .json-editor-section-full {
             display: none;
             /* Moved styles to general structure */
         }
-        
+
         /* Gradient Names section */
         .gradient-names-section {
             background-color: var(--bg-secondary);
@@ -358,9 +383,9 @@
             display: flex;
             flex-direction: column;
             flex: 1; /* Take up half width */
-            overflow: hidden; /* Contain scroll */
+            overflow: auto; /* Allow scrolling within gradient names section */
         }
-        
+
         /* Color Editor section */
         .editor-container {
             background-color: var(--bg-secondary);
@@ -370,7 +395,7 @@
             flex: 1; /* Take up half width */
             display: flex;
             flex-direction: column;
-            overflow: hidden;
+            overflow: auto; /* Allow scrolling within editor container */
         }
 
         #editor-title {
@@ -658,6 +683,58 @@
             .json-editor-section-full,
             .gradient-names-section {
                 min-width: auto;
+            }
+            
+            /* Keep editor section as horizontal layout even on narrow screens */
+            .editor-section {
+                min-width: auto;
+                flex-direction: row; /* Ensure gradient list and color editor are side by side */
+                flex-wrap: nowrap; /* Prevent wrapping to vertical layout */
+                gap: 15px; /* Reduce gap for narrow screens */
+            }
+        }
+        
+        /* Additional responsive adjustments for narrow screens */
+        @media (max-width: 768px) {
+            .header-container {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 15px;
+            }
+            
+            .controls-section {
+                justify-content: center;
+            }
+            
+            .file-upload {
+                justify-content: center;
+            }
+            
+            /* Reduce padding for mobile */
+            body {
+                margin: 10px;
+            }
+            
+            .lottie-player-container {
+                padding: 10px;
+            }
+            
+            /* Adjust preview section max height for mobile */
+            .preview-section {
+                max-height: 50vh;
+            }
+            
+            /* Ensure editor section remains horizontal on mobile */
+            .editor-section {
+                flex-direction: row; /* Keep gradient list and color editor side by side */
+                gap: 10px; /* Further reduce gap for very narrow screens */
+            }
+            
+            /* Adjust widths for mobile horizontal layout */
+            .gradient-names-section,
+            .editor-container {
+                flex: 1; /* Ensure equal width on mobile */
+                padding: 15px; /* Reduce padding for mobile */
             }
         }
         
