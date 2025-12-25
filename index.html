@@ -775,6 +775,9 @@
             
             <div class="controls-section">
                 <div class="file-upload">
+                    <a href="https://www.bilibili.com/video/BV1xcBRBREWL/?share_source=copy_web&vd_source=2f917ff6216e5082200bc5d358caf310" target="_blank" class="btn btn-flat-primary header-btn" style="text-decoration: none;">
+                        <i class="fa-solid fa-play-circle"></i> 使用演示
+                    </a>
                     <label for="lottie-file" class="btn btn-flat-primary header-btn file-input-label">
                         <i class="fa-solid fa-upload"></i> 导入 JSON
                     </label>
@@ -1363,7 +1366,15 @@
                         reader.onload = (event) => {
                             try {
                                 const jsonData = JSON.parse(event.target.result);
+                                
+                                // Update JSON editor first
+                                updateJsonEditor(jsonData);
+                                
+                                // Load animation
                                 loadAnimation(jsonData);
+                                
+                                // Update gradient names list
+                                updateGradientNamesList();
                                 
                                 // Update file info display
                                 const fileInfo = document.getElementById('file-info');
