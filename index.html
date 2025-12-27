@@ -363,10 +363,11 @@
         .editor-section {
             flex: 2; /* Increased width to accommodate horizontal layout */
             min-width: 500px;
+            max-height: 70vh; /* Match preview section height */
             display: flex;
             flex-direction: row; /* Changed to row for horizontal layout */
             gap: 20px;
-            overflow: auto; /* Allow scrolling if needed */
+            overflow: hidden; /* Prevent scrolling of the entire section */
         }
 
         .json-editor-section-full {
@@ -1125,13 +1126,42 @@
                 // First row: Color block and Delete button
                 let row1 = p.appendChild(document.createElement("div"));
                 row1.classList.add("gradient-editor-row");
+                row1.style.display = "flex";
+                row1.style.alignItems = "center";
+                row1.style.gap = "5px";
                 
-                // Color block
+                // Color input - hex text input that also works with color picker
                 let in_col = row1.appendChild(document.createElement("input"));
-                in_col.type = "color";
+                in_col.type = "text";
                 in_col.value = color.color;
-                in_col.addEventListener("input", () => {
-                    color.color = in_col.value;
+                in_col.style.width = "65px";
+                in_col.style.padding = "4px 4px";
+                in_col.style.border = "1px solid var(--border-color)";
+                in_col.style.borderRadius = "6px";
+                in_col.style.marginRight = "5px";
+                in_col.style.backgroundColor = "var(--bg-input)";
+                in_col.style.color = "var(--text-primary)";
+                in_col.style.fontFamily = "Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace";
+                in_col.style.fontSize = "14px";
+                in_col.style.textAlign = "center";
+                
+                // Add color picker functionality
+                let colorPicker = row1.appendChild(document.createElement("input"));
+                colorPicker.type = "color";
+                colorPicker.value = color.color;
+                colorPicker.style.width = "50px";
+                colorPicker.style.height = "34px";
+                colorPicker.style.padding = "2px";
+                colorPicker.style.border = "none";
+                colorPicker.style.borderRadius = "6px";
+                colorPicker.style.cursor = "pointer";
+                colorPicker.style.backgroundColor = "transparent";
+                colorPicker.style.flex = "1"; // Allow color picker to grow and fill available space
+                
+                // Sync text input with color picker
+                colorPicker.addEventListener("input", () => {
+                    color.color = colorPicker.value;
+                    in_col.value = colorPicker.value;
                     // Debounce _on_change to improve performance during color selection
                     if (self.debounceTimer) {
                         clearTimeout(self.debounceTimer);
@@ -1139,6 +1169,34 @@
                     self.debounceTimer = setTimeout(() => {
                         self._on_change();
                     }, 100);
+                });
+                
+                // Sync color picker with text input
+                in_col.addEventListener("input", () => {
+                    // Validate hex input - support both with and without #
+                    const hexRegex = /^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/;
+                    const match = in_col.value.match(hexRegex);
+                    if (match) {
+                        // Extract the hex part and ensure it has # prefix
+                        let hexValue = match[1];
+                        if (!in_col.value.startsWith('#')) {
+                            hexValue = '#' + hexValue;
+                        }
+                        // Convert 3-digit hex to 6-digit if needed
+                        if (hexValue.length === 4) {
+                            hexValue = '#' + hexValue[1] + hexValue[1] + hexValue[2] + hexValue[2] + hexValue[3] + hexValue[3];
+                        }
+                        color.color = hexValue;
+                        colorPicker.value = hexValue;
+                        in_col.value = hexValue; // Update display to show full hex format
+                        // Debounce _on_change to improve performance during color selection
+                        if (self.debounceTimer) {
+                            clearTimeout(self.debounceTimer);
+                        }
+                        self.debounceTimer = setTimeout(() => {
+                            self._on_change();
+                        }, 100);
+                    }
                 });
                 
                 // Delete button
