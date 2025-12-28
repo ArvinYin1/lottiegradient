@@ -1450,6 +1450,20 @@
         let animation = null; // Global reference to Lottie animation
         let isProgrammaticUpdate = false; // Flag to prevent duplicate animation updates
         
+        // Function to clear selected gradient info
+        function clearSelectedGradient() {
+            selectedGradientInfo = null;
+            // Clear the editor title
+            const editorTitle = document.getElementById('editor-title');
+            if (editorTitle) {
+                editorTitle.textContent = '未选择渐变';
+            }
+            // Clear the gradient editor
+            if (gradientEditorInstance) {
+                gradientEditorInstance.clear();
+            }
+        }
+        
         document.addEventListener('DOMContentLoaded', () => {
             // Theme Toggle Logic
             const themeToggle = document.getElementById('theme-toggle');
@@ -1500,7 +1514,12 @@
                         const reader = new FileReader();
                         reader.onload = (event) => {
                             try {
-                                const jsonData = JSON.parse(event.target.result);
+                                let fileContent = event.target.result;
+                                // Remove UTF-8 BOM if present
+                                if (fileContent.startsWith('\ufeff')) {
+                                    fileContent = fileContent.slice(1);
+                                }
+                                const jsonData = JSON.parse(fileContent);
                                 
                                 // Update JSON editor first
                                 updateJsonEditor(jsonData);
@@ -1516,11 +1535,14 @@
                                 fileInfo.textContent = `已导入: ${jsonFile.name}`;
                                 fileInfo.style.display = 'inline-block';
                             } catch (error) {
+                                console.error('JSON 解析错误:', error);
+                                console.error('文件内容前100个字符:', event.target.result.substring(0, 100));
                                 alert('无效的 JSON 文件: ' + error.message);
                             }
                         };
-                        reader.onerror = () => {
-                            alert('读取文件失败');
+                        reader.onerror = (error) => {
+                            console.error('文件读取错误:', error);
+                            alert('读取文件失败: ' + error.target.error.code);
                         };
                         reader.readAsText(jsonFile);
                     } else {
@@ -1955,8 +1977,8 @@
                         return;
                     }
                     
-                    // Check if this is a gradient fill object
-                    if (obj.ty === 'gf' && obj.mn === 'ADBE Vector Graphic - G-Fill' && obj.nm) {
+                    // Check if this is a gradient fill object - make mn (manufacturer name) optional
+                    if (obj.ty === 'gf' && obj.nm) {
                         const name = obj.nm;
                         // Only add each gradient name once, regardless of how many times it appears
                         if (!foundNames.has(name)) {
@@ -2316,8 +2338,13 @@
                     const reader = new FileReader();
                     reader.onload = (e) => {
                         try {
+                            let fileContent = e.target.result;
+                            // Remove UTF-8 BOM if present
+                            if (fileContent.startsWith('\ufeff')) {
+                                fileContent = fileContent.slice(1);
+                            }
                             // Parse JSON
-                            const jsonData = JSON.parse(e.target.result);
+                            const jsonData = JSON.parse(fileContent);
                             console.log('Successfully parsed JSON file, data type:', typeof jsonData);
                             
                             // Update JSON editor first
@@ -2336,8 +2363,9 @@
                             }
                             
                         } catch (error) {
-                            console.error('Error parsing JSON file:', error);
-                            alert('无效的 JSON 文件。请选择有效的 Lottie JSON 文件。');
+                            console.error('JSON 解析错误:', error);
+                            console.error('文件内容前100个字符:', e.target.result.substring(0, 100));
+                            alert('无效的 JSON 文件。请选择有效的 Lottie JSON 文件。\n\n错误详情: ' + error.message);
                             fileInfo.textContent = '未选择文件';
                             jsonEditor.value = '';
                             if (animation) {
@@ -2351,6 +2379,11 @@
                             // Reset editor title
                             if (editorTitle) editorTitle.textContent = '未选择渐变';
                         }
+                    };
+                    reader.onerror = (error) => {
+                        console.error('文件读取错误:', error);
+                        alert('读取文件失败: ' + error.target.error.code);
+                        fileInfo.textContent = '未选择文件';
                     };
                     reader.readAsText(file);
                 } else {
