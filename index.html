@@ -77,9 +77,8 @@
         .lottie-player-container {
             margin-top: 0;
             padding: 20px;
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            background-color: var(--bg-tertiary);
+            border: none;
+            background-color: transparent;
             flex: 1;
             display: flex;
             flex-direction: column;
@@ -184,12 +183,13 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            gap: 8px;
+            gap: 4px; /* Reduced gap between icon and text */
             white-space: nowrap;
             border-radius: 6px; /* Ensure rounded corners */
         }
 
-        .header-btn i {
+        .header-btn i,
+        .header-btn img {
             font-size: 14px;
             width: 16px; /* Ensure fixed width for icons to prevent layout shift */
             text-align: center;
@@ -854,20 +854,20 @@
             <div class="controls-section">
                 <div class="file-upload">
                     <a href="https://www.bilibili.com/video/BV1xcBRBREWL/?share_source=copy_web&vd_source=2f917ff6216e5082200bc5d358caf310" target="_blank" class="btn btn-flat-primary header-btn" style="text-decoration: none;">
-                        <i class="fa-solid fa-play-circle"></i> 使用演示
+                        <img src="svg/播放.svg" alt="使用演示" style="width: 16px; height: 16px; filter: brightness(0) invert(1);"> 使用演示
                     </a>
                     <label for="lottie-file" class="btn btn-flat-primary header-btn file-input-label">
-                        <i class="fa-solid fa-upload"></i> 导入 JSON
+                        <img src="svg/文件-上传.svg" alt="导入 JSON" style="width: 16px; height: 16px; filter: brightness(0) invert(1);"> 导入 JSON
                     </label>
                     <input type="file" id="lottie-file" class="file-input" accept=".json">
                     <button id="export-btn" class="btn btn-flat-primary header-btn export-btn" style="margin: 0;">
-                        <i class="fa-solid fa-download"></i> 导出 JSON
+                        <img src="svg/文件-下载.svg" alt="导出 JSON" style="width: 16px; height: 16px; filter: brightness(0) invert(1);"> 导出 JSON
                     </button>
                     <span id="file-info" class="file-info" style="display: none;">未选择文件</span>
                 </div>
                 
                 <button id="theme-toggle" class="btn btn-flat-primary header-btn">
-                    <i class="fa-solid fa-moon"></i> 深色模式
+                    <img src="svg/深色.svg" alt="深色模式" style="width: 16px; height: 16px; filter: brightness(0) invert(1);"> 深色模式
                 </button>
             </div>
         </div>
@@ -879,7 +879,7 @@
                 <div id="lottie-animation" class="lottie-animation alpha_checkered"></div>
                 <div class="animation-controls">
                     <button id="play-pause-btn" class="btn btn-secondary btn-sm" title="播放/暂停" style="width: 32px; height: 32px; padding: 0;">
-                        <i class="fa-solid fa-pause"></i>
+                        <img src="svg/暂停.svg" alt="暂停" style="width: 16px; height: 16px; filter: brightness(0) invert(1);">
                     </button>
                     <input type="range" id="animation-progress" min="0" max="100" value="0" step="0.1">
                     <span id="time-display">0 / 0</span>
@@ -887,7 +887,7 @@
                     <div class="bg-controls">
                         <input type="color" id="bg-color-picker" class="bg-color-picker" title="背景颜色" value="#ffffff">
                         <button id="bg-alpha-btn" class="bg-btn active" title="透明背景 (Alpha)">
-                            <i class="fa-solid fa-border-all"></i>
+                            <img src="svg/alpha背景板.svg" alt="透明背景" style="width: 16px; height: 16px; filter: brightness(0) invert(1);">
                         </button>
                     </div>
                 </div>
@@ -918,10 +918,10 @@
                 <h3>JSON 编辑器</h3>
                 <div class="json-editor-controls">
                     <button id="format-json-btn" class="btn btn-primary btn-sm">
-                        <i class="fa-solid fa-code"></i> 格式化 JSON
+                        <span style="color: white;">📋</span> 格式化 JSON
                     </button>
                     <button id="update-animation-btn" class="btn btn-primary btn-sm">
-                        <i class="fa-solid fa-play"></i> 更新动画
+                        <img src="svg/播放.svg" alt="更新动画" style="width: 16px; height: 16px; filter: brightness(0) invert(1);"> 更新动画
                     </button>
                 </div>
                 
@@ -1103,7 +1103,7 @@
                     let btn = parent.appendChild(document.createElement("button"));
                     btn.setAttribute("class", "btn btn-success btn-sm btn-delete");
                     btn.title = "添加色标";
-                    btn.innerHTML = "<i class='fa-solid fa-plus'></i> 添加色标";
+                    btn.innerHTML = "<span style='color: white;'>+</span> 添加色标";
                     btn.addEventListener("click", () => {
                         self.add_color(1, "#000000", 1, true);
                         self._on_change();
@@ -1204,7 +1204,7 @@
                     let btn = row1.appendChild(document.createElement("button"));
                     btn.setAttribute("class", "btn btn-danger btn-sm btn-delete");
                     btn.title = "删除色标";
-                    btn.innerHTML = "<i class='fa-solid fa-trash'></i>";
+                    btn.innerHTML = "<img src='svg/删除.svg' alt='删除色标' style='width: 16px; height: 16px; filter: brightness(0) invert(1);'>";
                     btn.style.width = "auto";
                     btn.addEventListener("click", () => {
                         self.parent.removeChild(p);
@@ -1566,9 +1566,9 @@
             const updateThemeButton = () => {
                 const currentTheme = body.getAttribute('data-theme');
                 if (currentTheme === 'dark') {
-                    themeToggle.innerHTML = '<i class="fa-solid fa-sun"></i> 浅色模式';
+                    themeToggle.innerHTML = '<img src="svg/浅色.svg" alt="浅色模式" style="width: 16px; height: 16px; filter: brightness(0) invert(1);"> 浅色模式';
                 } else {
-                    themeToggle.innerHTML = '<i class="fa-solid fa-moon"></i> 深色模式';
+                    themeToggle.innerHTML = '<img src="svg/深色.svg" alt="深色模式" style="width: 16px; height: 16px; filter: brightness(0) invert(1);"> 深色模式';
                 }
             };
             
@@ -1703,8 +1703,8 @@
             const playPauseBtn = document.getElementById('play-pause-btn');
             const progressBar = document.getElementById('animation-progress');
             const timeDisplay = document.getElementById('time-display');
-            const playIcon = '<i class="fa-solid fa-play"></i>';
-            const pauseIcon = '<i class="fa-solid fa-pause"></i>';
+            const playIcon = '<img src="svg/播放.svg" alt="播放" style="width: 16px; height: 16px; filter: brightness(0) invert(1);">';
+            const pauseIcon = '<img src="svg/暂停.svg" alt="暂停" style="width: 16px; height: 16px; filter: brightness(0) invert(1);">';
             let isDragging = false;
             
             // Background controls
