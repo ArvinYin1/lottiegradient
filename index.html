@@ -59,6 +59,7 @@
         /* Apply theme variables to all elements */
         * {
             transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+            box-sizing: border-box; /* Ensure consistent box sizing across all elements */
         }
         
         body {
@@ -364,6 +365,7 @@
             flex: 2; /* Increased width to accommodate horizontal layout */
             min-width: 500px;
             max-height: 70vh; /* Match preview section height */
+            height: 70vh; /* Ensure fixed height matching preview section */
             display: flex;
             flex-direction: row; /* Changed to row for horizontal layout */
             gap: 20px;
@@ -384,6 +386,7 @@
             display: flex;
             flex-direction: column;
             flex: 1; /* Take up half width */
+            height: 100%; /* Ensure it fills the entire height of editor-section */
             overflow: auto; /* Allow scrolling within gradient names section */
         }
 
@@ -394,6 +397,7 @@
             border: 1px solid var(--border-color);
             border-radius: 8px;
             flex: 1; /* Take up half width */
+            height: 100%; /* Ensure it fills the entire height of editor-section */
             display: flex;
             flex-direction: column;
             overflow: auto; /* Allow scrolling within editor container */
@@ -644,9 +648,10 @@
         }
         
         /* Lottie animation container */
+        /* Lottie animation container */
         .lottie-animation {
             width: 100%;
-            height: 400px;
+            height: 100%;
             background-color: var(--bg-primary);
             border: 1px solid var(--border-dark);
             border-radius: 4px;
@@ -654,6 +659,9 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            flex: 1;
+            overflow: hidden; /* Clip animation that exceeds container bounds */
+            position: relative;
         }
 
         .alpha_checkered {
@@ -684,6 +692,14 @@
             .json-editor-section-full,
             .gradient-names-section {
                 min-width: auto;
+            }
+            
+            /* Ensure Lottie animation container fits properly in preview section */
+            .preview-section .lottie-animation {
+                height: 100% !important;
+                width: 100% !important;
+                max-height: 100% !important;
+                max-width: 100% !important;
             }
             
             /* Keep editor section as horizontal layout even on narrow screens */
@@ -723,6 +739,23 @@
             /* Adjust preview section max height for mobile */
             .preview-section {
                 max-height: 50vh;
+            }
+            
+            /* Ensure Lottie animation container fits properly in preview section */
+            .preview-section .lottie-animation {
+                height: 100% !important;
+                width: 100% !important;
+                max-height: 100% !important;
+                max-width: 100% !important;
+            }
+            
+            /* Ensure Lottie animation scales properly in mobile view */
+            .lottie-animation > div,
+            .lottie-animation > svg,
+            .lottie-animation > div > svg {
+                max-height: 100% !important;
+                max-width: 100% !important;
+                object-fit: contain !important;
             }
             
             /* Ensure editor section remains horizontal on mobile */
