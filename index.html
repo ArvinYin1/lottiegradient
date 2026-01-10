@@ -1642,8 +1642,8 @@
             let updated = false;
             // Check if this is the object containing the gradient
             if (typeof jsonData === 'object' && jsonData !== null) {
-                // If it's the gradient object, update its "k" property
-                if (jsonData.ty === 'gf' && jsonData.nm === gradientInfo.name) {
+                // If it's the gradient object, update its "k" property - support both fill (gf) and stroke (gs)
+                if ((jsonData.ty === 'gf' || jsonData.ty === 'gs') && jsonData.nm === gradientInfo.name) {
                     if (jsonData.g) {
                         // Update the gradient data
                         if (jsonData.g.k && typeof jsonData.g.k === 'object' && 'k' in jsonData.g.k) {
@@ -1666,24 +1666,26 @@
                 }
                 
                 // Recursively check all properties
-                        for (const key in jsonData) {
-                            if (jsonData.hasOwnProperty(key)) {
-                                const value = jsonData[key];
-                                if (typeof value === 'object' && value !== null) {
-                                    if (updateGradientInJsonData(value, gradientInfo, newGradientData, colorCount)) {
-                                        updated = true;
-                                    }
+                if (!Array.isArray(jsonData)) {
+                    for (const key in jsonData) {
+                        if (jsonData.hasOwnProperty(key)) {
+                            const value = jsonData[key];
+                            if (typeof value === 'object' && value !== null) {
+                                if (updateGradientInJsonData(value, gradientInfo, newGradientData, colorCount)) {
+                                    updated = true;
                                 }
                             }
                         }
-                    } else if (Array.isArray(jsonData)) {
-                        // Check each item in the array
-                        for (const item of jsonData) {
-                            if (updateGradientInJsonData(item, gradientInfo, newGradientData, colorCount)) {
-                                updated = true;
-                            }
+                    }
+                } else {
+                    // Check each item in the array
+                    for (const item of jsonData) {
+                        if (updateGradientInJsonData(item, gradientInfo, newGradientData, colorCount)) {
+                            updated = true;
                         }
                     }
+                }
+            }
             return updated;
         }
 
@@ -1977,8 +1979,8 @@
                         return;
                     }
                     
-                    // Check if this is a gradient fill object - make mn (manufacturer name) optional
-                    if (obj.ty === 'gf' && obj.nm) {
+                    // Check if this is a gradient object - support both fill (gf) and stroke (gs), make mn (manufacturer name) optional
+                    if ((obj.ty === 'gf' || obj.ty === 'gs') && obj.nm) {
                         const name = obj.nm;
                         // Only add each gradient name once, regardless of how many times it appears
                         if (!foundNames.has(name)) {
