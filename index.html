@@ -1007,6 +1007,19 @@
             return [r, g, b];
         }
 
+        function compressJson(obj, precision = 3) {
+            // 转换为紧凑格式
+            let jsonStr = JSON.stringify(obj, null, 0);
+            
+            // 优化小数精度
+            const regex = new RegExp(`\\b\\d+\\.\\d{${precision + 1},}\\b`, 'g');
+            jsonStr = jsonStr.replace(regex, (match) => {
+                return parseFloat(match).toFixed(precision);
+            });
+            
+            return jsonStr;
+        }
+
         function color_lottie_to_hex_component(alpha) {
             let a = Math.round(alpha * 255).toString(16).padStart(2, '0');
             return a;
@@ -2460,16 +2473,35 @@
                     return;
                 }
                 
-                // Create a download link
-                const blob = new Blob([jsonContent], { type: 'application/json' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `lottie-gradient-${new Date().getTime()}.json`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
+                try {
+                    // Parse JSON to object
+                    const jsonData = JSON.parse(jsonContent);
+                    // Compress JSON with precision 3
+                    const compressedJson = compressJson(jsonData, 3);
+                    
+                    // Create a download link with compressed data
+                    const blob = new Blob([compressedJson], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `lottie-gradient-${new Date().getTime()}.json`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                } catch (error) {
+                    console.error('Error compressing JSON:', error);
+                    // Fallback to original content if compression fails
+                    const blob = new Blob([jsonContent], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `lottie-gradient-${new Date().getTime()}.json`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                }
             });
             
             // Helper function to update frame display
