@@ -62,8 +62,16 @@
                         <p class="text-xs text-slate-500">渐变色编辑器</p>
                     </div>
                 </div>
-                <div class="flex items-center gap-3">
-                    <a href="https://www.bilibili.com/video/BV1xcBRBREWL/" target="_blank" class="btn-secondary flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-slate-700">
+                <div class="flex items-center gap-2">
+                    <button id="help-btn" class="btn-secondary flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-slate-700">
+                        <i data-lucide="help-circle" class="w-4 h-4"></i>
+                        <span class="hidden sm:inline">帮助</span>
+                    </button>
+                    <a href="https://github.com/ArvinYin1/lottiegradient" target="_blank" class="btn-secondary flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-slate-700">
+                        <i data-lucide="github" class="w-4 h-4"></i>
+                        <span class="hidden sm:inline">GitHub</span>
+                    </a>
+                    <a href="https://www.bilibili.com/video/BV1xcBRBREWL/" target="_blank" class="btn-secondary flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-slate-700">
                         <i data-lucide="play-circle" class="w-4 h-4"></i>
                         <span class="hidden sm:inline">使用演示</span>
                     </a>
@@ -1008,6 +1016,181 @@ function initializeLottiePlayer() {
         bgAlphaBtn.classList.remove('text-slate-400');
     });
 }
+
+// 帮助弹窗控制
+const helpModal = document.getElementById('help-modal');
+const helpBtn = document.getElementById('help-btn');
+const closeModalBtn = document.getElementById('close-modal');
+const modalOverlay = document.getElementById('modal-overlay');
+
+function openModal() {
+    helpModal.classList.remove('hidden');
+    // 触发重绘以播放动画
+    requestAnimationFrame(() => {
+        modalOverlay.classList.remove('opacity-0');
+        modalOverlay.querySelector('.modal-content').classList.remove('scale-95', 'opacity-0');
+        modalOverlay.querySelector('.modal-content').classList.add('scale-100', 'opacity-100');
+    });
+}
+
+function closeModal() {
+    modalOverlay.classList.add('opacity-0');
+    modalOverlay.querySelector('.modal-content').classList.remove('scale-100', 'opacity-100');
+    modalOverlay.querySelector('.modal-content').classList.add('scale-95', 'opacity-0');
+    setTimeout(() => {
+        helpModal.classList.add('hidden');
+    }, 200);
+}
+
+helpBtn.addEventListener('click', openModal);
+closeModalBtn.addEventListener('click', closeModal);
+modalOverlay.addEventListener('click', (e) => {
+    if (e.target === modalOverlay) closeModal();
+});
+
+// ESC 键关闭弹窗
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !helpModal.classList.contains('hidden')) {
+        closeModal();
+    }
+});
 </script>
+
+<!-- 帮助弹窗 -->
+<div id="help-modal" class="hidden fixed inset-0 z-[100]">
+    <!-- 背景遮罩 -->
+    <div id="modal-overlay" class="absolute inset-0 bg-black/40 backdrop-blur-sm opacity-0 transition-opacity duration-200"></div>
+    
+    <!-- 弹窗内容 -->
+    <div class="relative h-full flex items-center justify-center p-4">
+        <div class="modal-content bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] overflow-hidden scale-95 opacity-0 transition-all duration-200">
+            <!-- 弹窗头部 -->
+            <div class="flex items-center justify-between p-5 border-b border-slate-200 bg-slate-50/50">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg">
+                        <i data-lucide="palette" class="w-5 h-5 text-white"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-800">关于本工具</h2>
+                        <p class="text-xs text-slate-500">Lottie Gradient Editor v1.0</p>
+                    </div>
+                </div>
+                <button id="close-modal" class="p-2 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            
+            <!-- 弹窗内容 -->
+            <div class="p-5 overflow-y-auto max-h-[60vh]">
+                <!-- 背景问题 -->
+                <div class="mb-5">
+                    <h3 class="text-sm font-semibold text-slate-800 mb-2 flex items-center gap-2">
+                        <i data-lucide="alert-circle" class="w-4 h-4 text-amber-500"></i>
+                        背景问题
+                    </h3>
+                    <p class="text-sm text-slate-600 leading-relaxed">
+                        在使用 After Effects 配合 Bodymovin 插件导出 Lottie 动画时，经常会遇到<strong>渐变色丢失</strong>的问题：渐变色变成黑白或纯色、透明度信息丢失、颜色位置偏移。本工具专为解决此问题而生。
+                    </p>
+                </div>
+                
+                <!-- 功能特性 -->
+                <div class="mb-5">
+                    <h3 class="text-sm font-semibold text-slate-800 mb-3 flex items-center gap-2">
+                        <i data-lucide="sparkles" class="w-4 h-4 text-purple-500"></i>
+                        功能特性
+                    </h3>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div class="flex items-start gap-2 p-2 rounded-lg bg-slate-50">
+                            <i data-lucide="upload" class="w-4 h-4 text-blue-500 mt-0.5 shrink-0"></i>
+                            <div>
+                                <p class="text-xs font-medium text-slate-700">JSON 导入</p>
+                                <p class="text-xs text-slate-500">拖拽或点击上传</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-2 p-2 rounded-lg bg-slate-50">
+                            <i data-lucide="play" class="w-4 h-4 text-green-500 mt-0.5 shrink-0"></i>
+                            <div>
+                                <p class="text-xs font-medium text-slate-700">动画预览</p>
+                                <p class="text-xs text-slate-500">实时播放与进度控制</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-2 p-2 rounded-lg bg-slate-50">
+                            <i data-lucide="palette" class="w-4 h-4 text-pink-500 mt-0.5 shrink-0"></i>
+                            <div>
+                                <p class="text-xs font-medium text-slate-700">渐变编辑</p>
+                                <p class="text-xs text-slate-500">可视化调整颜色和透明度</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-2 p-2 rounded-lg bg-slate-50">
+                            <i data-lucide="refresh-cw" class="w-4 h-4 text-orange-500 mt-0.5 shrink-0"></i>
+                            <div>
+                                <p class="text-xs font-medium text-slate-700">渐变同步</p>
+                                <p class="text-xs text-slate-500">批量应用到其他动画</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 快速开始 -->
+                <div class="mb-5">
+                    <h3 class="text-sm font-semibold text-slate-800 mb-2 flex items-center gap-2">
+                        <i data-lucide="zap" class="w-4 h-4 text-yellow-500"></i>
+                        快速开始
+                    </h3>
+                    <ol class="text-sm text-slate-600 space-y-1.5 list-decimal list-inside">
+                        <li>点击「导入 JSON」上传 Lottie 动画文件</li>
+                        <li>在左侧「渐变列表」选择需要修改的渐变</li>
+                        <li>在右侧编辑器中调整颜色、位置、透明度</li>
+                        <li>点击「导出 JSON」保存修复后的文件</li>
+                    </ol>
+                </div>
+                
+                <!-- 使用技巧 -->
+                <div class="mb-4">
+                    <h3 class="text-sm font-semibold text-slate-800 mb-2 flex items-center gap-2">
+                        <i data-lucide="lightbulb" class="w-4 h-4 text-amber-500"></i>
+                        使用技巧
+                    </h3>
+                    <ul class="text-sm text-slate-600 space-y-1">
+                        <li class="flex items-start gap-2">
+                            <span class="text-blue-500 mt-0.5">•</span>
+                            <span>点击「网格」按钮可切换透明背景，方便查看透明动画</span>
+                        </li>
+                        <li class="flex items-start gap-2">
+                            <span class="text-blue-500 mt-0.5">•</span>
+                            <span>「同步渐变」功能可将一个动画的渐变配置批量应用到其他动画</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- 弹窗底部 -->
+            <div class="flex items-center justify-between p-4 border-t border-slate-200 bg-slate-50/50">
+                <div class="flex items-center gap-4 text-xs text-slate-500">
+                    <a href="https://github.com/ArvinYin1/lottiegradient" target="_blank" class="flex items-center gap-1.5 hover:text-blue-600 transition-colors">
+                        <i data-lucide="github" class="w-4 h-4"></i>
+                        GitHub
+                    </a>
+                    <a href="https://www.bilibili.com/video/BV1xcBRBREWL/" target="_blank" class="flex items-center gap-1.5 hover:text-blue-600 transition-colors">
+                        <i data-lucide="play-circle" class="w-4 h-4"></i>
+                        视频教程
+                    </a>
+                </div>
+                <button id="close-modal-btn" class="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors">
+                    知道了
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // 初始化弹窗内的图标
+    lucide.createIcons();
+    
+    // 绑定底部关闭按钮
+    document.getElementById('close-modal-btn').addEventListener('click', closeModal);
+</script>
+
 </body>
 </html>
