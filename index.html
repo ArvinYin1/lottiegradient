@@ -14,8 +14,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.41.0/min/vs/loader.js"></script>
     <script>
         tailwind.config = {
-            darkMode: 'class',
-            theme: { extend: { fontFamily: { sans: ['Inter','system-ui','sans-serif'] }, colors: { primary: { 50:'#eff6ff',100:'#dbeafe',500:'#3b82f6',600:'#2563eb' }, dark: { 50:'#f8fafc',800:'#1e293b',900:'#0f172a',950:'#020617' } }, boxShadow: { soft: '0 2px 15px -3px rgba(0,0,0,0.07)' } } }
+            theme: { extend: { fontFamily: { sans: ['Inter','system-ui','sans-serif'] }, colors: { primary: { 50:'#eff6ff',100:'#dbeafe',500:'#3b82f6',600:'#2563eb' } }, boxShadow: { soft: '0 2px 15px -3px rgba(0,0,0,0.07)' } } }
         }
     </script>
     <style>
@@ -24,18 +23,15 @@
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-        .dark ::-webkit-scrollbar-thumb { background: #475569; }
         .alpha-checkered { background-color: #fff; background-image: linear-gradient(45deg,#e2e8f0 25%,transparent 25%),linear-gradient(-45deg,#e2e8f0 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#e2e8f0 75%),linear-gradient(-45deg,transparent 75%,#e2e8f0 75%); background-size: 20px 20px; background-position: 0 0,0 10px,10px -10px,-10px 0; }
-        .dark .alpha-checkered { background-color: #0f172a; background-image: linear-gradient(45deg,#1e293b 25%,transparent 25%),linear-gradient(-45deg,#1e293b 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#1e293b 75%),linear-gradient(-45deg,transparent 75%,#1e293b 75%); }
         .gradient-preview-bar { height: 40px; border-radius: 8px; border: 1px solid rgba(0,0,0,0.1); }
         input[type=range] { -webkit-appearance: none; height: 6px; background: #e2e8f0; border-radius: 3px; }
-        .dark input[type=range] { background: #334155; }
+
         input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; background: #3b82f6; border-radius: 50%; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
         input[type=color] { -webkit-appearance: none; width: 40px; height: 40px; border: none; border-radius: 8px; cursor: pointer; padding: 0; }
         input[type=color]::-webkit-color-swatch-wrapper { padding: 0; }
         input[type=color]::-webkit-color-swatch { border: none; border-radius: 8px; }
         .glass { background: rgba(255,255,255,0.7); backdrop-filter: blur(10px); }
-        .dark .glass { background: rgba(15,23,42,0.7); }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .animate-fade-in { animation: fadeIn 0.3s ease-out; }
         .gradient-item { transition: all 0.2s ease; }
@@ -44,9 +40,7 @@
         .btn-primary { background: linear-gradient(135deg,#3b82f6 0%,#2563eb 100%); transition: all 0.2s; }
         .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(59,130,246,0.4); }
         .btn-secondary { background: #f1f5f9; transition: all 0.2s; }
-        .dark .btn-secondary { background: #1e293b; }
         .btn-secondary:hover { background: #e2e8f0; }
-        .dark .btn-secondary:hover { background: #334155; }
         .card { transition: all 0.3s; }
         .card:hover { transform: translateY(-2px); box-shadow: 0 20px 40px -10px rgba(0,0,0,0.1); }
         input[type=number] { -moz-appearance: textfield; }
@@ -55,8 +49,8 @@
         .drop-zone.drag-over { border-color: #3b82f6; background: rgba(59,130,246,0.05); }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-200 min-h-screen transition-colors">
-    <header class="sticky top-0 z-50 glass border-b border-slate-200 dark:border-slate-800">
+<body class="bg-slate-50 text-slate-800 min-h-screen">
+    <header class="sticky top-0 z-50 glass border-b border-slate-200">
         <div class="max-w-[1600px] mx-auto px-6 py-4">
             <div class="flex items-center justify-between">
                 <div class="flex items-center gap-4">
@@ -65,111 +59,107 @@
                     </div>
                     <div>
                         <h1 class="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Lottie Gradient Editor</h1>
-                        <p class="text-xs text-slate-500 dark:text-slate-400">渐变色编辑器</p>
+                        <p class="text-xs text-slate-500">渐变色编辑器</p>
                     </div>
                 </div>
                 <div class="flex items-center gap-3">
-                    <a href="https://www.bilibili.com/video/BV1xcBRBREWL/" target="_blank" class="btn-secondary flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300">
+                    <a href="https://www.bilibili.com/video/BV1xcBRBREWL/" target="_blank" class="btn-secondary flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-slate-700">
                         <i data-lucide="play-circle" class="w-4 h-4"></i>
                         <span class="hidden sm:inline">使用演示</span>
                     </a>
-                    <button id="theme-toggle" class="btn-secondary p-2 rounded-lg text-slate-600 dark:text-slate-400">
-                        <i data-lucide="moon" class="w-5 h-5 hidden dark:block"></i>
-                        <i data-lucide="sun" class="w-5 h-5 block dark:hidden"></i>
-                    </button>
                 </div>
             </div>
         </div>
     </header>
 
-    <main class="max-w-[1600px] mx-auto px-6 py-6">
-        <div class="mb-6 flex flex-wrap items-center gap-3">
+    <main class="max-w-[1600px] mx-auto px-6 py-3">
+        <div class="mb-3 flex flex-wrap items-center gap-3">
             <label for="lottie-file" class="btn-primary flex items-center gap-2 px-5 py-2.5 rounded-lg text-white text-sm font-medium cursor-pointer">
                 <i data-lucide="download" class="w-4 h-4"></i>导入 JSON
             </label>
             <input type="file" id="lottie-file" class="hidden" accept=".json">
-            <button id="export-btn" class="btn-export flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 shadow-sm">
+            <button id="export-btn" class="btn-export flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 shadow-sm">
                 <i data-lucide="upload" class="w-4 h-4"></i>导出 JSON
             </button>
-            <div class="w-px h-6 bg-slate-300 dark:bg-slate-700 mx-1"></div>
-            <label for="gradient-file" class="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium cursor-pointer text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-800 hover:bg-purple-100 dark:hover:bg-purple-900/50">
+            <div class="w-px h-6 bg-slate-300 mx-1"></div>
+            <label for="gradient-file" class="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium cursor-pointer text-purple-700 bg-purple-50 border border-purple-200 hover:bg-purple-100">
                 <i data-lucide="refresh-cw" class="w-4 h-4"></i>同步渐变
             </label>
             <input type="file" id="gradient-file" class="hidden" accept=".json">
-            <span id="file-info" class="text-sm text-slate-500 dark:text-slate-400 hidden">
-                <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800">
+            <span id="file-info" class="text-sm text-slate-500 hidden">
+                <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100">
                     <i data-lucide="file-json" class="w-4 h-4 text-blue-500"></i>
                     <span id="filename">未选择文件</span>
                 </span>
             </span>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div class="card bg-white dark:bg-slate-900 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col" style="min-height: 600px;">
-                <div class="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
-                    <h2 class="font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div class="card bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden flex flex-col" style="min-height: 480px;">
+                <div class="p-4 border-b border-slate-200 flex items-center justify-between">
+                    <h2 class="font-semibold text-slate-800 flex items-center gap-2">
                         <i data-lucide="play" class="w-4 h-4 text-blue-500"></i>动画预览
                     </h2>
                     <div class="flex items-center gap-2">
-                        <span class="text-xs text-slate-500 dark:text-slate-400">背景</span>
-                        <button id="bg-alpha-btn" class="p-1.5 rounded-md bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
+                        <span class="text-xs text-slate-500">背景</span>
+                        <button id="bg-alpha-btn" class="p-1.5 rounded-md bg-blue-100 text-blue-600">
                             <i data-lucide="grid-3x3" class="w-4 h-4"></i>
                         </button>
                         <input type="color" id="bg-color-picker" class="w-8 h-8 rounded-lg border-0 cursor-pointer" value="#ffffff">
                     </div>
                 </div>
-                <div class="flex-1 p-6 flex items-center justify-center drop-zone relative" id="drop-zone">
-                    <div id="lottie-animation" class="alpha-checkered w-full h-full rounded-xl overflow-hidden flex items-center justify-center min-h-[400px]">
-                        <div class="text-center text-slate-400 dark:text-slate-600">
+                <div class="flex-1 p-4 flex items-center justify-center drop-zone relative" id="drop-zone">
+                    <div id="lottie-animation" class="alpha-checkered w-full h-full rounded-xl overflow-hidden flex items-center justify-center min-h-[280px]">
+                        <div class="text-center text-slate-400">
                             <i data-lucide="image" class="w-16 h-16 mx-auto mb-4 opacity-50"></i>
                             <p>拖拽 JSON 文件到此处</p>
                             <p class="text-sm mt-2">或点击上方"导入 JSON"按钮</p>
                         </div>
                     </div>
                 </div>
-                <div class="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50">
+                <div class="p-4 border-t border-slate-200 bg-slate-50/50">
                     <div class="flex items-center gap-4">
-                        <button id="play-pause-btn" class="w-10 h-10 rounded-full bg-white dark:bg-slate-800 shadow-md flex items-center justify-center text-blue-600 dark:text-blue-400 hover:scale-105 transition-transform">
+                        <button id="play-pause-btn" class="w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center text-blue-600 hover:scale-105 transition-transform">
                             <i data-lucide="pause" class="w-5 h-5"></i>
                         </button>
                         <div class="flex-1">
                             <input type="range" id="animation-progress" min="0" max="100" value="0" step="0.1" class="w-full">
                         </div>
-                        <span id="time-display" class="text-sm font-mono text-slate-600 dark:text-slate-400 min-w-[100px] text-right">0 / 0</span>
+                        <span id="time-display" class="text-sm font-mono text-slate-600 min-w-[100px] text-right">0 / 0</span>
                     </div>
                 </div>
             </div>
 
-            <div class="flex flex-col gap-6">
-                <div class="card bg-white dark:bg-slate-900 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-800 overflow-hidden" style="min-height: 280px;">
-                    <div class="p-4 border-b border-slate-200 dark:border-slate-800">
+            <div class="flex flex-col gap-4">
+                <div class="card bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden" style="min-height: 220px;">
+                    <div class="p-4 border-b border-slate-200">
                         <div class="flex items-center justify-between mb-3">
-                            <h2 class="font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                            <h2 class="font-semibold text-slate-800 flex items-center gap-2">
                                 <i data-lucide="layers" class="w-4 h-4 text-purple-500"></i>渐变列表
                             </h2>
-                            <span id="gradient-count" class="text-xs px-2 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">0</span>
+                            <span id="gradient-count" class="text-xs px-2 py-1 rounded-full bg-slate-100 text-slate-600">0</span>
                         </div>
                         <div class="relative">
                             <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                            <input type="text" id="gradient-search" placeholder="搜索渐变..." class="w-full pl-10 pr-4 py-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20">
+                            <input type="text" id="gradient-search" placeholder="搜索渐变..." class="w-full pl-10 pr-4 py-2 rounded-lg bg-slate-50 border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20">
                         </div>
                     </div>
-                    <div id="gradient-names-list" class="p-2 overflow-y-auto" style="max-height: 300px;">
-                        <div class="text-center py-8 text-slate-400 dark:text-slate-600">
+                    <div id="gradient-names-list" class="p-2 overflow-y-auto" style="max-height: 180px;">
+                        <div class="text-center py-8 text-slate-400">
                             <i data-lucide="sparkles" class="w-10 h-10 mx-auto mb-2 opacity-50"></i>
                             <p class="text-sm">上传 JSON 文件以查看渐变</p>
                         </div>
                     </div>
                 </div>
 
-                <div class="card bg-white dark:bg-slate-900 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-800 overflow-hidden" style="min-height: 300px;">
-                    <div class="p-4 border-b border-slate-200 dark:border-slate-800">
-                        <h2 id="editor-title" class="font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                <div class="card bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden" style="min-height: 240px;">
+                    <div class="p-4 border-b border-slate-200">
+                        <h2 id="editor-title" class="font-semibold text-slate-800 flex items-center gap-2">
                             <i data-lucide="sliders" class="w-4 h-4 text-green-500"></i>未选择渐变
                         </h2>
                     </div>
-                    <div id="editor" class="p-4 overflow-y-auto" style="max-height: 520px;">
-                        <div class="text-center py-8 text-slate-400 dark:text-slate-600">
+                    <div id="editor" class="p-4 overflow-y-auto" style="max-height: 280px;">
+                        <div class="text-center py-8 text-slate-400">
                             <i data-lucide="mouse-pointer-click" class="w-10 h-10 mx-auto mb-2 opacity-50"></i>
                             <p class="text-sm">点击左侧渐变开始编辑</p>
                         </div>
@@ -263,7 +253,7 @@ class GradientPreviewEditor {
 
         const alphaToggle = document.createElement('label');
         alphaToggle.className = 'flex items-center gap-2 cursor-pointer';
-        alphaToggle.innerHTML = `<input type="checkbox" ${this.with_alpha ? 'checked' : ''} class="w-4 h-4 rounded border-slate-300 text-blue-600"><span class="text-sm text-slate-600 dark:text-slate-400">启用透明度</span>`;
+        alphaToggle.innerHTML = `<input type="checkbox" ${this.with_alpha ? 'checked' : ''} class="w-4 h-4 rounded border-slate-300 text-blue-600"><span class="text-sm text-slate-600">启用透明度</span>`;
         container.appendChild(alphaToggle);
 
         this.check_alpha = alphaToggle.querySelector('input');
@@ -278,7 +268,7 @@ class GradientPreviewEditor {
         });
 
         this.colorsContainer = document.createElement('div');
-        this.colorsContainer.className = 'space-y-3';
+        this.colorsContainer.className = 'space-y-2';
         container.appendChild(this.colorsContainer);
 
         if (lottie && lottie.length > 0) {
@@ -296,7 +286,7 @@ class GradientPreviewEditor {
 
         if (dynamic_count) {
             const addBtn = document.createElement('button');
-            addBtn.className = 'w-full py-2 rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:border-blue-500 hover:text-blue-500 transition-colors flex items-center justify-center gap-2';
+            addBtn.className = 'w-full py-2 rounded-lg border-2 border-dashed border-slate-300 text-slate-500 hover:border-blue-500 hover:text-blue-500 transition-colors flex items-center justify-center gap-2';
             addBtn.innerHTML = '<i data-lucide="plus" class="w-4 h-4"></i> 添加色标';
             addBtn.addEventListener('click', () => {
                 self.add_color(1, '#000000', 1, true);
@@ -314,49 +304,49 @@ class GradientPreviewEditor {
         this.colors.push(color);
 
         const colorRow = document.createElement('div');
-        colorRow.className = 'bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3 space-y-3';
+        colorRow.className = 'bg-slate-50 rounded-xl p-2 flex items-center gap-3';
         this.colorsContainer.appendChild(colorRow);
 
-        const row1 = document.createElement('div');
-        row1.className = 'flex items-center gap-3';
-        colorRow.appendChild(row1);
+        // 左侧：颜色选择器 + 删除按钮
+        const leftGroup = document.createElement('div');
+        leftGroup.className = 'flex items-center gap-1 shrink-0';
+        colorRow.appendChild(leftGroup);
 
         const colorPicker = document.createElement('input');
         colorPicker.type = 'color';
         colorPicker.value = color.color;
-        colorPicker.className = 'w-10 h-10 rounded-lg border-0 cursor-pointer shrink-0';
-        row1.appendChild(colorPicker);
-
-        const hexInput = document.createElement('input');
-        hexInput.type = 'text';
-        hexInput.value = color.color;
-        hexInput.className = 'flex-1 px-3 py-2 rounded-lg bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-mono uppercase';
-        row1.appendChild(hexInput);
+        colorPicker.className = 'w-8 h-8 rounded-lg border-0 cursor-pointer shrink-0';
+        leftGroup.appendChild(colorPicker);
 
         if (dynamic_count) {
             const deleteBtn = document.createElement('button');
-            deleteBtn.className = 'p-2 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20';
-            deleteBtn.innerHTML = '<i data-lucide="trash-2" class="w-4 h-4"></i>';
+            deleteBtn.className = 'p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50';
+            deleteBtn.innerHTML = '<i data-lucide="trash-2" class="w-3.5 h-3.5"></i>';
             deleteBtn.addEventListener('click', () => {
                 colorRow.remove();
                 self.colors.splice(self.colors.indexOf(color), 1);
                 self._on_change();
             });
-            row1.appendChild(deleteBtn);
+            leftGroup.appendChild(deleteBtn);
         }
 
-        const row2 = document.createElement('div');
-        row2.className = 'flex items-center gap-4';
-        colorRow.appendChild(row2);
+        // 中间：HEX 输入
+        const hexInput = document.createElement('input');
+        hexInput.type = 'text';
+        hexInput.value = color.color;
+        hexInput.className = 'w-20 px-2 py-1.5 rounded-lg bg-white border border-slate-200 text-xs font-mono uppercase text-center shrink-0';
+        colorRow.appendChild(hexInput);
 
+        // 右侧：位置和透明度控制
+        const rightGroup = document.createElement('div');
+        rightGroup.className = 'flex-1 flex items-center gap-3';
+        colorRow.appendChild(rightGroup);
+
+        // 位置控制
         const posContainer = document.createElement('div');
-        posContainer.className = 'flex-1';
-        posContainer.innerHTML = '<label class="text-xs text-slate-500 dark:text-slate-400 block mb-1">位置</label>';
-        row2.appendChild(posContainer);
-
-        const posWrapper = document.createElement('div');
-        posWrapper.className = 'flex items-center gap-2';
-        posContainer.appendChild(posWrapper);
+        posContainer.className = 'flex-1 flex items-center gap-2';
+        posContainer.innerHTML = '<span class="text-xs text-slate-500 shrink-0">位置</span>';
+        rightGroup.appendChild(posContainer);
 
         const posSlider = document.createElement('input');
         posSlider.type = 'range';
@@ -364,27 +354,24 @@ class GradientPreviewEditor {
         posSlider.max = 100;
         posSlider.step = 1;
         posSlider.value = Math.round(color.offset * 100);
-        posSlider.className = 'flex-1';
-        posWrapper.appendChild(posSlider);
+        posSlider.className = 'flex-1 min-w-[60px]';
+        posContainer.appendChild(posSlider);
 
         const posInput = document.createElement('input');
         posInput.type = 'number';
         posInput.min = 0;
         posInput.max = 100;
         posInput.value = Math.round(color.offset * 100);
-        posInput.className = 'w-14 px-2 py-1 rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm text-center';
-        posWrapper.appendChild(posInput);
+        posInput.className = 'w-12 px-1 py-1 rounded-md bg-white border border-slate-200 text-xs text-center';
+        posContainer.appendChild(posInput);
 
-        posWrapper.appendChild(document.createTextNode('%'));
+        posContainer.appendChild(document.createTextNode('%'));
 
+        // 透明度控制
         const alphaContainer = document.createElement('div');
-        alphaContainer.className = 'flex-1';
-        alphaContainer.innerHTML = '<label class="alpha-label text-xs text-slate-500 dark:text-slate-400 block mb-1">透明度</label>';
-        row2.appendChild(alphaContainer);
-
-        const alphaWrapper = document.createElement('div');
-        alphaWrapper.className = 'flex items-center gap-2';
-        alphaContainer.appendChild(alphaWrapper);
+        alphaContainer.className = 'flex-1 flex items-center gap-2';
+        alphaContainer.innerHTML = '<span class="alpha-label text-xs text-slate-500 shrink-0">透明度</span>';
+        rightGroup.appendChild(alphaContainer);
 
         const alphaSlider = document.createElement('input');
         alphaSlider.type = 'range';
@@ -393,8 +380,8 @@ class GradientPreviewEditor {
         alphaSlider.step = 1;
         alphaSlider.value = Math.round(color.alpha * 100);
         alphaSlider.disabled = !this.with_alpha;
-        alphaSlider.className = 'flex-1';
-        alphaWrapper.appendChild(alphaSlider);
+        alphaSlider.className = 'flex-1 min-w-[60px]';
+        alphaContainer.appendChild(alphaSlider);
 
         const alphaInput = document.createElement('input');
         alphaInput.type = 'number';
@@ -402,10 +389,10 @@ class GradientPreviewEditor {
         alphaInput.max = 100;
         alphaInput.value = Math.round(color.alpha * 100);
         alphaInput.disabled = !this.with_alpha;
-        alphaInput.className = 'w-14 px-2 py-1 rounded-md bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm text-center disabled:opacity-50';
-        alphaWrapper.appendChild(alphaInput);
+        alphaInput.className = 'w-12 px-1 py-1 rounded-md bg-white border border-slate-200 text-xs text-center disabled:opacity-50';
+        alphaContainer.appendChild(alphaInput);
 
-        alphaWrapper.appendChild(document.createTextNode('%'));
+        alphaContainer.appendChild(document.createTextNode('%'));
 
         colorPicker.addEventListener('input', () => {
             color.color = colorPicker.value;
@@ -542,21 +529,7 @@ let selectedGradientInfo = null;
 let isProgrammaticUpdate = false;
 
 document.addEventListener('DOMContentLoaded', function() {
-    const body = document.body;
-    const themeToggle = document.getElementById('theme-toggle');
     const dropZone = document.getElementById('drop-zone');
-
-    const savedTheme = localStorage.getItem('theme');
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const initialTheme = savedTheme || (prefersDark ? 'dark' : 'light');
-    if (initialTheme === 'dark') body.classList.add('dark');
-
-    themeToggle.addEventListener('click', () => {
-        body.classList.toggle('dark');
-        const isDark = body.classList.contains('dark');
-        localStorage.setItem('theme', isDark ? 'dark' : 'light');
-        if (monacoEditor) monaco.editor.setTheme(isDark ? 'vs-dark' : 'vs');
-    });
 
     ['dragenter','dragover','dragleave','drop'].forEach(e => {
         dropZone.addEventListener(e, (ev) => { ev.preventDefault(); ev.stopPropagation(); }, false);
@@ -785,7 +758,7 @@ function initializeLottiePlayer() {
             }
 
             if (!jsonData) {
-                gradientNamesList.innerHTML = '<div class="text-center py-8 text-slate-400 dark:text-slate-600"><i data-lucide="sparkles" class="w-10 h-10 mx-auto mb-2 opacity-50"></i><p class="text-sm">上传 JSON 文件以查看渐变</p></div>';
+                gradientNamesList.innerHTML = '<div class="text-center py-8 text-slate-400"><i data-lucide="sparkles" class="w-10 h-10 mx-auto mb-2 opacity-50"></i><p class="text-sm">上传 JSON 文件以查看渐变</p></div>';
                 if (gradientCount) gradientCount.textContent = '0';
                 lucide.createIcons();
                 return;
@@ -795,7 +768,7 @@ function initializeLottiePlayer() {
             if (gradientCount) gradientCount.textContent = gradients.length;
 
             if (gradients.length === 0) {
-                gradientNamesList.innerHTML = '<div class="text-center py-8 text-slate-400 dark:text-slate-600"><p>JSON 文件中未找到渐变</p></div>';
+                gradientNamesList.innerHTML = '<div class="text-center py-8 text-slate-400"><p>JSON 文件中未找到渐变</p></div>';
                 clearSelectedGradient();
             } else {
                 gradientNamesList.innerHTML = '';
@@ -805,7 +778,7 @@ function initializeLottiePlayer() {
                     if (selectedGradientInfo && selectedGradientInfo.name === gradient.name) {
                         gradientItem.classList.add('selected');
                     }
-                    gradientItem.innerHTML = `<div class="flex items-center gap-3"><span class="text-xs font-mono text-slate-400 w-6">${index + 1}</span><span class="gradient-name flex-1 text-sm font-medium text-slate-700 dark:text-slate-300">${gradient.name}</span><i data-lucide="chevron-right" class="w-4 h-4 text-slate-400"></i></div>`;
+                    gradientItem.innerHTML = `<div class="flex items-center gap-3"><span class="text-xs font-mono text-slate-400 w-6">${index + 1}</span><span class="gradient-name flex-1 text-sm font-medium text-slate-700">${gradient.name}</span><i data-lucide="chevron-right" class="w-4 h-4 text-slate-400"></i></div>`;
 
                     gradientItem.addEventListener('click', () => {
                         selectedGradientInfo = { name: gradient.name, gradientData: gradient.gradientData };
@@ -855,7 +828,7 @@ function initializeLottiePlayer() {
             lucide.createIcons();
         } catch (error) {
             console.error('updateGradientNamesList error:', error.message);
-            gradientNamesList.innerHTML = '<div class="text-center py-8 text-slate-400 dark:text-slate-600"><p>JSON 文件中未找到渐变</p></div>';
+            gradientNamesList.innerHTML = '<div class="text-center py-8 text-slate-400"><p>JSON 文件中未找到渐变</p></div>';
             clearSelectedGradient();
         }
     }
@@ -866,7 +839,7 @@ function initializeLottiePlayer() {
         const editor = document.getElementById('editor');
         if (editorTitle) editorTitle.innerHTML = '<i data-lucide="sliders" class="w-4 h-4 text-green-500"></i>未选择渐变';
         if (editor) {
-            editor.innerHTML = '<div class="text-center py-8 text-slate-400 dark:text-slate-600"><i data-lucide="mouse-pointer-click" class="w-10 h-10 mx-auto mb-2 opacity-50"></i><p class="text-sm">点击左侧渐变开始编辑</p></div>';
+            editor.innerHTML = '<div class="text-center py-8 text-slate-400"><i data-lucide="mouse-pointer-click" class="w-10 h-10 mx-auto mb-2 opacity-50"></i><p class="text-sm">点击左侧渐变开始编辑</p></div>';
         }
         lucide.createIcons();
     }
@@ -1024,14 +997,14 @@ function initializeLottiePlayer() {
     bgColorPicker.addEventListener('input', () => {
         animationContainer.style.backgroundColor = bgColorPicker.value;
         animationContainer.classList.remove('alpha-checkered');
-        bgAlphaBtn.classList.remove('bg-blue-100', 'dark:bg-blue-900/30', 'text-blue-600', 'dark:text-blue-400');
+        bgAlphaBtn.classList.remove('bg-blue-100', 'text-blue-600');
         bgAlphaBtn.classList.add('text-slate-400');
     });
 
     bgAlphaBtn.addEventListener('click', () => {
         animationContainer.style.backgroundColor = '';
         animationContainer.classList.add('alpha-checkered');
-        bgAlphaBtn.classList.add('bg-blue-100', 'dark:bg-blue-900/30', 'text-blue-600', 'dark:text-blue-400');
+        bgAlphaBtn.classList.add('bg-blue-100', 'text-blue-600');
         bgAlphaBtn.classList.remove('text-slate-400');
     });
 }
