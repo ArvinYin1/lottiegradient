@@ -85,14 +85,14 @@
     <main class="max-w-[1600px] mx-auto px-6 py-6">
         <div class="mb-6 flex flex-wrap items-center gap-3">
             <label for="lottie-file" class="btn-primary flex items-center gap-2 px-5 py-2.5 rounded-lg text-white text-sm font-medium cursor-pointer">
-                <i data-lucide="upload" class="w-4 h-4"></i>导入 JSON
+                <i data-lucide="download" class="w-4 h-4"></i>导入 JSON
             </label>
             <input type="file" id="lottie-file" class="hidden" accept=".json">
-            <button id="export-btn" class="btn-secondary flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium">
-                <i data-lucide="download" class="w-4 h-4"></i>导出 JSON
+            <button id="export-btn" class="btn-export flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 shadow-sm">
+                <i data-lucide="upload" class="w-4 h-4"></i>导出 JSON
             </button>
             <div class="w-px h-6 bg-slate-300 dark:bg-slate-700 mx-1"></div>
-            <label for="gradient-file" class="btn-secondary flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium cursor-pointer">
+            <label for="gradient-file" class="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium cursor-pointer text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-800 hover:bg-purple-100 dark:hover:bg-purple-900/50">
                 <i data-lucide="refresh-cw" class="w-4 h-4"></i>同步渐变
             </label>
             <input type="file" id="gradient-file" class="hidden" accept=".json">
