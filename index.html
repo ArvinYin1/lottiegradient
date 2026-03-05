@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" style="color-scheme: light;">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -34,15 +34,15 @@
                     </div>
                 </div>
                 <div class="flex items-center gap-2">
-                    <button id="help-btn" class="btn-secondary flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-slate-700">
+                    <button id="help-btn" class="btn-secondary flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-slate-700" aria-label="打开帮助">
                         <i data-lucide="help-circle" class="w-4 h-4"></i>
                         <span class="hidden sm:inline">帮助</span>
                     </button>
-                    <a href="https://github.com/ArvinYin1/lottiegradient" target="_blank" class="btn-secondary flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-slate-700">
+                    <a href="https://github.com/ArvinYin1/lottiegradient" target="_blank" class="btn-secondary flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-slate-700" aria-label="查看 GitHub 仓库">
                         <i data-lucide="github" class="w-4 h-4"></i>
                         <span class="hidden sm:inline">GitHub</span>
                     </a>
-                    <a href="https://www.bilibili.com/video/BV1xcBRBREWL/" target="_blank" class="btn-secondary flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-slate-700">
+                    <a href="https://www.bilibili.com/video/BV1xcBRBREWL/" target="_blank" class="btn-secondary flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-slate-700" aria-label="观看使用演示视频">
                         <i data-lucide="play-circle" class="w-4 h-4"></i>
                         <span class="hidden sm:inline">使用演示</span>
                     </a>
@@ -173,7 +173,7 @@
                             <p class="text-xs text-slate-500">Lottie Gradient Editor v1.0</p>
                         </div>
                     </div>
-                    <button id="close-modal" class="p-2 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors">
+                    <button id="close-modal" class="p-2 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors" aria-label="关闭弹窗">
                         <i data-lucide="x" class="w-5 h-5"></i>
                     </button>
                 </div>
@@ -265,16 +265,16 @@
                 <!-- 弹窗底部 -->
                 <div class="flex items-center justify-between p-4 border-t border-slate-200 bg-slate-50/50">
                     <div class="flex items-center gap-4 text-xs text-slate-500">
-                        <a href="https://github.com/ArvinYin1/lottiegradient" target="_blank" class="flex items-center gap-1.5 hover:text-blue-600 transition-colors">
+                        <a href="https://github.com/ArvinYin1/lottiegradient" target="_blank" class="flex items-center gap-1.5 hover:text-blue-600 transition-colors" aria-label="访问 GitHub">
                             <i data-lucide="github" class="w-4 h-4"></i>
                             GitHub
                         </a>
-                        <a href="https://www.bilibili.com/video/BV1xcBRBREWL/" target="_blank" class="flex items-center gap-1.5 hover:text-blue-600 transition-colors">
+                        <a href="https://www.bilibili.com/video/BV1xcBRBREWL/" target="_blank" class="flex items-center gap-1.5 hover:text-blue-600 transition-colors" aria-label="观看视频教程">
                             <i data-lucide="play-circle" class="w-4 h-4"></i>
                             视频教程
                         </a>
                     </div>
-                    <button id="close-modal-btn" class="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors">
+                    <button id="close-modal-btn" class="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors" aria-label="关闭帮助弹窗">
                         知道了
                     </button>
                 </div>

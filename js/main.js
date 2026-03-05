@@ -605,7 +605,7 @@ function initializeLottiePlayer() {
                     if (selectedGradientInfo && selectedGradientInfo.name === gradient.name) {
                         gradientItem.classList.add('selected');
                     }
-                    gradientItem.innerHTML = `<div class="flex items-center gap-3"><span class="text-xs font-mono text-slate-400 w-6">${index + 1}</span><span class="gradient-name flex-1 text-sm font-medium text-slate-700">${gradient.name}</span><i data-lucide="chevron-right" class="w-4 h-4 text-slate-400"></i></div>`;
+                    gradientItem.innerHTML = `<div class="flex items-center gap-3"><span class="text-xs font-mono text-slate-400 w-6">${index + 1}</span><span class="gradient-name flex-1 text-sm font-medium text-slate-700 truncate" title="${gradient.name}">${gradient.name}</span><i data-lucide="chevron-right" class="w-4 h-4 text-slate-400"></i></div>`;
 
                     gradientItem.addEventListener('click', () => {
                         selectedGradientInfo = { name: gradient.name, gradientData: gradient.gradientData };
