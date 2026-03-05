@@ -30,21 +30,25 @@
                     </div>
                     <div>
                         <h1 class="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Lottie Gradient Editor</h1>
-                        <p class="text-xs text-slate-500">渐变色编辑器</p>
+                        <p class="text-xs text-slate-500" data-i18n="subtitle">渐变色编辑器</p>
                     </div>
                 </div>
                 <div class="flex items-center gap-2">
-                    <button id="help-btn" class="btn-secondary flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-slate-700" aria-label="打开帮助">
-                        <i data-lucide="help-circle" class="w-4 h-4"></i>
-                        <span class="hidden sm:inline">帮助</span>
+                    <button id="lang-btn" class="btn-secondary flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-slate-700" aria-label="Switch Language">
+                        <i data-lucide="languages" class="w-4 h-4"></i>
+                        <span id="lang-text" class="hidden sm:inline">EN</span>
                     </button>
-                    <a href="https://github.com/ArvinYin1/lottiegradient" target="_blank" class="btn-secondary flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-slate-700" aria-label="查看 GitHub 仓库">
+                    <button id="help-btn" class="btn-secondary flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-slate-700" aria-label="Open Help">
+                        <i data-lucide="help-circle" class="w-4 h-4"></i>
+                        <span class="hidden sm:inline" data-i18n="help">帮助</span>
+                    </button>
+                    <a href="https://github.com/ArvinYin1/lottiegradient" target="_blank" class="btn-secondary flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-slate-700" aria-label="View GitHub Repository">
                         <i data-lucide="github" class="w-4 h-4"></i>
                         <span class="hidden sm:inline">GitHub</span>
                     </a>
-                    <a href="https://www.bilibili.com/video/BV1xcBRBREWL/" target="_blank" class="btn-secondary flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-slate-700" aria-label="观看使用演示视频">
+                    <a href="https://www.bilibili.com/video/BV1xcBRBREWL/" target="_blank" class="btn-secondary flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-slate-700" aria-label="Watch Demo Video">
                         <i data-lucide="play-circle" class="w-4 h-4"></i>
-                        <span class="hidden sm:inline">使用演示</span>
+                        <span class="hidden sm:inline" data-i18n="demoVideo">使用演示</span>
                     </a>
                 </div>
             </div>
@@ -54,21 +58,21 @@
     <main class="content-max-w px-6 py-3">
         <div class="mb-3 flex flex-wrap items-center gap-3">
             <label for="lottie-file" class="btn-primary flex items-center gap-2 px-5 py-2.5 rounded-lg text-white text-sm font-medium cursor-pointer">
-                <i data-lucide="download" class="w-4 h-4"></i>导入 JSON
+                <i data-lucide="download" class="w-4 h-4"></i><span data-i18n="importJson">导入 JSON</span>
             </label>
             <input type="file" id="lottie-file" class="hidden" accept=".json">
             <button id="export-btn" class="btn-export flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 shadow-sm">
-                <i data-lucide="upload" class="w-4 h-4"></i>导出 JSON
+                <i data-lucide="upload" class="w-4 h-4"></i><span data-i18n="exportJson">导出 JSON</span>
             </button>
             <div class="w-px h-6 bg-slate-300 mx-1"></div>
             <label for="gradient-file" class="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium cursor-pointer text-purple-700 bg-purple-50 border border-purple-200 hover:bg-purple-100">
-                <i data-lucide="refresh-cw" class="w-4 h-4"></i>同步渐变
+                <i data-lucide="refresh-cw" class="w-4 h-4"></i><span data-i18n="syncGradient">同步渐变</span>
             </label>
             <input type="file" id="gradient-file" class="hidden" accept=".json">
             <span id="file-info" class="text-sm text-slate-500 hidden">
                 <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100">
                     <i data-lucide="file-json" class="w-4 h-4 text-blue-500"></i>
-                    <span id="filename">未选择文件</span>
+                    <span id="filename" data-i18n="noFileSelected">未选择文件</span>
                 </span>
             </span>
         </div>
@@ -77,10 +81,10 @@
             <div id="preview-card" class="card bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden flex flex-col self-start w-full">
                 <div class="p-4 border-b border-slate-200 flex items-center justify-between">
                     <h2 class="font-semibold text-slate-800 flex items-center gap-2">
-                        <i data-lucide="play" class="w-4 h-4 text-blue-500"></i>动画预览
+                        <i data-lucide="play" class="w-4 h-4 text-blue-500"></i><span data-i18n="animationPreview">动画预览</span>
                     </h2>
                     <div class="flex items-center gap-2">
-                        <span class="text-xs text-slate-500">背景</span>
+                        <span class="text-xs text-slate-500" data-i18n="background">背景</span>
                         <button id="bg-alpha-btn" class="p-1.5 rounded-md bg-blue-100 text-blue-600">
                             <i data-lucide="grid-3x3" class="w-4 h-4"></i>
                         </button>
@@ -91,8 +95,8 @@
                     <div id="lottie-animation" class="alpha-checkered rounded-xl overflow-hidden flex items-center justify-center lottie-1x1">
                         <div class="text-center text-slate-400">
                             <i data-lucide="image" class="w-16 h-16 mx-auto mb-4 opacity-50"></i>
-                            <p>拖拽 JSON 文件到此处</p>
-                            <p class="text-sm mt-2">或点击上方"导入 JSON"按钮</p>
+                            <p data-i18n="dropZoneTitle">拖拽 JSON 文件到此处</p>
+                            <p class="text-sm mt-2" data-i18n="dropZoneSubtitle">或点击上方"导入 JSON"按钮</p>
                         </div>
                     </div>
                 </div>
@@ -114,19 +118,19 @@
                     <div class="p-4 border-b border-slate-200">
                         <div class="flex items-center justify-between mb-3">
                             <h2 class="font-semibold text-slate-800 flex items-center gap-2">
-                                <i data-lucide="layers" class="w-4 h-4 text-purple-500"></i>渐变列表
+                                <i data-lucide="layers" class="w-4 h-4 text-purple-500"></i><span data-i18n="gradientList">渐变列表</span>
                             </h2>
                             <span id="gradient-count" class="text-xs px-2 py-1 rounded-full bg-slate-100 text-slate-600">0</span>
                         </div>
                         <div class="relative">
                             <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                            <input type="text" id="gradient-search" placeholder="搜索渐变..." class="w-full pl-10 pr-4 py-2 rounded-lg bg-slate-50 border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20">
+                            <input type="text" id="gradient-search" data-i18n-placeholder="searchGradient" placeholder="搜索渐变..." class="w-full pl-10 pr-4 py-2 rounded-lg bg-slate-50 border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20">
                         </div>
                     </div>
                     <div id="gradient-names-list" class="p-2 overflow-y-auto gradient-list-content">
                         <div class="text-center py-8 text-slate-400">
                             <i data-lucide="sparkles" class="w-10 h-10 mx-auto mb-2 opacity-50"></i>
-                            <p class="text-sm">上传 JSON 文件以查看渐变</p>
+                            <p class="text-sm" data-i18n="uploadToSeeGradients">上传 JSON 文件以查看渐变</p>
                         </div>
                     </div>
                 </div>
@@ -134,13 +138,13 @@
                 <div class="card bg-white rounded-2xl shadow-lg border border-slate-200 flex flex-col editor-panel">
                     <div class="p-4 border-b border-slate-200">
                         <h2 id="editor-title" class="font-semibold text-slate-800 flex items-center gap-2">
-                            <i data-lucide="sliders" class="w-4 h-4 text-green-500"></i>未选择渐变
+                            <i data-lucide="sliders" class="w-4 h-4 text-green-500"></i><span data-i18n="noGradientSelected">未选择渐变</span>
                         </h2>
                     </div>
                     <div id="editor" class="p-4 overflow-y-auto editor-content">
                         <div class="text-center py-8 text-slate-400">
                             <i data-lucide="mouse-pointer-click" class="w-10 h-10 mx-auto mb-2 opacity-50"></i>
-                            <p class="text-sm">点击左侧渐变开始编辑</p>
+                            <p class="text-sm" data-i18n="clickGradientToEdit">点击左侧渐变开始编辑</p>
                         </div>
                     </div>
                 </div>
@@ -169,11 +173,11 @@
                             <i data-lucide="palette" class="w-5 h-5 text-white"></i>
                         </div>
                         <div>
-                            <h2 class="text-lg font-bold text-slate-800">关于本工具</h2>
+                            <h2 class="text-lg font-bold text-slate-800" data-i18n="aboutTool">关于本工具</h2>
                             <p class="text-xs text-slate-500">Lottie Gradient Editor v1.0</p>
                         </div>
                     </div>
-                    <button id="close-modal" class="p-2 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors" aria-label="关闭弹窗">
+                    <button id="close-modal" class="p-2 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors" aria-label="Close Modal">
                         <i data-lucide="x" class="w-5 h-5"></i>
                     </button>
                 </div>
@@ -184,9 +188,9 @@
                     <div class="mb-5">
                         <h3 class="text-sm font-semibold text-slate-800 mb-2 flex items-center gap-2">
                             <i data-lucide="alert-circle" class="w-4 h-4 text-amber-500"></i>
-                            背景问题
+                            <span data-i18n="backgroundProblem">背景问题</span>
                         </h3>
-                        <p class="text-sm text-slate-600 leading-relaxed">
+                        <p class="text-sm text-slate-600 leading-relaxed" data-i18n="backgroundProblemDesc">
                             在使用 After Effects 配合 Bodymovin 插件导出 Lottie 动画时，经常会遇到<strong>渐变色丢失</strong>的问题：渐变色变成黑白或纯色、透明度信息丢失、颜色位置偏移。本工具专为解决此问题而生。
                         </p>
                     </div>
@@ -195,35 +199,35 @@
                     <div class="mb-5">
                         <h3 class="text-sm font-semibold text-slate-800 mb-3 flex items-center gap-2">
                             <i data-lucide="sparkles" class="w-4 h-4 text-purple-500"></i>
-                            功能特性
+                            <span data-i18n="features">功能特性</span>
                         </h3>
                         <div class="grid grid-cols-2 gap-2">
                             <div class="flex items-start gap-2 p-2 rounded-lg bg-slate-50">
                                 <i data-lucide="upload" class="w-4 h-4 text-blue-500 mt-0.5 shrink-0"></i>
                                 <div>
-                                    <p class="text-xs font-medium text-slate-700">JSON 导入</p>
-                                    <p class="text-xs text-slate-500">拖拽或点击上传</p>
+                                    <p class="text-xs font-medium text-slate-700" data-i18n="jsonImport">JSON 导入</p>
+                                    <p class="text-xs text-slate-500" data-i18n="dragOrClick">拖拽或点击上传</p>
                                 </div>
                             </div>
                             <div class="flex items-start gap-2 p-2 rounded-lg bg-slate-50">
                                 <i data-lucide="play" class="w-4 h-4 text-green-500 mt-0.5 shrink-0"></i>
                                 <div>
-                                    <p class="text-xs font-medium text-slate-700">动画预览</p>
-                                    <p class="text-xs text-slate-500">实时播放与进度控制</p>
+                                    <p class="text-xs font-medium text-slate-700" data-i18n="animationPreview2">动画预览</p>
+                                    <p class="text-xs text-slate-500" data-i18n="realtimePlayback">实时播放与进度控制</p>
                                 </div>
                             </div>
                             <div class="flex items-start gap-2 p-2 rounded-lg bg-slate-50">
                                 <i data-lucide="palette" class="w-4 h-4 text-pink-500 mt-0.5 shrink-0"></i>
                                 <div>
-                                    <p class="text-xs font-medium text-slate-700">渐变编辑</p>
-                                    <p class="text-xs text-slate-500">可视化调整颜色和透明度</p>
+                                    <p class="text-xs font-medium text-slate-700" data-i18n="gradientEdit">渐变编辑</p>
+                                    <p class="text-xs text-slate-500" data-i18n="visualAdjust">可视化调整颜色和透明度</p>
                                 </div>
                             </div>
                             <div class="flex items-start gap-2 p-2 rounded-lg bg-slate-50">
                                 <i data-lucide="refresh-cw" class="w-4 h-4 text-orange-500 mt-0.5 shrink-0"></i>
                                 <div>
-                                    <p class="text-xs font-medium text-slate-700">渐变同步</p>
-                                    <p class="text-xs text-slate-500">批量应用到其他动画</p>
+                                    <p class="text-xs font-medium text-slate-700" data-i18n="gradientSync">渐变同步</p>
+                                    <p class="text-xs text-slate-500" data-i18n="batchApply">批量应用到其他动画</p>
                                 </div>
                             </div>
                         </div>
@@ -233,13 +237,13 @@
                     <div class="mb-5">
                         <h3 class="text-sm font-semibold text-slate-800 mb-2 flex items-center gap-2">
                             <i data-lucide="zap" class="w-4 h-4 text-yellow-500"></i>
-                            快速开始
+                            <span data-i18n="quickStart">快速开始</span>
                         </h3>
                         <ol class="text-sm text-slate-600 space-y-1.5 list-decimal list-inside">
-                            <li>点击「导入 JSON」上传 Lottie 动画文件</li>
-                            <li>点击「渐变列表」中需要修改的渐变项</li>
-                            <li>在右侧编辑器中调整颜色、位置、透明度</li>
-                            <li>点击「导出 JSON」保存修复后的文件</li>
+                            <li data-i18n="step1">点击「导入 JSON」上传 Lottie 动画文件</li>
+                            <li data-i18n="step2">点击「渐变列表」中需要修改的渐变项</li>
+                            <li data-i18n="step3">在右侧编辑器中调整颜色、位置、透明度</li>
+                            <li data-i18n="step4">点击「导出 JSON」保存修复后的文件</li>
                         </ol>
                     </div>
                     
@@ -247,16 +251,16 @@
                     <div class="mb-4">
                         <h3 class="text-sm font-semibold text-slate-800 mb-2 flex items-center gap-2">
                             <i data-lucide="lightbulb" class="w-4 h-4 text-amber-500"></i>
-                            使用技巧
+                            <span data-i18n="tips">使用技巧</span>
                         </h3>
                         <ul class="text-sm text-slate-600 space-y-1">
                             <li class="flex items-start gap-2">
                                 <span class="text-blue-500 mt-0.5">•</span>
-                                <span>点击「网格」按钮可切换透明背景，方便查看透明动画</span>
+                                <span data-i18n="tip1">点击「网格」按钮可切换透明背景，方便查看透明动画</span>
                             </li>
                             <li class="flex items-start gap-2">
                                 <span class="text-blue-500 mt-0.5">•</span>
-                                <span>「同步渐变」功能可将一个动画的渐变配置批量应用到其他动画</span>
+                                <span data-i18n="tip2">「同步渐变」功能可将一个动画的渐变配置批量应用到其他动画</span>
                             </li>
                         </ul>
                     </div>
@@ -265,16 +269,16 @@
                 <!-- 弹窗底部 -->
                 <div class="flex items-center justify-between p-4 border-t border-slate-200 bg-slate-50/50">
                     <div class="flex items-center gap-4 text-xs text-slate-500">
-                        <a href="https://github.com/ArvinYin1/lottiegradient" target="_blank" class="flex items-center gap-1.5 hover:text-blue-600 transition-colors" aria-label="访问 GitHub">
+                        <a href="https://github.com/ArvinYin1/lottiegradient" target="_blank" class="flex items-center gap-1.5 hover:text-blue-600 transition-colors" aria-label="Visit GitHub">
                             <i data-lucide="github" class="w-4 h-4"></i>
                             GitHub
                         </a>
-                        <a href="https://www.bilibili.com/video/BV1xcBRBREWL/" target="_blank" class="flex items-center gap-1.5 hover:text-blue-600 transition-colors" aria-label="观看视频教程">
+                        <a href="https://www.bilibili.com/video/BV1xcBRBREWL/" target="_blank" class="flex items-center gap-1.5 hover:text-blue-600 transition-colors" aria-label="Watch Video Tutorial">
                             <i data-lucide="play-circle" class="w-4 h-4"></i>
-                            视频教程
+                            <span data-i18n="videoTutorial">视频教程</span>
                         </a>
                     </div>
-                    <button id="close-modal-btn" class="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors" aria-label="关闭帮助弹窗">
+                    <button id="close-modal-btn" class="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors" aria-label="Close Help Modal" data-i18n="gotIt">
                         知道了
                     </button>
                 </div>

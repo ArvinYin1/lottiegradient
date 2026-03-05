@@ -1,6 +1,224 @@
 // Lottie Gradient Editor - Main JavaScript
 
+// ========== 国际化 (i18n) ==========
+const i18n = {
+    zh: {
+        help: '帮助',
+        noFileSelected: '未选择文件',
+        importJson: '导入 JSON',
+        exportJson: '导出 JSON',
+        syncGradient: '同步渐变',
+        animationPreview: '动画预览',
+        background: '背景',
+        dropZoneTitle: '拖拽 JSON 文件到此处',
+        dropZoneSubtitle: '或点击上方"导入 JSON"按钮',
+        gradientList: '渐变列表',
+        searchGradient: '搜索渐变...',
+        uploadToSeeGradients: '上传 JSON 文件以查看渐变',
+        noGradientSelected: '未选择渐变',
+        clickGradientToEdit: '点击左侧渐变开始编辑',
+        backgroundProblem: '背景问题',
+        backgroundProblemDesc: '在使用 After Effects 配合 Bodymovin 插件导出 Lottie 动画时，经常会遇到<strong>渐变色丢失</strong>的问题：渐变色变成黑白或纯色、透明度信息丢失、颜色位置偏移。本工具专为解决此问题而生。',
+        features: '功能特性',
+        jsonImport: 'JSON 导入',
+        dragOrClick: '拖拽或点击上传',
+        animationPreview2: '动画预览',
+        realtimePlayback: '实时播放与进度控制',
+        gradientEdit: '渐变编辑',
+        visualAdjust: '可视化调整颜色和透明度',
+        gradientSync: '渐变同步',
+        batchApply: '批量应用到其他动画',
+        quickStart: '快速开始',
+        step1: '点击「导入 JSON」上传 Lottie 动画文件',
+        step2: '点击「渐变列表」中需要修改的渐变项',
+        step3: '在右侧编辑器中调整颜色、位置、透明度',
+        step4: '点击「导出 JSON」保存修复后的文件',
+        tips: '使用技巧',
+        tip1: '点击「网格」按钮可切换透明背景，方便查看透明动画',
+        tip2: '「同步渐变」功能可将一个动画的渐变配置批量应用到其他动画',
+        gotIt: '知道了',
+        subtitle: '渐变色编辑器',
+        enableAlpha: '启用透明度',
+        addStop: '添加色标',
+        position: '位置',
+        alpha: '透明度',
+        noGradientsFound: 'JSON 文件中未找到渐变',
+        noJsonUploaded: '上传 JSON 文件以查看渐变',
+        selectToEdit: '点击左侧渐变开始编辑',
+        gradientEditor: '渐变编辑器',
+        alertNoContent: '没有可导出的内容',
+        alertNoAnimation: '请先导入动画 JSON 文件',
+        alertNoGradient: '未在文件中找到渐变数据',
+        alertInvalidJson: '无效的 JSON 文件',
+        alertJsonError: '编辑器中的 JSON 无效',
+        syncSuccess: '成功同步 {count} 个渐变',
+        syncFailed: '同步渐变失败',
+        exportFailed: '导出失败',
+        demoVideo: '使用演示',
+        videoTutorial: '视频教程',
+        aboutTool: '关于本工具'
+    },
+    en: {
+        help: 'Help',
+        noFileSelected: 'No file selected',
+        importJson: 'Import JSON',
+        exportJson: 'Export JSON',
+        syncGradient: 'Sync Gradient',
+        animationPreview: 'Animation Preview',
+        background: 'Background',
+        dropZoneTitle: 'Drop JSON file here',
+        dropZoneSubtitle: 'Or click "Import JSON" button above',
+        gradientList: 'Gradient List',
+        searchGradient: 'Search gradients...',
+        uploadToSeeGradients: 'Upload JSON file to view gradients',
+        noGradientSelected: 'No gradient selected',
+        clickGradientToEdit: 'Click a gradient on the left to start editing',
+        backgroundProblem: 'Background',
+        backgroundProblemDesc: 'When exporting Lottie animations from After Effects using the Bodymovin plugin, <strong>gradient colors are often lost</strong>: gradients turn black/white or solid colors, transparency information is lost, and color positions are offset. This tool is designed to solve these issues.',
+        features: 'Features',
+        jsonImport: 'JSON Import',
+        dragOrClick: 'Drag or click to upload',
+        animationPreview2: 'Animation Preview',
+        realtimePlayback: 'Real-time playback with progress control',
+        gradientEdit: 'Gradient Edit',
+        visualAdjust: 'Visually adjust colors and transparency',
+        gradientSync: 'Gradient Sync',
+        batchApply: 'Batch apply to other animations',
+        quickStart: 'Quick Start',
+        step1: 'Click "Import JSON" to upload a Lottie animation file',
+        step2: 'Click a gradient in the "Gradient List" to modify',
+        step3: 'Adjust colors, positions, and transparency in the editor',
+        step4: 'Click "Export JSON" to save the fixed file',
+        tips: 'Tips',
+        tip1: 'Click the "Grid" button to toggle transparent background for viewing transparent animations',
+        tip2: 'The "Sync Gradient" feature can batch apply gradient configurations from one animation to others',
+        gotIt: 'Got it',
+        subtitle: 'Gradient Editor',
+        enableAlpha: 'Enable Alpha',
+        addStop: 'Add Color Stop',
+        position: 'Position',
+        alpha: 'Alpha',
+        noGradientsFound: 'No gradients found in JSON file',
+        noJsonUploaded: 'Upload JSON file to view gradients',
+        selectToEdit: 'Click a gradient on the left to start editing',
+        gradientEditor: 'Gradient Editor',
+        alertNoContent: 'No content to export',
+        alertNoAnimation: 'Please import animation JSON file first',
+        alertNoGradient: 'No gradient data found in file',
+        alertInvalidJson: 'Invalid JSON file',
+        alertJsonError: 'Invalid JSON in editor',
+        syncSuccess: 'Successfully synced {count} gradients',
+        syncFailed: 'Failed to sync gradients',
+        exportFailed: 'Export failed',
+        demoVideo: 'Demo',
+        videoTutorial: 'Video Tutorial',
+        aboutTool: 'About This Tool'
+    }
+};
+
+let currentLang = localStorage.getItem('lottie-lang') || 'zh';
+
+function t(key, params = {}) {
+    let text = i18n[currentLang][key] || i18n['zh'][key] || key;
+    Object.keys(params).forEach(param => {
+        text = text.replace(`{${param}}`, params[param]);
+    });
+    return text;
+}
+
+function updateLanguage(lang) {
+    currentLang = lang;
+    localStorage.setItem('lottie-lang', lang);
+    
+    // 更新 lang 属性
+    document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
+    
+    // 更新语言按钮文本
+    const langText = document.getElementById('lang-text');
+    if (langText) {
+        langText.textContent = lang === 'zh' ? 'EN' : '中文';
+    }
+    
+    // 更新所有带 data-i18n 的元素
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (i18n[lang][key]) {
+            // 保留内部 HTML 标签
+            if (el.innerHTML.includes('<')) {
+                const temp = document.createElement('div');
+                temp.innerHTML = i18n[lang][key];
+                // 只替换文本节点，保留子元素
+                const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+                const textNodes = [];
+                while (walker.nextNode()) {
+                    textNodes.push(walker.currentNode);
+                }
+                // 简单替换整个内容
+                el.innerHTML = i18n[lang][key];
+            } else {
+                el.textContent = i18n[lang][key];
+            }
+        }
+    });
+    
+    // 更新 placeholder
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+        const key = el.getAttribute('data-i18n-placeholder');
+        if (i18n[lang][key]) {
+            el.placeholder = i18n[lang][key];
+        }
+    });
+    
+    // 更新副标题
+    const subtitleEl = document.querySelector('header p.text-xs');
+    if (subtitleEl && subtitleEl.getAttribute('data-i18n') === 'subtitle') {
+        subtitleEl.textContent = i18n[lang].subtitle;
+    }
+    
+    // 更新空状态消息
+    const gradientNamesList = document.getElementById('gradient-names-list');
+    if (gradientNamesList) {
+        const emptyState = gradientNamesList.querySelector('.text-center.py-8');
+        if (emptyState && emptyState.querySelector('[data-lucide="sparkles"]')) {
+            const p = emptyState.querySelector('p');
+            if (p) p.textContent = i18n[lang].noJsonUploaded;
+        }
+    }
+    
+    // 更新编辑器空状态
+    const editor = document.getElementById('editor');
+    if (editor) {
+        const emptyState = editor.querySelector('.text-center.py-8');
+        if (emptyState && emptyState.querySelector('[data-lucide="mouse-pointer-click"]')) {
+            const p = emptyState.querySelector('p');
+            if (p) p.textContent = i18n[lang].selectToEdit;
+        }
+    }
+    
+    // 更新帮助按钮弹窗中的副标题
+    const modalSubtitle = document.querySelector('#help-modal p.text-xs.text-slate-500');
+    if (modalSubtitle && modalSubtitle.textContent.includes('Lottie Gradient Editor')) {
+        // 保持版本号，只更新工具名
+    }
+    
+    // 刷新渐变编辑器语言
+    if (gradientEditorInstance) {
+        gradientEditorInstance.refreshLanguage();
+    }
+}
+
+function toggleLanguage() {
+    const newLang = currentLang === 'zh' ? 'en' : 'zh';
+    updateLanguage(newLang);
+}
+
+// ========== 初始化 ==========
 lucide.createIcons();
+
+// 初始化语言
+document.addEventListener('DOMContentLoaded', () => {
+    updateLanguage(currentLang);
+});
 
 function truncate_float(num) { return Math.round(num * 1000) / 1000; }
 
@@ -80,7 +298,7 @@ class GradientPreviewEditor {
 
         const alphaToggle = document.createElement('label');
         alphaToggle.className = 'flex items-center gap-2 cursor-pointer';
-        alphaToggle.innerHTML = `<input type="checkbox" ${this.with_alpha ? 'checked' : ''} class="w-4 h-4 rounded border-slate-300 text-blue-600"><span class="text-sm text-slate-600">启用透明度</span>`;
+        alphaToggle.innerHTML = `<input type="checkbox" ${this.with_alpha ? 'checked' : ''} class="w-4 h-4 rounded border-slate-300 text-blue-600"><span class="text-sm text-slate-600">${t('enableAlpha')}</span>`;
         container.appendChild(alphaToggle);
 
         this.check_alpha = alphaToggle.querySelector('input');
@@ -114,7 +332,7 @@ class GradientPreviewEditor {
         if (dynamic_count) {
             const addBtn = document.createElement('button');
             addBtn.className = 'w-full py-2 rounded-lg border-2 border-dashed border-slate-300 text-slate-500 hover:border-blue-500 hover:text-blue-500 transition-colors flex items-center justify-center gap-2';
-            addBtn.innerHTML = '<i data-lucide="plus" class="w-4 h-4"></i> 添加色标';
+            addBtn.innerHTML = `<i data-lucide="plus" class="w-4 h-4"></i> ${t('addStop')}`;
             addBtn.addEventListener('click', () => {
                 self.add_color(1, '#000000', 1, true);
                 self._on_change();
@@ -172,7 +390,7 @@ class GradientPreviewEditor {
         // 位置控制
         const posContainer = document.createElement('div');
         posContainer.className = 'flex-1 flex items-center gap-2';
-        posContainer.innerHTML = '<span class="text-xs text-slate-500 shrink-0">位置</span>';
+        posContainer.innerHTML = `<span class="text-xs text-slate-500 shrink-0">${t('position')}</span>`;
         rightGroup.appendChild(posContainer);
 
         const posSlider = document.createElement('input');
@@ -197,7 +415,7 @@ class GradientPreviewEditor {
         // 透明度控制
         const alphaContainer = document.createElement('div');
         alphaContainer.className = 'flex-1 flex items-center gap-2';
-        alphaContainer.innerHTML = '<span class="alpha-label text-xs text-slate-500 shrink-0">透明度</span>';
+        alphaContainer.innerHTML = `<span class="alpha-label text-xs text-slate-500 shrink-0">${t('alpha')}</span>`;
         rightGroup.appendChild(alphaContainer);
 
         const alphaSlider = document.createElement('input');
@@ -347,6 +565,36 @@ class GradientPreviewEditor {
     static stand_alone(parent, on_change) {
         return new GradientPreviewEditor(parent, [0, 0.231, 0.51, 0.965, 1, 0.976, 0.451, 0.086], 2, on_change, true);
     }
+
+    refreshLanguage() {
+        // 更新"启用透明度"复选框文本
+        const alphaLabel = this.check_alpha?.parentElement?.querySelector('span:last-child');
+        if (alphaLabel) {
+            alphaLabel.textContent = t('enableAlpha');
+        }
+        
+        // 更新"添加色标"按钮文本
+        const addBtn = this.colorsContainer?.parentElement?.querySelector('button:last-child');
+        if (addBtn && addBtn.innerHTML.includes('plus')) {
+            addBtn.innerHTML = `<i data-lucide="plus" class="w-4 h-4"></i> ${t('addStop')}`;
+            lucide.createIcons();
+        }
+        
+        // 更新每个颜色行的"位置"和"透明度"标签
+        const colorRows = this.colorsContainer?.querySelectorAll(':scope > div');
+        if (colorRows) {
+            colorRows.forEach(row => {
+                const labels = row.querySelectorAll('.text-xs.text-slate-500.shrink-0');
+                labels.forEach((label, index) => {
+                    if (index === 0) {
+                        label.textContent = t('position');
+                    } else if (index === 1) {
+                        label.textContent = t('alpha');
+                    }
+                });
+            });
+        }
+    }
 }
 
 let animation = null;
@@ -356,6 +604,12 @@ let selectedGradientInfo = null;
 let isProgrammaticUpdate = false;
 
 document.addEventListener('DOMContentLoaded', function() {
+    // 语言切换按钮
+    const langBtn = document.getElementById('lang-btn');
+    if (langBtn) {
+        langBtn.addEventListener('click', toggleLanguage);
+    }
+    
     const dropZone = document.getElementById('drop-zone');
 
     ['dragenter','dragover','dragleave','drop'].forEach(e => {
@@ -585,7 +839,7 @@ function initializeLottiePlayer() {
             }
 
             if (!jsonData) {
-                gradientNamesList.innerHTML = '<div class="text-center py-8 text-slate-400"><i data-lucide="sparkles" class="w-10 h-10 mx-auto mb-2 opacity-50"></i><p class="text-sm">上传 JSON 文件以查看渐变</p></div>';
+                gradientNamesList.innerHTML = `<div class="text-center py-8 text-slate-400"><i data-lucide="sparkles" class="w-10 h-10 mx-auto mb-2 opacity-50"></i><p class="text-sm">${t('noJsonUploaded')}</p></div>`;
                 if (gradientCount) gradientCount.textContent = '0';
                 lucide.createIcons();
                 return;
@@ -595,7 +849,7 @@ function initializeLottiePlayer() {
             if (gradientCount) gradientCount.textContent = gradients.length;
 
             if (gradients.length === 0) {
-                gradientNamesList.innerHTML = '<div class="text-center py-8 text-slate-400"><p>JSON 文件中未找到渐变</p></div>';
+                gradientNamesList.innerHTML = `<div class="text-center py-8 text-slate-400"><p>${t('noGradientsFound')}</p></div>`;
                 clearSelectedGradient();
             } else {
                 gradientNamesList.innerHTML = '';
@@ -655,7 +909,7 @@ function initializeLottiePlayer() {
             lucide.createIcons();
         } catch (error) {
             console.error('updateGradientNamesList error:', error.message);
-            gradientNamesList.innerHTML = '<div class="text-center py-8 text-slate-400"><p>JSON 文件中未找到渐变</p></div>';
+            gradientNamesList.innerHTML = `<div class="text-center py-8 text-slate-400"><p>${t('noGradientsFound')}</p></div>`;
             clearSelectedGradient();
         }
     }
@@ -664,23 +918,23 @@ function initializeLottiePlayer() {
         selectedGradientInfo = null;
         const editorTitle = document.getElementById('editor-title');
         const editor = document.getElementById('editor');
-        if (editorTitle) editorTitle.innerHTML = '<i data-lucide="sliders" class="w-4 h-4 text-green-500"></i>未选择渐变';
+        if (editorTitle) editorTitle.innerHTML = `<i data-lucide="sliders" class="w-4 h-4 text-green-500"></i>${t('noGradientSelected')}`;
         if (editor) {
-            editor.innerHTML = '<div class="text-center py-8 text-slate-400"><i data-lucide="mouse-pointer-click" class="w-10 h-10 mx-auto mb-2 opacity-50"></i><p class="text-sm">点击左侧渐变开始编辑</p></div>';
+            editor.innerHTML = `<div class="text-center py-8 text-slate-400"><i data-lucide="mouse-pointer-click" class="w-10 h-10 mx-auto mb-2 opacity-50"></i><p class="text-sm">${t('clickGradientToEdit')}</p></div>`;
         }
         lucide.createIcons();
     }
 
     function updateAnimationFromEditor() {
         const jsonText = getJsonContent();
-        if (!jsonText.trim()) { alert('请先输入或上传 JSON 文件'); return; }
+        if (!jsonText.trim()) { alert(t('alertNoAnimation')); return; }
         try {
             const jsonData = JSON.parse(jsonText);
             loadAnimation(jsonData);
             updateGradientNamesList();
         } catch (error) {
             console.error('JSON parse error:', error);
-            alert('编辑器中的 JSON 无效: ' + error.message);
+            alert(t('alertJsonError') + ': ' + error.message);
         }
     }
 
@@ -700,7 +954,7 @@ function initializeLottiePlayer() {
                     updateGradientNamesList();
                 } catch (error) {
                     console.error('JSON parse error:', error);
-                    alert('无效的 JSON 文件: ' + error.message);
+                    alert(t('alertInvalidJson') + ': ' + error.message);
                     fileInfo.classList.add('hidden');
                 }
             };
@@ -710,7 +964,7 @@ function initializeLottiePlayer() {
 
     document.getElementById('export-btn').addEventListener('click', () => {
         const jsonText = getJsonContent();
-        if (!jsonText.trim()) { alert('没有可导出的内容'); return; }
+        if (!jsonText.trim()) { alert(t('alertNoContent')); return; }
         try {
             const jsonData = JSON.parse(jsonText);
             const compressed = compressJson(jsonData);
@@ -722,7 +976,7 @@ function initializeLottiePlayer() {
             a.click();
             URL.revokeObjectURL(url);
         } catch (error) {
-            alert('导出失败: ' + error.message);
+            alert(t('exportFailed') + ': ' + error.message);
         }
     });
 
@@ -737,10 +991,10 @@ function initializeLottiePlayer() {
                 if (fileContent.startsWith('\ufeff')) fileContent = fileContent.slice(1);
                 const jsonData = JSON.parse(fileContent);
                 const gradients = extractGradientsFromJson(jsonData);
-                if (gradients.length === 0) { alert('未在文件中找到渐变数据'); return; }
+                if (gradients.length === 0) { alert(t('alertNoGradient')); return; }
 
                 const currentJsonText = getJsonContent();
-                if (!currentJsonText.trim()) { alert('请先导入动画 JSON 文件'); return; }
+                if (!currentJsonText.trim()) { alert(t('alertNoAnimation')); return; }
                 const currentJsonData = JSON.parse(currentJsonText);
 
                 gradients.forEach(gradient => {
@@ -751,10 +1005,10 @@ function initializeLottiePlayer() {
                 if (monacoEditor) monacoEditor.setValue(updatedJsonContent);
                 document.getElementById('json-editor').value = updatedJsonContent;
                 updateAnimationFromEditor();
-                alert(`成功同步 ${gradients.length} 个渐变`);
+                alert(t('syncSuccess', { count: gradients.length }));
             } catch (error) {
                 console.error('Error syncing gradients:', error);
-                alert('同步渐变失败: ' + error.message);
+                alert(t('syncFailed') + ': ' + error.message);
             }
         };
         reader.readAsText(file);

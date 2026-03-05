@@ -1,12 +1,13 @@
-# Lottie Gradient Editor
+# Lottie Gradient Editor / Lottie 渐变色编辑器
 
-> 一个用于修复和编辑 Lottie 动画渐变色的在线工具
+> 一个用于修复和编辑 Lottie 动画渐变色的在线工具  
+> An online tool for fixing and editing gradient colors in Lottie animations
 
-[🌐 在线使用](https://www.lottie.uno) | [📺 视频演示](https://www.bilibili.com/video/BV1xcBRBREWL/)
+[🌐 在线使用 / Live Demo](https://www.lottie.uno) | [📺 视频演示 / Video Demo](https://www.bilibili.com/video/BV1xcBRBREWL/)
 
 ---
 
-## 背景问题
+## 背景问题 / Background
 
 在使用 After Effects 配合 Bodymovin 插件导出 Lottie 动画时，经常会遇到**渐变色丢失**的问题：
 - 渐变色变成黑白或纯色
@@ -17,7 +18,16 @@
 
 ---
 
-## 功能特性
+When exporting Lottie animations from After Effects using the Bodymovin plugin, **gradient colors are often lost**:
+- Gradients turn black/white or solid colors
+- Transparency information is lost
+- Color positions are offset or scrambled
+
+Although there are some solutions online, they don't always work in certain export environments. This tool was created to solve this pain point.
+
+---
+
+## 功能特性 / Features
 
 | 功能 | 说明 |
 |------|------|
@@ -30,7 +40,18 @@
 
 ---
 
-## 快速开始
+| Feature | Description |
+|---------|-------------|
+| 📂 **JSON Import** | Drag or click to upload Lottie JSON files |
+| ▶️ **Animation Preview** | Real-time playback with progress control and background switching |
+| 🎨 **Gradient Edit** | Visually edit colors, positions, and transparency of each gradient |
+| 🔄 **Gradient Sync** | Import gradient configs from other JSON files for batch syncing |
+| 💾 **One-click Export** | Export fixed JSON files ready for production |
+| 🔍 **Gradient Search** | Quickly locate specific gradients in animations |
+
+---
+
+## 快速开始 / Quick Start
 
 ### 1. 打开工具
 访问在线地址：https://www.lottie.uno
@@ -49,7 +70,24 @@
 
 ---
 
-## 使用技巧
+### 1. Open the Tool
+Visit the live demo: https://www.lottie.uno
+
+### 2. Import Animation
+- Click the "Import JSON" button, or
+- Directly drag and drop a `.json` file into the preview area on the left
+
+### 3. Edit Gradients
+- Click the gradient item you want to modify in the "Gradient List"
+- Adjust colors, positions, and transparency in the editor on the right
+- View the effect in real-time in the preview area on the left
+
+### 4. Export File
+Click the "Export JSON" button to download the fixed animation file.
+
+---
+
+## 使用技巧 / Tips
 
 - **背景切换**：点击「网格」按钮切换透明背景，或使用颜色选择器设置纯色背景
 - **渐变同步**：如果你有多个动画需要统一渐变色，可以先在一个动画中调好，然后使用「同步渐变」功能应用到其他动画
@@ -57,7 +95,13 @@
 
 ---
 
-## 技术栈
+- **Background Toggle**: Click the "Grid" button to toggle transparent background, or use the color picker to set a solid background
+- **Gradient Sync**: If you have multiple animations that need unified gradients, adjust one first, then use the "Sync Gradient" feature to apply to others
+- **Playback Control**: Drag the progress bar to precisely view the animation at any frame
+
+---
+
+## 技术栈 / Tech Stack
 
 - **前端**：原生 HTML + JavaScript
 - **样式**：Tailwind CSS
@@ -66,7 +110,14 @@
 
 ---
 
-## 本地运行
+- **Frontend**: Vanilla HTML + JavaScript
+- **Styling**: Tailwind CSS
+- **Animation Rendering**: Lottie Web (Bodymovin)
+- **Code Editing**: Monaco Editor
+
+---
+
+## 本地运行 / Local Development
 
 ```bash
 # 克隆仓库
@@ -83,10 +134,30 @@ python3 -m http.server 8080
 
 ---
 
-## 相关链接
+```bash
+# Clone the repository
+git clone https://github.com/ArvinYin1/lottiegradient.git
+
+# Enter the directory
+cd lottiegradient
+
+# Open directly in browser, or use a local server
+open index.html
+# or
+python3 -m http.server 8080
+```
+
+---
+
+## 相关链接 / Related Links
 
 - [Lottie 官方文档](https://airbnb.io/lottie/)
 - [Bodymovin 插件](https://github.com/airbnb/lottie-web)
+
+---
+
+- [Lottie Documentation](https://airbnb.io/lottie/)
+- [Bodymovin Plugin](https://github.com/airbnb/lottie-web)
 
 ---
 
