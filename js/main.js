@@ -1066,12 +1066,15 @@ function initializeLottiePlayer() {
         lucide.createIcons();
     });
 
-    progressBar.addEventListener('input', () => { isDragging = true; });
-    progressBar.addEventListener('change', () => {
+    progressBar.addEventListener('input', () => {
+        isDragging = true;
         if (animation) {
             const frame = (progressBar.value / 100) * animation.totalFrames;
             animation.goToAndStop(frame, true);
+            updateTimeDisplay();
         }
+    });
+    progressBar.addEventListener('change', () => {
         isDragging = false;
     });
 
