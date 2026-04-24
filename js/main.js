@@ -1392,7 +1392,8 @@ function initializeLottiePlayer() {
                     }
                 });
 
-                const url = URL.createObjectURL(blob);
+                const gifBlob = new Blob([blob], { type: 'image/gif' });
+                const url = URL.createObjectURL(gifBlob);
                 const a = document.createElement('a');
                 a.href = url;
                 a.download = 'animation.gif';
