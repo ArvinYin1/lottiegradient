@@ -56,7 +56,17 @@ const i18n = {
         exportFailed: '导出失败',
         demoVideo: '使用演示',
         videoTutorial: '视频教程',
-        aboutTool: '关于本工具'
+        aboutTool: '关于本工具',
+        exportGif: '导出 GIF',
+        exporting: '正在导出...',
+        cancelExport: '取消导出',
+        fps: '帧率 (FPS)',
+        width: '宽度 (px)',
+        height: '高度 (px)',
+        colors: '颜色数量',
+        exportSettings: '导出设置',
+        startExport: '开始导出',
+        maxFramesWarning: '帧数过多，已限制为 500 帧'
     },
     en: {
         help: 'Help',
@@ -112,7 +122,17 @@ const i18n = {
         exportFailed: 'Export failed',
         demoVideo: 'Demo',
         videoTutorial: 'Video Tutorial',
-        aboutTool: 'About This Tool'
+        aboutTool: 'About This Tool',
+        exportGif: 'Export GIF',
+        exporting: 'Exporting...',
+        cancelExport: 'Cancel',
+        fps: 'FPS',
+        width: 'Width (px)',
+        height: 'Height (px)',
+        colors: 'Colors',
+        exportSettings: 'Export Settings',
+        startExport: 'Start Export',
+        maxFramesWarning: 'Too many frames, limited to 500'
     }
 };
 
@@ -882,6 +902,20 @@ function initializeLottiePlayer() {
     const playIcon = '<i data-lucide="play" class="w-5 h-5"></i>';
     const pauseIcon = '<i data-lucide="pause" class="w-5 h-5"></i>';
     let isDragging = false;
+    const exportGifBtn = document.getElementById('export-gif-btn');
+    const gifExportPanel = document.getElementById('gif-export-panel');
+    const closeGifPanel = document.getElementById('close-gif-panel');
+    const startGifExport = document.getElementById('start-gif-export');
+    const cancelGifExport = document.getElementById('cancel-gif-export');
+    const gifProgressOverlay = document.getElementById('gif-progress-overlay');
+    const gifProgressBar = document.getElementById('gif-progress-bar');
+    const gifProgressText = document.getElementById('gif-progress-text');
+    const gifFpsInput = document.getElementById('gif-fps');
+    const gifWidthInput = document.getElementById('gif-width');
+    const gifHeightInput = document.getElementById('gif-height');
+    const gifColorsInput = document.getElementById('gif-colors');
+    const gifFrameInfo = document.getElementById('gif-frame-info');
+    let gifExporter = null;
 
     function initMonacoEditor() {
         require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.41.0/min/vs' } });
@@ -1112,6 +1146,7 @@ function initializeLottiePlayer() {
                     const jsonData = JSON.parse(fileContent);
                     updateJsonEditor(jsonData);
                     loadAnimation(jsonData);
+                    if (exportGifBtn) exportGifBtn.disabled = false;
                     updateGradientNamesList();
                 } catch (error) {
                     console.error('JSON parse error:', error);
@@ -1245,6 +1280,145 @@ function initializeLottiePlayer() {
         bgAlphaBtn.classList.remove('bg-blue-100', 'text-blue-600');
         bgAlphaBtn.classList.add('text-slate-400');
     });
+
+    if (exportGifBtn) {
+        exportGifBtn.addEventListener('click', () => {
+            if (!animation) { alert(t('alertNoAnimation')); return; }
+            gifExportPanel.classList.toggle('hidden');
+            if (!gifExportPanel.classList.contains('hidden')) {
+                const data = animation.animationData;
+                const fr = data.fr || 30;
+                const w = data.w || 512;
+                const h = data.h || 512;
+                const totalFrames = Math.round(data.op - data.ip);
+                if (gifFpsInput) gifFpsInput.value = Math.min(fr, 30);
+                if (gifWidthInput) gifWidthInput.value = w;
+                if (gifHeightInput) gifHeightInput.value = h;
+                if (gifFrameInfo) {
+                    const fps = parseInt(gifFpsInput?.value || fr);
+                    const frames = Math.min(Math.round((totalFrames / fr) * fps), 500);
+                    gifFrameInfo.textContent = `${frames} 帧 / ${(frames / fps).toFixed(1)} 秒`;
+                }
+            }
+        });
+    }
+
+    if (closeGifPanel) {
+        closeGifPanel.addEventListener('click', () => {
+            gifExportPanel.classList.add('hidden');
+        });
+    }
+
+    let lastRatio = 1;
+    if (gifWidthInput && gifHeightInput) {
+        gifWidthInput.addEventListener('focus', () => {
+            const w = parseInt(gifWidthInput.value) || 1;
+            const h = parseInt(gifHeightInput.value) || 1;
+            lastRatio = h / w;
+        });
+        gifWidthInput.addEventListener('input', () => {
+            const w = parseInt(gifWidthInput.value) || 1;
+            gifHeightInput.value = Math.round(w * lastRatio);
+            updateFrameInfo();
+        });
+        gifHeightInput.addEventListener('focus', () => {
+            const w = parseInt(gifWidthInput.value) || 1;
+            const h = parseInt(gifHeightInput.value) || 1;
+            lastRatio = w / h;
+        });
+        gifHeightInput.addEventListener('input', () => {
+            const h = parseInt(gifHeightInput.value) || 1;
+            gifWidthInput.value = Math.round(h * lastRatio);
+            updateFrameInfo();
+        });
+    }
+
+    function updateFrameInfo() {
+        if (!gifFrameInfo || !animation) return;
+        const data = animation.animationData;
+        const fr = data.fr || 30;
+        const totalFrames = Math.round(data.op - data.ip);
+        const fps = parseInt(gifFpsInput?.value || fr);
+        const frames = Math.min(Math.round((totalFrames / fr) * fps), 500);
+        const duration = (frames / fps).toFixed(1);
+        gifFrameInfo.textContent = `${frames} 帧 / ${duration} 秒`;
+    }
+
+    if (gifFpsInput) {
+        gifFpsInput.addEventListener('input', updateFrameInfo);
+    }
+
+    if (startGifExport) {
+        startGifExport.addEventListener('click', async () => {
+            if (!animation) return;
+
+            const jsonData = animation.animationData;
+            const fps = parseInt(gifFpsInput?.value) || 30;
+            const width = parseInt(gifWidthInput?.value) || jsonData.w || 512;
+            const height = parseInt(gifHeightInput?.value) || jsonData.h || 512;
+            const colors = parseInt(gifColorsInput?.value) || 128;
+
+            const maxW = (jsonData.w || 512) * 2;
+            const maxH = (jsonData.h || 512) * 2;
+            const finalW = Math.min(width, maxW);
+            const finalH = Math.min(height, maxH);
+
+            const fr = jsonData.fr || 30;
+            const totalFrames = Math.round(jsonData.op - jsonData.ip);
+            const exportFrames = Math.min(Math.round((totalFrames / fr) * fps), 500);
+            if (exportFrames >= 500) {
+                alert(t('maxFramesWarning'));
+            }
+
+            gifProgressOverlay.classList.remove('hidden');
+            gifProgressBar.style.width = '0%';
+            gifProgressText.textContent = `0 / ${exportFrames}`;
+            gifExportPanel.classList.add('hidden');
+
+            const wasPlaying = !animation.isPaused;
+            if (wasPlaying) animation.pause();
+
+            try {
+                gifExporter = new GifExporter(jsonData);
+                const blob = await gifExporter.export({
+                    fps: fps,
+                    width: finalW,
+                    height: finalH,
+                    colors: colors,
+                    onProgress: (current, total) => {
+                        const pct = (current / total) * 100;
+                        gifProgressBar.style.width = pct + '%';
+                        gifProgressText.textContent = `${current} / ${total}`;
+                    }
+                });
+
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'animation.gif';
+                a.click();
+                URL.revokeObjectURL(url);
+
+            } catch (err) {
+                if (err.message !== 'Cancelled') {
+                    console.error('GIF export error:', err);
+                    alert(t('exportFailed') + ': ' + err.message);
+                }
+            } finally {
+                gifProgressOverlay.classList.add('hidden');
+                if (wasPlaying && animation) animation.play();
+                gifExporter = null;
+            }
+        });
+    }
+
+    if (cancelGifExport) {
+        cancelGifExport.addEventListener('click', () => {
+            if (gifExporter) {
+                gifExporter.cancel();
+            }
+        });
+    }
 
     bgAlphaBtn.addEventListener('click', () => {
         animationContainer.style.backgroundColor = '';
