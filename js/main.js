@@ -623,7 +623,6 @@ class GifExporter {
     constructor(animationData) {
         this.animationData = JSON.parse(JSON.stringify(animationData));
         this.cancelled = false;
-        this.worker = null;
         this.exportAnimation = null;
     }
 
@@ -636,30 +635,6 @@ class GifExporter {
             totalFrames: data.op - data.ip || 30,
             duration: (data.op - data.ip) / (data.fr || 30)
         };
-    }
-
-    createWorker() {
-        const workerCode = `
-            self.onmessage = async function(e) {
-                const { frames, width, height } = e.data;
-                try {
-                    const { encode } = await import('https://unpkg.com/modern-gif@2.0.3/dist/index.mjs');
-                    const gif = await encode({
-                        width: width,
-                        height: height,
-                        frames: frames.map(f => ({
-                            data: new Uint8Array(f.data),
-                            delay: f.delay
-                        }))
-                    });
-                    self.postMessage({ type: 'complete', blob: gif }, [gif]);
-                } catch (err) {
-                    self.postMessage({ type: 'error', message: err.message });
-                }
-            };
-        `;
-        const blob = new Blob([workerCode], { type: 'application/javascript' });
-        return new Worker(URL.createObjectURL(blob), { type: 'module' });
     }
 
     async export(options = {}) {
@@ -735,46 +710,21 @@ class GifExporter {
 
         if (this.cancelled) throw new Error('Cancelled');
 
-        // Worker 编码
-        return await this.encodeInWorker(frames, width, height);
-    }
-
-    encodeInWorker(frames, width, height) {
-        return new Promise((resolve, reject) => {
-            this.worker = this.createWorker();
-
-            this.worker.onmessage = (e) => {
-                if (e.data.type === 'complete') {
-                    resolve(e.data.blob);
-                } else if (e.data.type === 'error') {
-                    reject(new Error(e.data.message));
-                }
-                this.cleanup();
-            };
-
-            this.worker.onerror = (err) => {
-                reject(err);
-                this.cleanup();
-            };
-
-            this.worker.postMessage({
-                frames: frames.map(f => ({ data: f.data, delay: f.delay })),
-                width,
-                height
-            }, frames.map(f => f.data));
+        // 主线程编码
+        const { encode } = modernGif;
+        const gif = await encode({
+            width: width,
+            height: height,
+            frames: frames.map(f => ({
+                data: new Uint8Array(f.data),
+                delay: f.delay
+            }))
         });
+        return gif;
     }
 
     cancel() {
         this.cancelled = true;
-        this.cleanup();
-    }
-
-    cleanup() {
-        if (this.worker) {
-            this.worker.terminate();
-            this.worker = null;
-        }
     }
 }
 
