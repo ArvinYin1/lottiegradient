@@ -597,6 +597,167 @@ class GradientPreviewEditor {
     }
 }
 
+// ========== GIF 导出器 ==========
+
+class GifExporter {
+    constructor(animationData) {
+        this.animationData = JSON.parse(JSON.stringify(animationData));
+        this.cancelled = false;
+        this.worker = null;
+        this.exportAnimation = null;
+    }
+
+    getAnimationInfo() {
+        const data = this.animationData;
+        return {
+            width: data.w || 512,
+            height: data.h || 512,
+            frameRate: data.fr || 30,
+            totalFrames: data.op - data.ip || 30,
+            duration: (data.op - data.ip) / (data.fr || 30)
+        };
+    }
+
+    createWorker() {
+        const workerCode = `
+            self.onmessage = async function(e) {
+                const { frames, width, height } = e.data;
+                try {
+                    const { encode } = await import('https://unpkg.com/modern-gif@2.0.3/dist/index.mjs');
+                    const gif = await encode({
+                        width: width,
+                        height: height,
+                        frames: frames.map(f => ({
+                            data: new Uint8Array(f.data),
+                            delay: f.delay
+                        }))
+                    });
+                    self.postMessage({ type: 'complete', blob: gif }, [gif]);
+                } catch (err) {
+                    self.postMessage({ type: 'error', message: err.message });
+                }
+            };
+        `;
+        const blob = new Blob([workerCode], { type: 'application/javascript' });
+        return new Worker(URL.createObjectURL(blob), { type: 'module' });
+    }
+
+    async export(options = {}) {
+        const info = this.getAnimationInfo();
+        const fps = Math.min(options.fps || info.frameRate, info.frameRate);
+        const width = options.width || info.width;
+        const height = options.height || info.height;
+        const maxFrames = 500;
+
+        const duration = info.totalFrames / info.frameRate;
+        const totalFrames = Math.min(Math.round(duration * fps), maxFrames);
+        const frameDelay = Math.round(100 / fps); // 单位为 0.01 秒
+
+        // 创建隐藏 Canvas 容器
+        const container = document.createElement('div');
+        container.style.position = 'fixed';
+        container.style.left = '-9999px';
+        container.style.width = width + 'px';
+        container.style.height = height + 'px';
+        document.body.appendChild(container);
+
+        // 用 Canvas 渲染器加载动画
+        this.exportAnimation = bodymovin.loadAnimation({
+            container: container,
+            renderer: 'canvas',
+            loop: false,
+            autoplay: false,
+            animationData: this.animationData
+        });
+
+        // 等待动画加载完成
+        await new Promise((resolve) => {
+            const onLoad = () => { resolve(); };
+            this.exportAnimation.addEventListener('DOMLoaded', onLoad);
+            // 兜底：最多等 3 秒
+            setTimeout(resolve, 3000);
+        });
+
+        const canvas = container.querySelector('canvas');
+        if (!canvas) {
+            document.body.removeChild(container);
+            throw new Error('Failed to create canvas renderer');
+        }
+
+        const frames = [];
+        const onProgress = options.onProgress || (() => {});
+
+        try {
+            for (let i = 0; i < totalFrames; i++) {
+                if (this.cancelled) throw new Error('Cancelled');
+
+                const frameNum = (i / totalFrames) * (this.animationData.op - this.animationData.ip) + this.animationData.ip;
+                this.exportAnimation.goToAndStop(frameNum, true);
+
+                // 确保 Canvas 已更新
+                await new Promise(r => requestAnimationFrame(r));
+                await new Promise(r => setTimeout(r, 50));
+
+                const ctx = canvas.getContext('2d');
+                const imageData = ctx.getImageData(0, 0, width, height);
+
+                frames.push({
+                    data: imageData.data.buffer,
+                    delay: frameDelay
+                });
+
+                onProgress(i + 1, totalFrames);
+            }
+        } finally {
+            this.exportAnimation.destroy();
+            if (container.parentNode) document.body.removeChild(container);
+        }
+
+        if (this.cancelled) throw new Error('Cancelled');
+
+        // Worker 编码
+        return await this.encodeInWorker(frames, width, height);
+    }
+
+    encodeInWorker(frames, width, height) {
+        return new Promise((resolve, reject) => {
+            this.worker = this.createWorker();
+
+            this.worker.onmessage = (e) => {
+                if (e.data.type === 'complete') {
+                    resolve(e.data.blob);
+                } else if (e.data.type === 'error') {
+                    reject(new Error(e.data.message));
+                }
+                this.cleanup();
+            };
+
+            this.worker.onerror = (err) => {
+                reject(err);
+                this.cleanup();
+            };
+
+            this.worker.postMessage({
+                frames: frames.map(f => ({ data: f.data, delay: f.delay })),
+                width,
+                height
+            }, frames.map(f => f.data));
+        });
+    }
+
+    cancel() {
+        this.cancelled = true;
+        this.cleanup();
+    }
+
+    cleanup() {
+        if (this.worker) {
+            this.worker.terminate();
+            this.worker = null;
+        }
+    }
+}
+
 let animation = null;
 let monacoEditor = null;
 let gradientEditorInstance = null;
