@@ -711,7 +711,7 @@ class GifExporter {
         if (this.cancelled) throw new Error('Cancelled');
 
         // 主线程编码
-        const { encode } = modernGif;
+        const { encode } = await import('https://unpkg.com/modern-gif@2.0.3/dist/index.mjs');
         const gif = await encode({
             width: width,
             height: height,
