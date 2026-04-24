@@ -913,7 +913,10 @@ function initializeLottiePlayer() {
             if (playPauseBtn) playPauseBtn.innerHTML = pauseIcon;
             if (progressBar) progressBar.value = 0;
             // Clear the container to remove placeholder content immediately
+            // Preserve the GIF progress overlay
+            const progressOverlay = animationContainer.querySelector('#gif-progress-overlay');
             animationContainer.innerHTML = '';
+            if (progressOverlay) animationContainer.appendChild(progressOverlay);
             animation = bodymovin.loadAnimation({
                 container: animationContainer, renderer: 'svg', loop: true, autoplay: true, animationData: jsonData
             });
