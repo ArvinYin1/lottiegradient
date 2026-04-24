@@ -251,3 +251,23 @@ input[type=number]::-webkit-inner-spin-button {
     border-color: #3b82f6;
     background: rgba(59,130,246,0.05);
 }
+
+/* GIF 导出配置面板 */
+#gif-export-panel {
+    transition: all 0.2s ease;
+}
+
+/* GIF 导出进度条 */
+#gif-progress-overlay {
+    backdrop-filter: blur(4px);
+}
+
+#gif-progress-bar {
+    transition: width 0.1s linear;
+}
+
+/* 导出按钮禁用状态 */
+#export-gif-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
