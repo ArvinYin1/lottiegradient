@@ -125,24 +125,25 @@
                     </div>
                 </div>
                 <div class="flex-1 p-4 flex items-center justify-center drop-zone relative" id="drop-zone">
-                    <div id="lottie-animation" class="alpha-checkered rounded-xl overflow-hidden flex items-center justify-center lottie-1x1">
-                        <div id="gif-progress-overlay" class="hidden absolute inset-0 z-20 bg-black/60 rounded-xl flex flex-col items-center justify-center text-white">
-                            <div class="text-sm font-medium mb-2" data-i18n="exporting">正在导出...</div>
-                            <div class="w-48 h-2 bg-white/20 rounded-full overflow-hidden mb-2">
-                                <div id="gif-progress-bar" class="h-full bg-blue-500 rounded-full transition-all" style="width: 0%"></div>
-                            </div>
-                            <div class="text-xs text-white/80 mb-3">
-                                <span id="gif-progress-text">0 / 0</span> 帧
-                            </div>
-                            <button id="cancel-gif-export" class="px-3 py-1 rounded-lg bg-white/20 hover:bg-white/30 text-xs transition-colors" data-i18n="cancelExport">
-                                取消导出
-                            </button>
-                        </div>
-                        <div class="text-center text-slate-400">
+                    <div class="relative w-full">
+                        <div id="lottie-animation" class="alpha-checkered rounded-xl overflow-hidden flex items-center justify-center lottie-1x1">
+                            <div class="text-center text-slate-400">
                             <i data-lucide="image" class="w-16 h-16 mx-auto mb-4 opacity-50"></i>
                             <p data-i18n="dropZoneTitle">拖拽 JSON 文件到此处</p>
                             <p class="text-sm mt-2" data-i18n="dropZoneSubtitle">或点击上方"导入 JSON"按钮</p>
                         </div>
+                    </div>
+                    <div id="gif-progress-overlay" class="hidden absolute inset-0 z-20 bg-black/60 rounded-xl flex flex-col items-center justify-center text-white">
+                        <div class="text-sm font-medium mb-2" data-i18n="exporting">正在导出...</div>
+                        <div class="w-48 h-2 bg-white/20 rounded-full overflow-hidden mb-2">
+                            <div id="gif-progress-bar" class="h-full bg-blue-500 rounded-full transition-all" style="width: 0%"></div>
+                        </div>
+                        <div class="text-xs text-white/80 mb-3">
+                            <span id="gif-progress-text">0 / 0</span> 帧
+                        </div>
+                        <button id="cancel-gif-export" class="px-3 py-1 rounded-lg bg-white/20 hover:bg-white/30 text-xs transition-colors" data-i18n="cancelExport">
+                            取消导出
+                        </button>
                     </div>
                 </div>
                 <div class="p-4 border-t border-slate-200 bg-slate-50/50">
