@@ -17,12 +17,12 @@
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body class="bg-slate-50 text-slate-800 h-screen overflow-hidden">
-<div class="app-wrapper h-screen flex flex-col overflow-hidden">
-    <header class="z-50 glass border-b border-slate-200 flex-shrink-0">
+<div class="app-wrapper h-screen flex flex-col overflow-hidden animate-enter-fade">
+    <header class="z-50 glass border-b border-slate-200 flex-shrink-0 animate-enter-header">
         <div class="content-max-w px-6 py-4">
             <div class="flex items-center justify-between">
                 <div class="flex items-center gap-4">
-                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg animate-enter-logo">
                         <i data-lucide="palette" class="w-5 h-5 text-white"></i>
                     </div>
                     <div>
@@ -57,16 +57,16 @@
     </header>
 
     <main class="content-max-w px-6 pb-6 flex flex-col flex-1 min-h-0 overflow-hidden">
-        <div class="py-3 flex flex-wrap items-center gap-3 flex-shrink-0">
-            <label for="lottie-file" class="btn-primary flex items-center gap-2 px-5 py-2.5 rounded-lg text-white text-sm font-medium cursor-pointer">
+        <div class="py-3 flex flex-wrap items-center gap-3 flex-shrink-0 toolbar-actions">
+            <label for="lottie-file" class="btn-primary flex items-center gap-2 px-5 py-2.5 rounded-lg text-white text-sm font-medium cursor-pointer animate-enter-btn enter-d1">
                 <i data-lucide="download" class="w-4 h-4"></i><span data-i18n="importJson">导入 JSON</span>
             </label>
             <input type="file" id="lottie-file" class="hidden" accept=".json">
-            <button id="export-btn" class="btn-export flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 shadow-sm">
+            <button id="export-btn" class="btn-export flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 shadow-sm animate-enter-btn enter-d2">
                 <i data-lucide="upload" class="w-4 h-4"></i><span data-i18n="exportJson">导出 JSON</span>
             </button>
             <div class="w-px h-6 bg-slate-300 mx-1"></div>
-            <label for="gradient-file" class="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium cursor-pointer text-purple-700 bg-purple-50 border border-purple-200 hover:bg-purple-100">
+            <label for="gradient-file" class="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium cursor-pointer text-purple-700 bg-purple-50 border border-purple-200 hover:bg-purple-100 animate-enter-btn enter-d3">
                 <i data-lucide="refresh-cw" class="w-4 h-4"></i><span data-i18n="syncGradient">同步渐变</span>
             </label>
             <input type="file" id="gradient-file" class="hidden" accept=".json">
@@ -79,7 +79,7 @@
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 flex-1 min-h-0">
-            <div id="preview-card" class="card bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden flex flex-col h-full w-full">
+            <div id="preview-card" class="card bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden flex flex-col h-full w-full animate-enter-card enter-d4">
                 <div class="p-4 border-b border-slate-200 flex items-center justify-between">
                     <h2 class="font-semibold text-slate-800 flex items-center gap-2">
                         <i data-lucide="play" class="w-4 h-4 text-blue-500"></i><span data-i18n="animationPreview">动画预览</span>
@@ -117,7 +117,7 @@
             </div>
 
             <div id="right-column" class="flex flex-col gap-4 h-full">
-                <div class="card bg-white rounded-2xl shadow-lg border border-slate-200 flex flex-col gradient-list-panel">
+                <div class="card bg-white rounded-2xl shadow-lg border border-slate-200 flex flex-col gradient-list-panel animate-enter-card enter-d4">
                     <div class="p-4 border-b border-slate-200">
                         <div class="flex items-center justify-between mb-3">
                             <h2 class="font-semibold text-slate-800 flex items-center gap-2">
@@ -138,7 +138,7 @@
                     </div>
                 </div>
 
-                <div class="card bg-white rounded-2xl shadow-lg border border-slate-200 flex flex-col editor-panel">
+                <div class="card bg-white rounded-2xl shadow-lg border border-slate-200 flex flex-col editor-panel animate-enter-card enter-d4">
                     <div class="p-4 border-b border-slate-200">
                         <h2 id="editor-title" class="font-semibold text-slate-800 flex items-center gap-2">
                             <i data-lucide="sliders" class="w-4 h-4 text-green-500"></i><span data-i18n="noGradientSelected">未选择渐变</span>
