@@ -90,10 +90,12 @@ input[type=color]:focus-visible {
 .gradient-list-content { flex: 1; min-height: 0; }
 .editor-content { flex: 1; min-height: 0; }
 
-/* Lottie 动画容器 - 固定 1:1 宽高比 */
+/* Lottie 动画容器 - 固定 1:1 宽高比，在 flex 容器中自适应 */
 .lottie-1x1 {
     aspect-ratio: 1 / 1;
     width: 100%;
+    height: auto;
+    max-height: 100%;
 }
 
 /* 强制 Lottie 渲染的 SVG 填满容器，不受动画原始尺寸影响 */
@@ -103,9 +105,8 @@ input[type=color]:focus-visible {
     display: block;
 }
 
-body { 
+body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'PingFang SC', 'Microsoft YaHei', sans-serif;
-    overflow-x: hidden;
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
 }
@@ -158,17 +159,19 @@ input[type=range]::-webkit-slider-thumb {
 
 input[type=color] {
     -webkit-appearance: none;
+    appearance: none;
     width: 40px;
     height: 40px;
     border: none;
-    border-radius: 8px;
+    border-radius: 0;
     cursor: pointer;
     padding: 0;
+    overflow: hidden;
 }
 
 input[type=color]::-webkit-color-swatch-wrapper { padding: 0; }
 
-input[type=color]::-webkit-color-swatch { border: none; border-radius: 8px; }
+input[type=color]::-webkit-color-swatch { border: none; border-radius: 0; }
 
 .glass {
     background: rgba(255,255,255,0.7);

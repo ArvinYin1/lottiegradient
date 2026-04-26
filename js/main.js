@@ -56,7 +56,8 @@ const i18n = {
         exportFailed: '导出失败',
         demoVideo: '使用演示',
         videoTutorial: '视频教程',
-        aboutTool: '关于本工具'
+        aboutTool: '关于本工具',
+        aboutAuthor: '关于我'
     },
     en: {
         help: 'Help',
@@ -112,7 +113,8 @@ const i18n = {
         exportFailed: 'Export failed',
         demoVideo: 'Demo',
         videoTutorial: 'Video Tutorial',
-        aboutTool: 'About This Tool'
+        aboutTool: 'About This Tool',
+        aboutAuthor: 'About Me'
     }
 };
 
@@ -213,11 +215,9 @@ function toggleLanguage() {
 }
 
 // ========== 初始化 ==========
-lucide.createIcons();
-
-// 初始化语言
 document.addEventListener('DOMContentLoaded', () => {
     updateLanguage(currentLang);
+    lucide.createIcons();
 });
 
 function truncate_float(num) { return Math.round(num * 1000) / 1000; }
@@ -296,14 +296,27 @@ class GradientPreviewEditor {
         this.preview.style.background = this.to_css();
         previewWrapper.appendChild(this.preview);
 
-        const alphaToggle = document.createElement('label');
-        alphaToggle.className = 'flex items-center gap-2 cursor-pointer';
-        alphaToggle.innerHTML = `<input type="checkbox" ${this.with_alpha ? 'checked' : ''} class="w-4 h-4 rounded border-slate-300 text-blue-600"><span class="text-sm text-slate-600">${t('enableAlpha')}</span>`;
-        container.appendChild(alphaToggle);
+        const alphaToggleWrapper = document.createElement('div');
+        alphaToggleWrapper.className = 'flex justify-end';
+        const alphaToggle = document.createElement('button');
+        alphaToggle.type = 'button';
+        alphaToggle.textContent = t('enableAlpha');
+        alphaToggleWrapper.appendChild(alphaToggle);
+        container.appendChild(alphaToggleWrapper);
 
-        this.check_alpha = alphaToggle.querySelector('input');
-        this.check_alpha.addEventListener('change', () => {
-            self.with_alpha = self.check_alpha.checked;
+        function updateAlphaToggleStyle() {
+            if (self.with_alpha) {
+                alphaToggle.className = 'px-3 py-1.5 rounded-full text-xs font-medium border transition-colors shrink-0 bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100';
+            } else {
+                alphaToggle.className = 'px-3 py-1.5 rounded-full text-xs font-medium border transition-colors shrink-0 bg-white text-slate-500 border-slate-200 hover:bg-slate-50';
+            }
+        }
+        updateAlphaToggleStyle();
+
+        this.check_alpha = alphaToggle;
+        alphaToggle.addEventListener('click', () => {
+            self.with_alpha = !self.with_alpha;
+            updateAlphaToggleStyle();
             for (let color of self.colors) {
                 color.alpha_input.disabled = !self.with_alpha;
                 if (color.alpha_slider) color.alpha_slider.disabled = !self.with_alpha;
@@ -357,11 +370,14 @@ class GradientPreviewEditor {
         leftGroup.className = 'flex items-center gap-1 shrink-0';
         colorRow.appendChild(leftGroup);
 
+        const colorPickerWrapper = document.createElement('div');
+        colorPickerWrapper.className = 'w-7 h-7 rounded-lg border border-slate-300 overflow-hidden flex-shrink-0';
         const colorPicker = document.createElement('input');
         colorPicker.type = 'color';
         colorPicker.value = color.color;
-        colorPicker.className = 'w-8 h-8 rounded-lg border-0 cursor-pointer shrink-0';
-        leftGroup.appendChild(colorPicker);
+        colorPicker.className = 'w-full h-full p-0 cursor-pointer border-0';
+        colorPickerWrapper.appendChild(colorPicker);
+        leftGroup.appendChild(colorPickerWrapper);
 
         if (dynamic_count) {
             const deleteBtn = document.createElement('button');
@@ -567,10 +583,9 @@ class GradientPreviewEditor {
     }
 
     refreshLanguage() {
-        // 更新"启用透明度"复选框文本
-        const alphaLabel = this.check_alpha?.parentElement?.querySelector('span:last-child');
-        if (alphaLabel) {
-            alphaLabel.textContent = t('enableAlpha');
+        // 更新"启用透明度"按钮文本
+        if (this.check_alpha) {
+            this.check_alpha.textContent = t('enableAlpha');
         }
         
         // 更新"添加色标"按钮文本
