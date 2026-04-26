@@ -79,31 +79,29 @@ html {
 
 .animate-enter-header {
     opacity: 0;
-    animation: enterSlideDown 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-    animation-delay: 0.08s;
+    animation: enterSlideDown 0.5s cubic-bezier(0.16, 0.74, 0.3, 1) forwards;
 }
 
 .animate-enter-card {
     opacity: 0;
-    animation: enterSlideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    animation: enterSlideUp 0.6s cubic-bezier(0.16, 0.74, 0.3, 1) forwards;
 }
 
 .animate-enter-btn {
     opacity: 0;
-    animation: enterSlideRight 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    animation: enterSlideRight 0.35s cubic-bezier(0.16, 0.74, 0.3, 1) forwards;
 }
 
 .animate-enter-logo {
     opacity: 0;
-    animation: enterScale 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-    animation-delay: 0.05s;
+    animation: enterScale 0.5s cubic-bezier(0.16, 0.74, 0.3, 1) forwards;
 }
 
-.enter-d1 { animation-delay: 0.15s; }
-.enter-d2 { animation-delay: 0.22s; }
-.enter-d3 { animation-delay: 0.29s; }
-.enter-d4 { animation-delay: 0.35s; }
-.enter-d5 { animation-delay: 0.45s; }
+.enter-d1 { animation-delay: 0s; }
+.enter-d2 { animation-delay: 0s; }
+.enter-d3 { animation-delay: 0s; }
+.enter-d4 { animation-delay: 0s; }
+.enter-d5 { animation-delay: 0s; }
 
 /* ===== 安全区域支持 ===== */
 .app-wrapper {
