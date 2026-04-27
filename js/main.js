@@ -1712,4 +1712,66 @@ class CanvasWorkspace {
         this._onDragMove = null;
         this._onDragEnd = null;
     }
+
+    onResizeStart(e, panelName) {
+        // 只响应左键
+        if (e.button !== 0) return;
+
+        const p = this.panels[panelName];
+        if (!p) return;
+
+        e.preventDefault();
+        e.stopPropagation();
+
+        this.resizeState = {
+            name: panelName,
+            startX: e.clientX,
+            startY: e.clientY,
+            startW: p.w,
+            startH: p.h
+        };
+
+        p.element.classList.add('resizing');
+
+        this._onResizeMove = (e) => this.onResizeMove(e);
+        this._onResizeEnd = (e) => this.onResizeEnd(e);
+        document.addEventListener('mousemove', this._onResizeMove);
+        document.addEventListener('mouseup', this._onResizeEnd);
+    }
+
+    onResizeMove(e) {
+        if (!this.resizeState) return;
+
+        const p = this.panels[this.resizeState.name];
+        if (!p) return;
+
+        const dx = e.clientX - this.resizeState.startX;
+        const dy = e.clientY - this.resizeState.startY;
+
+        // 最小尺寸约束
+        const minW = 200;
+        const minH = 150;
+
+        p.w = Math.max(minW, this.resizeState.startW + dx);
+        p.h = Math.max(minH, this.resizeState.startH + dy);
+
+        this.applyPanelStyle(this.resizeState.name);
+        this.drawConnections();
+    }
+
+    onResizeEnd(e) {
+        if (!this.resizeState) return;
+
+        const p = this.panels[this.resizeState.name];
+        if (p) {
+            p.element.classList.remove('resizing');
+        }
+
+        this.resizeState = null;
+
+        document.removeEventListener('mousemove', this._onResizeMove);
+        document.removeEventListener('mouseup', this._onResizeEnd);
+        this._onResizeMove = null;
+        this._onResizeEnd = null;
+    }
 }
