@@ -1534,4 +1534,115 @@ document.addEventListener('DOMContentLoaded', function() {
             lucide.createIcons();
         }, 10);
     });
+
+    // 初始化画布工作区
+    const canvasWorkspace = new CanvasWorkspace('canvas-container');
 });
+
+// ========== 画布工作区 ==========
+
+class CanvasWorkspace {
+    constructor(containerId) {
+        this.container = document.getElementById(containerId);
+        if (!this.container) {
+            console.error('Canvas container not found:', containerId);
+            return;
+        }
+
+        this.svg = document.getElementById('connection-lines');
+
+        // 面板默认布局（x, y, w, h）
+        this.defaultLayout = {
+            preview: { x: 40,  y: 60,  w: 400, h: 420 },
+            list:    { x: 500, y: 80,  w: 280, h: 360 },
+            editor:  { x: 820, y: 60,  w: 320, h: 400 }
+        };
+
+        // 固定连线关系
+        this.connections = [
+            { from: 'preview', to: 'list' },
+            { from: 'list',    to: 'editor' }
+        ];
+
+        // 当前面板状态
+        this.panels = {};
+
+        // 拖拽状态
+        this.dragState = null;
+
+        // 调整大小状态
+        this.resizeState = null;
+
+        this.init();
+    }
+
+    init() {
+        // 初始化三个面板
+        for (const [name, layout] of Object.entries(this.defaultLayout)) {
+            const panel = document.getElementById(`panel-${name}`);
+            if (!panel) continue;
+
+            this.panels[name] = {
+                element: panel,
+                x: layout.x,
+                y: layout.y,
+                w: layout.w,
+                h: layout.h
+            };
+
+            // 应用初始位置和尺寸
+            this.applyPanelStyle(name);
+
+            // 绑定标题栏拖拽事件
+            const header = panel.querySelector('.panel-header');
+            if (header) {
+                header.addEventListener('mousedown', (e) => this.onDragStart(e, name));
+            }
+
+            // 绑定调整大小事件
+            const handle = panel.querySelector('.resize-handle');
+            if (handle) {
+                handle.addEventListener('mousedown', (e) => this.onResizeStart(e, name));
+            }
+        }
+
+        // 监听窗口 resize
+        window.addEventListener('resize', () => this.onWindowResize());
+
+        // 初始绘制连线
+        this.drawConnections();
+    }
+
+    applyPanelStyle(name) {
+        const p = this.panels[name];
+        if (!p) return;
+        p.element.style.transform = `translate(${p.x}px, ${p.y}px)`;
+        p.element.style.width = `${p.w}px`;
+        p.element.style.height = `${p.h}px`;
+    }
+
+    onWindowResize() {
+        const containerRect = this.container.getBoundingClientRect();
+        for (const [name, p] of Object.entries(this.panels)) {
+            // 确保面板至少保留 40px 在可视区域内
+            if (p.x + p.w < 40) {
+                p.x = Math.min(40, containerRect.width - 40);
+            }
+            if (p.x > containerRect.width - 40) {
+                p.x = Math.max(0, containerRect.width - p.w);
+            }
+            if (p.y + p.h < 40) {
+                p.y = Math.min(40, containerRect.height - 40);
+            }
+            if (p.y > containerRect.height - 40) {
+                p.y = Math.max(0, containerRect.height - p.h);
+            }
+            this.applyPanelStyle(name);
+        }
+        this.drawConnections();
+    }
+
+    drawConnections() {
+        // Stub: will be implemented in Task 6
+    }
+}
