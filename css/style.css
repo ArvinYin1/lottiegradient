@@ -332,3 +332,119 @@ input[type=number]::-webkit-inner-spin-button {
     opacity: 0.5;
     cursor: not-allowed;
 }
+
+/* ===== 画布工作区 ===== */
+
+/* 画布容器 */
+#canvas-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
+/* 点阵背景 */
+.canvas-bg {
+    position: absolute;
+    inset: 0;
+    background-color: #f8fafc;
+    background-image: radial-gradient(#94a3b8 1px, transparent 1px);
+    background-size: 20px 20px;
+}
+
+/* 画布面板外壳 */
+.canvas-panel {
+    position: absolute;
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.75rem;
+    box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    user-select: none;
+}
+
+/* 面板标题栏 */
+.panel-header {
+    height: 40px;
+    padding: 0 12px;
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+    border-radius: 0.75rem 0.75rem 0 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: grab;
+    flex-shrink: 0;
+}
+
+.panel-header:active {
+    cursor: grabbing;
+}
+
+/* 连接点 */
+.connection-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+/* 面板内容区 */
+.panel-body {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+/* 调整大小手柄 */
+.resize-handle {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    width: 16px;
+    height: 16px;
+    cursor: nwse-resize;
+    background: linear-gradient(
+        135deg,
+        transparent 45%,
+        #94a3b8 45%,
+        #94a3b8 50%,
+        transparent 50%,
+        transparent 60%,
+        #94a3b8 60%,
+        #94a3b8 65%,
+        transparent 65%
+    );
+    border-bottom-right-radius: 0.75rem;
+    z-index: 2;
+}
+
+/* 拖拽时提升层级 */
+.canvas-panel.dragging {
+    z-index: 100;
+    box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);
+}
+
+/* 连线层 */
+#connection-lines {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.connection-line {
+    fill: none;
+    stroke: #cbd5e1;
+    stroke-width: 2;
+}
+
+/* 拖拽时禁用面板内容的事件 */
+.canvas-panel.dragging .panel-body,
+.canvas-panel.resizing .panel-body {
+    pointer-events: none;
+}
