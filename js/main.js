@@ -1220,4 +1220,293 @@ document.addEventListener('DOMContentLoaded', function() {
             lucide.createIcons();
         }, 10);
     });
+
+    // 初始化画布工作区
+    const canvasWorkspace = new CanvasWorkspace('canvas-container');
 });
+
+// ========== 画布工作区 ==========
+
+class CanvasWorkspace {
+    constructor(containerId) {
+        this.container = document.getElementById(containerId);
+        if (!this.container) {
+            console.error('Canvas container not found:', containerId);
+            return;
+        }
+
+        this.svg = document.getElementById('connection-lines');
+
+        // 面板默认布局（x, y, w, h）
+        this.defaultLayout = {
+            preview: { x: 40,  y: 60,  w: 400, h: 420 },
+            list:    { x: 500, y: 80,  w: 280, h: 360 },
+            editor:  { x: 820, y: 60,  w: 320, h: 400 }
+        };
+
+        // 固定连线关系
+        this.connections = [
+            { from: 'preview', to: 'list' },
+            { from: 'list',    to: 'editor' }
+        ];
+
+        // 当前面板状态
+        this.panels = {};
+
+        // 拖拽状态
+        this.dragState = null;
+
+        // 调整大小状态
+        this.resizeState = null;
+
+        this.init();
+    }
+
+    init() {
+        // 初始化三个面板
+        for (const [name, layout] of Object.entries(this.defaultLayout)) {
+            const panel = document.getElementById(`panel-${name}`);
+            if (!panel) continue;
+
+            this.panels[name] = {
+                element: panel,
+                x: layout.x,
+                y: layout.y,
+                w: layout.w,
+                h: layout.h
+            };
+
+            // 应用初始位置和尺寸
+            this.applyPanelStyle(name);
+
+            // 绑定标题栏拖拽事件
+            const header = panel.querySelector('.panel-header');
+            if (header) {
+                header.addEventListener('mousedown', (e) => this.onDragStart(e, name));
+            }
+
+            // 绑定调整大小事件
+            const handle = panel.querySelector('.resize-handle');
+            if (handle) {
+                handle.addEventListener('mousedown', (e) => this.onResizeStart(e, name));
+            }
+        }
+
+        // 监听窗口 resize
+        window.addEventListener('resize', () => this.onWindowResize());
+
+        // 初始绘制连线
+        this.drawConnections();
+    }
+
+    applyPanelStyle(name) {
+        const p = this.panels[name];
+        if (!p) return;
+        p.element.style.transform = `translate(${p.x}px, ${p.y}px)`;
+        p.element.style.width = `${p.w}px`;
+        p.element.style.height = `${p.h}px`;
+    }
+
+    onWindowResize() {
+        const containerRect = this.container.getBoundingClientRect();
+        for (const [name, p] of Object.entries(this.panels)) {
+            // 确保面板至少保留 40px 在可视区域内
+            if (p.x + p.w < 40) {
+                p.x = Math.min(40, containerRect.width - 40);
+            }
+            if (p.x > containerRect.width - 40) {
+                p.x = Math.max(0, containerRect.width - p.w);
+            }
+            if (p.y + p.h < 40) {
+                p.y = Math.min(40, containerRect.height - 40);
+            }
+            if (p.y > containerRect.height - 40) {
+                p.y = Math.max(0, containerRect.height - p.h);
+            }
+            this.applyPanelStyle(name);
+        }
+        this.drawConnections();
+    }
+
+    drawConnections() {
+        if (!this.svg) return;
+
+        // 清空现有连线
+        this.svg.innerHTML = '';
+
+        for (const conn of this.connections) {
+            const fromPanel = this.panels[conn.from];
+            const toPanel = this.panels[conn.to];
+            if (!fromPanel || !toPanel) continue;
+
+            const path = this.getConnectionPath(fromPanel, toPanel);
+
+            // 创建 path 元素
+            const pathEl = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            pathEl.setAttribute('d', path);
+            pathEl.setAttribute('class', 'connection-line');
+            this.svg.appendChild(pathEl);
+
+            // 绘制连接点
+            this.drawConnectionDot(fromPanel.x + fromPanel.w, fromPanel.y + fromPanel.h / 2, this.getPanelColor(conn.from));
+            this.drawConnectionDot(toPanel.x, toPanel.y + toPanel.h / 2, this.getPanelColor(conn.to));
+        }
+    }
+
+    getConnectionPath(a, b) {
+        const sx = a.x + a.w;       // A 右边缘
+        const sy = a.y + a.h / 2;   // A 垂直中点
+        const ex = b.x;             // B 左边缘
+        const ey = b.y + b.h / 2;   // B 垂直中点
+
+        const offset = Math.abs(ex - sx) * 0.5;
+        return `M ${sx} ${sy} C ${sx + offset} ${sy}, ${ex - offset} ${ey}, ${ex} ${ey}`;
+    }
+
+    getPanelColor(name) {
+        const colors = {
+            preview: '#3b82f6',
+            list:    '#a855f7',
+            editor:  '#22c55e'
+        };
+        return colors[name] || '#94a3b8';
+    }
+
+    drawConnectionDot(cx, cy, color) {
+        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        circle.setAttribute('cx', cx);
+        circle.setAttribute('cy', cy);
+        circle.setAttribute('r', 4);
+        circle.setAttribute('fill', color);
+        this.svg.appendChild(circle);
+    }
+
+    onDragStart(e, panelName) {
+        // 只响应左键
+        if (e.button !== 0) return;
+
+        const p = this.panels[panelName];
+        if (!p) return;
+
+        e.preventDefault();
+        e.stopPropagation();
+
+        this.dragState = {
+            name: panelName,
+            startX: e.clientX,
+            startY: e.clientY,
+            panelStartX: p.x,
+            panelStartY: p.y
+        };
+
+        p.element.classList.add('dragging');
+
+        // 使用 document 级事件监听，防止鼠标移出面板时丢失
+        this._onDragMove = (e) => this.onDragMove(e);
+        this._onDragEnd = (e) => this.onDragEnd(e);
+        document.addEventListener('mousemove', this._onDragMove);
+        document.addEventListener('mouseup', this._onDragEnd);
+    }
+
+    onDragMove(e) {
+        if (!this.dragState) return;
+
+        const p = this.panels[this.dragState.name];
+        if (!p) return;
+
+        const dx = e.clientX - this.dragState.startX;
+        const dy = e.clientY - this.dragState.startY;
+
+        let newX = this.dragState.panelStartX + dx;
+        let newY = this.dragState.panelStartY + dy;
+
+        // 边界约束：至少保留 40px 可见
+        const containerRect = this.container.getBoundingClientRect();
+        newX = Math.max(-p.w + 40, Math.min(newX, containerRect.width - 40));
+        newY = Math.max(0, Math.min(newY, containerRect.height - 40));
+
+        p.x = newX;
+        p.y = newY;
+
+        this.applyPanelStyle(this.dragState.name);
+        this.drawConnections();
+    }
+
+    onDragEnd(e) {
+        if (!this.dragState) return;
+
+        const p = this.panels[this.dragState.name];
+        if (p) {
+            p.element.classList.remove('dragging');
+        }
+
+        this.dragState = null;
+
+        document.removeEventListener('mousemove', this._onDragMove);
+        document.removeEventListener('mouseup', this._onDragEnd);
+        this._onDragMove = null;
+        this._onDragEnd = null;
+    }
+
+    onResizeStart(e, panelName) {
+        // 只响应左键
+        if (e.button !== 0) return;
+
+        const p = this.panels[panelName];
+        if (!p) return;
+
+        e.preventDefault();
+        e.stopPropagation();
+
+        this.resizeState = {
+            name: panelName,
+            startX: e.clientX,
+            startY: e.clientY,
+            startW: p.w,
+            startH: p.h
+        };
+
+        p.element.classList.add('resizing');
+
+        this._onResizeMove = (e) => this.onResizeMove(e);
+        this._onResizeEnd = (e) => this.onResizeEnd(e);
+        document.addEventListener('mousemove', this._onResizeMove);
+        document.addEventListener('mouseup', this._onResizeEnd);
+    }
+
+    onResizeMove(e) {
+        if (!this.resizeState) return;
+
+        const p = this.panels[this.resizeState.name];
+        if (!p) return;
+
+        const dx = e.clientX - this.resizeState.startX;
+        const dy = e.clientY - this.resizeState.startY;
+
+        // 最小尺寸约束
+        const minW = 200;
+        const minH = 150;
+
+        p.w = Math.max(minW, this.resizeState.startW + dx);
+        p.h = Math.max(minH, this.resizeState.startH + dy);
+
+        this.applyPanelStyle(this.resizeState.name);
+        this.drawConnections();
+    }
+
+    onResizeEnd(e) {
+        if (!this.resizeState) return;
+
+        const p = this.panels[this.resizeState.name];
+        if (p) {
+            p.element.classList.remove('resizing');
+        }
+
+        this.resizeState = null;
+
+        document.removeEventListener('mousemove', this._onResizeMove);
+        document.removeEventListener('mouseup', this._onResizeEnd);
+        this._onResizeMove = null;
+        this._onResizeEnd = null;
+    }
+}
