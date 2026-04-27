@@ -1645,4 +1645,71 @@ class CanvasWorkspace {
     drawConnections() {
         // Stub: will be implemented in Task 6
     }
+
+    onDragStart(e, panelName) {
+        // 只响应左键
+        if (e.button !== 0) return;
+
+        const p = this.panels[panelName];
+        if (!p) return;
+
+        e.preventDefault();
+        e.stopPropagation();
+
+        this.dragState = {
+            name: panelName,
+            startX: e.clientX,
+            startY: e.clientY,
+            panelStartX: p.x,
+            panelStartY: p.y
+        };
+
+        p.element.classList.add('dragging');
+
+        // 使用 document 级事件监听，防止鼠标移出面板时丢失
+        this._onDragMove = (e) => this.onDragMove(e);
+        this._onDragEnd = (e) => this.onDragEnd(e);
+        document.addEventListener('mousemove', this._onDragMove);
+        document.addEventListener('mouseup', this._onDragEnd);
+    }
+
+    onDragMove(e) {
+        if (!this.dragState) return;
+
+        const p = this.panels[this.dragState.name];
+        if (!p) return;
+
+        const dx = e.clientX - this.dragState.startX;
+        const dy = e.clientY - this.dragState.startY;
+
+        let newX = this.dragState.panelStartX + dx;
+        let newY = this.dragState.panelStartY + dy;
+
+        // 边界约束：至少保留 40px 可见
+        const containerRect = this.container.getBoundingClientRect();
+        newX = Math.max(-p.w + 40, Math.min(newX, containerRect.width - 40));
+        newY = Math.max(0, Math.min(newY, containerRect.height - 40));
+
+        p.x = newX;
+        p.y = newY;
+
+        this.applyPanelStyle(this.dragState.name);
+        this.drawConnections();
+    }
+
+    onDragEnd(e) {
+        if (!this.dragState) return;
+
+        const p = this.panels[this.dragState.name];
+        if (p) {
+            p.element.classList.remove('dragging');
+        }
+
+        this.dragState = null;
+
+        document.removeEventListener('mousemove', this._onDragMove);
+        document.removeEventListener('mouseup', this._onDragEnd);
+        this._onDragMove = null;
+        this._onDragEnd = null;
+    }
 }
