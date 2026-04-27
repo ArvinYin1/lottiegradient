@@ -146,7 +146,7 @@ input[type=color]:focus-visible {
 
 /* 滚动容器高度 - 填满父卡片剩余空间 */
 .gradient-list-content { flex: 1; min-height: 0; }
-.editor-content { flex: 1; min-height: 0; }
+.editor-content { flex: 1; min-height: 0; overflow: auto; }
 
 /* Lottie 动画容器 - 固定 1:1 宽高比，在 flex 容器中自适应 */
 .lottie-1x1 {
@@ -385,22 +385,30 @@ input[type=number]::-webkit-inner-spin-button {
     position: absolute;
     right: 0;
     bottom: 0;
-    width: 16px;
-    height: 16px;
+    width: 20px;
+    height: 20px;
     cursor: nwse-resize;
-    background: linear-gradient(
-        135deg,
-        transparent 45%,
-        #94a3b8 45%,
-        #94a3b8 50%,
-        transparent 50%,
-        transparent 60%,
-        #94a3b8 60%,
-        #94a3b8 65%,
-        transparent 65%
-    );
-    border-bottom-right-radius: 0.75rem;
     z-index: 2;
+    border-bottom-right-radius: 0.75rem;
+}
+
+.resize-handle::after {
+    content: '';
+    position: absolute;
+    right: 4px;
+    bottom: 4px;
+    width: 8px;
+    height: 8px;
+    border-right: 2px solid #94a3b8;
+    border-bottom: 2px solid #94a3b8;
+    border-radius: 0 0 3px 0;
+    opacity: 0.5;
+    transition: opacity 0.2s, border-color 0.2s;
+}
+
+.resize-handle:hover::after {
+    opacity: 1;
+    border-color: #64748b;
 }
 
 /* 拖拽时提升层级 */
@@ -427,4 +435,12 @@ input[type=number]::-webkit-inner-spin-button {
 .canvas-panel.dragging .panel-body,
 .canvas-panel.resizing .panel-body {
     pointer-events: none;
+}
+
+/* 画布平移层 */
+.canvas-pan-layer {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
 }

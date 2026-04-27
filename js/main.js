@@ -395,7 +395,7 @@ class GradientPreviewEditor {
         const hexInput = document.createElement('input');
         hexInput.type = 'text';
         hexInput.value = color.color;
-        hexInput.className = 'w-20 px-2 py-1.5 rounded-lg bg-white border border-slate-200 text-xs font-mono uppercase text-center shrink-0';
+        hexInput.className = 'w-16 px-2 py-1.5 rounded-lg bg-white border border-slate-200 text-xs font-mono uppercase text-center shrink-0';
         colorRow.appendChild(hexInput);
 
         // 右侧：位置和透明度控制
@@ -415,7 +415,7 @@ class GradientPreviewEditor {
         posSlider.max = 100;
         posSlider.step = 1;
         posSlider.value = Math.round(color.offset * 100);
-        posSlider.className = 'flex-1 min-w-[60px]';
+        posSlider.className = 'flex-1 min-w-[40px]';
         posContainer.appendChild(posSlider);
 
         const posInput = document.createElement('input');
@@ -423,7 +423,7 @@ class GradientPreviewEditor {
         posInput.min = 0;
         posInput.max = 100;
         posInput.value = Math.round(color.offset * 100);
-        posInput.className = 'w-12 px-1 py-1 rounded-md bg-white border border-slate-200 text-xs text-center';
+        posInput.className = 'w-10 px-1 py-1 rounded-md bg-white border border-slate-200 text-xs text-center';
         posContainer.appendChild(posInput);
 
         posContainer.appendChild(document.createTextNode('%'));
@@ -441,7 +441,7 @@ class GradientPreviewEditor {
         alphaSlider.step = 1;
         alphaSlider.value = Math.round(color.alpha * 100);
         alphaSlider.disabled = !this.with_alpha;
-        alphaSlider.className = 'flex-1 min-w-[60px]';
+        alphaSlider.className = 'flex-1 min-w-[40px]';
         alphaContainer.appendChild(alphaSlider);
 
         const alphaInput = document.createElement('input');
@@ -450,7 +450,7 @@ class GradientPreviewEditor {
         alphaInput.max = 100;
         alphaInput.value = Math.round(color.alpha * 100);
         alphaInput.disabled = !this.with_alpha;
-        alphaInput.className = 'w-12 px-1 py-1 rounded-md bg-white border border-slate-200 text-xs text-center disabled:opacity-50';
+        alphaInput.className = 'w-10 px-1 py-1 rounded-md bg-white border border-slate-200 text-xs text-center disabled:opacity-50';
         alphaContainer.appendChild(alphaInput);
 
         alphaContainer.appendChild(document.createTextNode('%'));
@@ -1236,12 +1236,18 @@ class CanvasWorkspace {
         }
 
         this.svg = document.getElementById('connection-lines');
+        this.panLayer = document.querySelector('.canvas-pan-layer');
+
+        // 平移状态
+        this.panX = 0;
+        this.panY = 0;
+        this.panState = null;
 
         // 面板默认布局（x, y, w, h）
         this.defaultLayout = {
             preview: { x: 40,  y: 60,  w: 400, h: 420 },
             list:    { x: 500, y: 80,  w: 280, h: 360 },
-            editor:  { x: 820, y: 60,  w: 320, h: 400 }
+            editor:  { x: 820, y: 60,  w: 800, h: 400 }
         };
 
         // 固定连线关系
@@ -1263,8 +1269,28 @@ class CanvasWorkspace {
     }
 
     init() {
+        const containerRect = this.container.getBoundingClientRect();
+        const gap = 60;
+        const preview = this.defaultLayout.preview;
+        const list = this.defaultLayout.list;
+        const editor = this.defaultLayout.editor;
+
+        // 第一排：preview + list 水平排列
+        const row1Width = preview.w + gap + list.w;
+        const row1StartX = Math.max(40, (containerRect.width - row1Width) / 2);
+
+        // 第二排：editor 在第一排下方居中
+        const totalHeight = preview.h + gap + editor.h;
+        const startY = Math.max(40, (containerRect.height - totalHeight) / 2);
+
+        const computedLayout = {
+            preview: { x: row1StartX, y: startY, w: preview.w, h: preview.h },
+            list:    { x: row1StartX + preview.w + gap, y: startY + (preview.h - list.h) / 2, w: list.w, h: list.h },
+            editor:  { x: Math.max(40, (containerRect.width - editor.w) / 2), y: startY + preview.h + gap, w: editor.w, h: editor.h }
+        };
+
         // 初始化三个面板
-        for (const [name, layout] of Object.entries(this.defaultLayout)) {
+        for (const [name, layout] of Object.entries(computedLayout)) {
             const panel = document.getElementById(`panel-${name}`);
             if (!panel) continue;
 
@@ -1290,6 +1316,11 @@ class CanvasWorkspace {
             if (handle) {
                 handle.addEventListener('mousedown', (e) => this.onResizeStart(e, name));
             }
+        }
+
+        // 绑定画布平移事件
+        if (this.container) {
+            this.container.addEventListener('mousedown', (e) => this.onPanStart(e));
         }
 
         // 监听窗口 resize
@@ -1446,6 +1477,48 @@ class CanvasWorkspace {
         document.removeEventListener('mouseup', this._onDragEnd);
         this._onDragMove = null;
         this._onDragEnd = null;
+    }
+
+    onPanStart(e) {
+        if (e.button !== 0) return;
+        if (e.target.closest('.canvas-panel')) return;
+
+        this.panState = {
+            startX: e.clientX,
+            startY: e.clientY,
+            panStartX: this.panX,
+            panStartY: this.panY
+        };
+
+        this._onPanMove = (e) => this.onPanMove(e);
+        this._onPanEnd = (e) => this.onPanEnd(e);
+        document.addEventListener('mousemove', this._onPanMove);
+        document.addEventListener('mouseup', this._onPanEnd);
+    }
+
+    onPanMove(e) {
+        if (!this.panState) return;
+
+        const dx = e.clientX - this.panState.startX;
+        const dy = e.clientY - this.panState.startY;
+
+        this.panX = this.panState.panStartX + dx;
+        this.panY = this.panState.panStartY + dy;
+
+        if (this.panLayer) {
+            this.panLayer.style.transform = `translate(${this.panX}px, ${this.panY}px)`;
+        }
+    }
+
+    onPanEnd(e) {
+        if (!this.panState) return;
+
+        this.panState = null;
+
+        document.removeEventListener('mousemove', this._onPanMove);
+        document.removeEventListener('mouseup', this._onPanEnd);
+        this._onPanMove = null;
+        this._onPanEnd = null;
     }
 
     onResizeStart(e, panelName) {
