@@ -1,0 +1,60 @@
+<h2>设计文档 — 第二部分：数据模型与交互</h2><p class="subtitle">面板位置状态、拖拽逻辑、连线计算</p>
+
+<div class="section">
+  <h3>面板状态数据结构</h3>
+  <pre style="background:#f1f5f9;padding:12px;border-radius:8px;font-size:12px;overflow:auto;">
+const panelState = {
+  preview:   { x: 40,  y: 60,  w: 400, h: 420 },
+  list:      { x: 500, y: 80,  w: 280, h: 360 },
+  editor:    { x: 820, y: 60,  w: 320, h: 400 }
+};
+
+// 面板之间的固定连接关系
+const connections = [
+  { from: 'preview', to: 'list' },
+  { from: 'list',    to: 'editor' }
+];
+  </pre>
+  <p>每个面板的位置和尺寸存储在内存中，不持久化到 localStorage（每次刷新重置为默认布局）。</p>
+</div>
+
+<div class="section">
+  <h3>拖拽交互逻辑</h3>
+  <ul>
+    <li><strong>mousedown on 标题栏</strong>：记录起始鼠标位置和面板当前位置，添加 <code>cursor: grabbing</code></li>
+    <li><strong>mousemove</strong>：计算偏移量 Δx/Δy，更新面板 <code>transform: translate(newX, newY)</code>，同步重绘 SVG 连线</li>
+    <li><strong>mouseup</strong>：移除事件监听，恢复 <code>cursor: grab</code></li>
+    <li>拖拽时面板提升 <code>z-index</code> 到最上层，避免被其他面板遮挡</li>
+  </ul>
+</div>
+
+<div class="section">
+  <h3>调整大小交互逻辑</h3>
+  <ul>
+    <li><strong>mousedown on 右下角手柄</strong>：记录起始鼠标位置和面板当前宽高</li>
+    <li><strong>mousemove</strong>：计算新宽高（最小 200×150px），更新面板 <code>width/height</code> 样式，同步重绘 SVG 连线</li>
+    <li><strong>mouseup</strong>：移除事件监听</li>
+  </ul>
+</div>
+
+<div class="section">
+  <h3>贝塞尔连线计算</h3>
+  <pre style="background:#f1f5f9;padding:12px;border-radius:8px;font-size:12px;overflow:auto;">
+// 从面板 A 右侧中点 → 面板 B 左侧中点
+function getConnectionPath(panelA, panelB) {
+  const startX = panelA.x + panelA.w;  // A 的右边缘
+  const startY = panelA.y + panelA.h / 2;  // A 的垂直中点
+  const endX   = panelB.x;             // B 的左边缘
+  const endY   = panelB.y + panelB.h / 2;  // B 的垂直中点
+
+  // 控制点：水平延伸，创造平滑曲线
+  const controlOffset = Math.abs(endX - startX) * 0.5;
+  const cp1x = startX + controlOffset;
+  const cp1y = startY;
+  const cp2x = endX - controlOffset;
+  const cp2y = endY;
+
+  return `M ${startX} ${startY} C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${endX} ${endY}`;
+}
+  </pre>
+</div>

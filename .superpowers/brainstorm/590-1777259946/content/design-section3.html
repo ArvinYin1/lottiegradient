@@ -1,0 +1,57 @@
+<h2>设计文档 — 第三部分：实现细节</h2><p class="subtitle">HTML 结构调整、与现有代码整合、事件处理</p>
+
+<div class="section">
+  <h3>HTML 结构变化</h3>
+  <p>将现有的 <code>grid grid-cols-1 lg:grid-cols-2</code> 布局替换为画布容器：</p>
+  <pre style="background:#f1f5f9;padding:12px;border-radius:8px;font-size:12px;overflow:auto;">
+<!-- 新结构 -->
+<div id="canvas-container" class="flex-1 relative overflow-hidden">
+  <!-- 点阵背景 -->
+  <div class="canvas-bg"></div>
+
+  <!-- SVG 连线层 -->
+  <svg id="connection-lines" class="absolute inset-0 pointer-events-none"></svg>
+
+  <!-- 动画预览面板 -->
+  <div id="panel-preview" class="canvas-panel">
+    <div class="panel-header" data-panel="preview">...标题栏...</div>
+    <div class="panel-body">...原有内容...</div>
+    <div class="resize-handle"></div>
+  </div>
+
+  <!-- 渐变列表面板 -->
+  <div id="panel-list" class="canvas-panel">
+    <div class="panel-header" data-panel="list">...标题栏...</div>
+    <div class="panel-body">...原有内容...</div>
+    <div class="resize-handle"></div>
+  </div>
+
+  <!-- 颜色编辑器面板 -->
+  <div id="panel-editor" class="canvas-panel">
+    <div class="panel-header" data-panel="editor">...标题栏...</div>
+    <div class="panel-body">...原有内容...</div>
+    <div class="resize-handle"></div>
+  </div>
+</div>
+  </pre>
+</div>
+
+<div class="section">
+  <h3>与现有代码的整合策略</h3>
+  <ul>
+    <li><strong>DOM ID 保持不变</strong>：<code>#lottie-animation</code>、<code>#gradient-names-list</code>、<code>#editor</code> 等 ID 不变，确保 JS 逻辑无需修改</li>
+    <li><strong>面板内容完全复用</strong>：将现有的 <code>#preview-card</code>、<code>gradient-list-panel</code>、<code>editor-panel</code> 的内容迁移到新的 <code>canvas-panel</code> 结构中</li>
+    <li><strong>拖拽/调整大小逻辑独立封装</strong>：新建 <code>CanvasWorkspace</code> 类，负责面板位置管理、拖拽、连线绘制，与业务逻辑解耦</li>
+    <li><strong>CSS 独立维护</strong>：画布相关的样式（<code>.canvas-panel</code>、<code>.panel-header</code> 等）放在 <code>style.css</code> 中新增一个区块</li>
+  </ul>
+</div>
+
+<div class="section">
+  <h3>事件处理细节</h3>
+  <ul>
+    <li><strong>拖拽时阻止文本选中</strong>：<code>e.preventDefault()</code> + <code>user-select: none</code>，避免拖拽过程中误选文本</li>
+    <li><strong>边界约束</strong>：面板不能拖出画布可视区域（保留至少 40px 可见）</li>
+    <li><strong>最小尺寸</strong>：宽度 ≥ 200px，高度 ≥ 150px</li>
+    <li><strong>窗口 resize</strong>：监听 window resize，如果面板超出新窗口范围，自动将其移回可视区域</li>
+  </ul>
+</div>

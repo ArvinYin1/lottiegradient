@@ -57,16 +57,6 @@ const i18n = {
         demoVideo: '使用演示',
         videoTutorial: '视频教程',
         aboutTool: '关于本工具',
-        exportGif: '导出 GIF',
-        exporting: '正在导出...',
-        cancelExport: '取消导出',
-        fps: '帧率 (FPS)',
-        width: '宽度 (px)',
-        height: '高度 (px)',
-        colors: '颜色数量',
-        exportSettings: '导出设置',
-        startExport: '开始导出',
-        maxFramesWarning: '帧数过多，已限制为 500 帧',
         aboutAuthor: '关于我'
     },
     en: {
@@ -124,16 +114,6 @@ const i18n = {
         demoVideo: 'Demo',
         videoTutorial: 'Video Tutorial',
         aboutTool: 'About This Tool',
-        exportGif: 'Export GIF',
-        exporting: 'Exporting...',
-        cancelExport: 'Cancel',
-        fps: 'FPS',
-        width: 'Width (px)',
-        height: 'Height (px)',
-        colors: 'Colors',
-        exportSettings: 'Export Settings',
-        startExport: 'Start Export',
-        maxFramesWarning: 'Too many frames, limited to 500',
         aboutAuthor: 'About Me'
     }
 };
@@ -632,167 +612,6 @@ class GradientPreviewEditor {
     }
 }
 
-// ========== GIF 导出器 ==========
-
-class GifExporter {
-    constructor(animationData) {
-        this.animationData = JSON.parse(JSON.stringify(animationData));
-        this.cancelled = false;
-        this.worker = null;
-        this.exportAnimation = null;
-    }
-
-    getAnimationInfo() {
-        const data = this.animationData;
-        return {
-            width: data.w || 512,
-            height: data.h || 512,
-            frameRate: data.fr || 30,
-            totalFrames: data.op - data.ip || 30,
-            duration: (data.op - data.ip) / (data.fr || 30)
-        };
-    }
-
-    createWorker() {
-        const workerCode = `
-            self.onmessage = async function(e) {
-                const { frames, width, height } = e.data;
-                try {
-                    const { encode } = await import('https://unpkg.com/modern-gif@2.0.3/dist/index.mjs');
-                    const gif = await encode({
-                        width: width,
-                        height: height,
-                        frames: frames.map(f => ({
-                            data: new Uint8Array(f.data),
-                            delay: f.delay
-                        }))
-                    });
-                    self.postMessage({ type: 'complete', blob: gif }, [gif]);
-                } catch (err) {
-                    self.postMessage({ type: 'error', message: err.message });
-                }
-            };
-        `;
-        const blob = new Blob([workerCode], { type: 'application/javascript' });
-        return new Worker(URL.createObjectURL(blob), { type: 'module' });
-    }
-
-    async export(options = {}) {
-        const info = this.getAnimationInfo();
-        const fps = Math.min(options.fps || info.frameRate, info.frameRate);
-        const width = options.width || info.width;
-        const height = options.height || info.height;
-        const maxFrames = 500;
-
-        const duration = info.totalFrames / info.frameRate;
-        const totalFrames = Math.min(Math.round(duration * fps), maxFrames);
-        const frameDelay = Math.round(100 / fps); // 单位为 0.01 秒
-
-        // 创建隐藏 Canvas 容器
-        const container = document.createElement('div');
-        container.style.position = 'fixed';
-        container.style.left = '-9999px';
-        container.style.width = width + 'px';
-        container.style.height = height + 'px';
-        document.body.appendChild(container);
-
-        // 用 Canvas 渲染器加载动画
-        this.exportAnimation = bodymovin.loadAnimation({
-            container: container,
-            renderer: 'canvas',
-            loop: false,
-            autoplay: false,
-            animationData: this.animationData
-        });
-
-        // 等待动画加载完成
-        await new Promise((resolve) => {
-            const onLoad = () => { resolve(); };
-            this.exportAnimation.addEventListener('DOMLoaded', onLoad);
-            // 兜底：最多等 3 秒
-            setTimeout(resolve, 3000);
-        });
-
-        const canvas = container.querySelector('canvas');
-        if (!canvas) {
-            document.body.removeChild(container);
-            throw new Error('Failed to create canvas renderer');
-        }
-
-        const frames = [];
-        const onProgress = options.onProgress || (() => {});
-
-        try {
-            for (let i = 0; i < totalFrames; i++) {
-                if (this.cancelled) throw new Error('Cancelled');
-
-                const frameNum = (i / totalFrames) * (this.animationData.op - this.animationData.ip) + this.animationData.ip;
-                this.exportAnimation.goToAndStop(frameNum, true);
-
-                // 确保 Canvas 已更新
-                await new Promise(r => requestAnimationFrame(r));
-                await new Promise(r => setTimeout(r, 50));
-
-                const ctx = canvas.getContext('2d');
-                const imageData = ctx.getImageData(0, 0, width, height);
-
-                frames.push({
-                    data: imageData.data.buffer,
-                    delay: frameDelay
-                });
-
-                onProgress(i + 1, totalFrames);
-            }
-        } finally {
-            this.exportAnimation.destroy();
-            if (container.parentNode) document.body.removeChild(container);
-        }
-
-        if (this.cancelled) throw new Error('Cancelled');
-
-        // Worker 编码
-        return await this.encodeInWorker(frames, width, height);
-    }
-
-    encodeInWorker(frames, width, height) {
-        return new Promise((resolve, reject) => {
-            this.worker = this.createWorker();
-
-            this.worker.onmessage = (e) => {
-                if (e.data.type === 'complete') {
-                    resolve(e.data.blob);
-                } else if (e.data.type === 'error') {
-                    reject(new Error(e.data.message));
-                }
-                this.cleanup();
-            };
-
-            this.worker.onerror = (err) => {
-                reject(err);
-                this.cleanup();
-            };
-
-            this.worker.postMessage({
-                frames: frames.map(f => ({ data: f.data, delay: f.delay })),
-                width,
-                height
-            }, frames.map(f => f.data));
-        });
-    }
-
-    cancel() {
-        this.cancelled = true;
-        this.cleanup();
-    }
-
-    cleanup() {
-        if (this.worker) {
-            this.worker.terminate();
-            this.worker = null;
-        }
-    }
-}
-
 let animation = null;
 let monacoEditor = null;
 let gradientEditorInstance = null;
@@ -847,6 +666,9 @@ function updateGradientInJson(newGradientData) {
                 animation.destroy();
                 const animationContainer = document.getElementById('lottie-animation');
                 const progressBar = document.getElementById('animation-progress');
+                animationContainer.innerHTML = '';
+                animationContainer.style.width = '';
+                animationContainer.style.height = '';
                 animation = bodymovin.loadAnimation({
                     container: animationContainer,
                     renderer: 'svg',
@@ -865,6 +687,14 @@ function updateGradientInJson(newGradientData) {
                             const total = Math.round(animation.totalFrames);
                             timeDisplay.textContent = `${current} / ${total}`;
                         }
+                    }
+                });
+                // Force SVG to fill container regardless of original animation dimensions
+                animation.addEventListener('DOMLoaded', () => {
+                    const svg = animationContainer.querySelector('svg');
+                    if (svg) {
+                        svg.removeAttribute('width');
+                        svg.removeAttribute('height');
                     }
                 });
             }
@@ -917,21 +747,6 @@ function initializeLottiePlayer() {
     const playIcon = '<i data-lucide="play" class="w-5 h-5"></i>';
     const pauseIcon = '<i data-lucide="pause" class="w-5 h-5"></i>';
     let isDragging = false;
-    const exportGifBtn = document.getElementById('export-gif-btn');
-    const gifExportPanel = document.getElementById('gif-export-panel');
-    const closeGifPanel = document.getElementById('close-gif-panel');
-    const startGifExport = document.getElementById('start-gif-export');
-    const cancelGifExport = document.getElementById('cancel-gif-export');
-    const gifProgressOverlay = document.getElementById('gif-progress-overlay');
-    const gifProgressBar = document.getElementById('gif-progress-bar');
-    const gifProgressText = document.getElementById('gif-progress-text');
-    const gifFpsInput = document.getElementById('gif-fps');
-    const gifWidthInput = document.getElementById('gif-width');
-    const gifHeightInput = document.getElementById('gif-height');
-    const gifColorsInput = document.getElementById('gif-colors');
-    const gifFrameInfo = document.getElementById('gif-frame-info');
-    let gifExporter = null;
-
     function initMonacoEditor() {
         require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.41.0/min/vs' } });
         require(['vs/editor/editor.main'], function() {
@@ -979,6 +794,9 @@ function initializeLottiePlayer() {
             if (progressBar) progressBar.value = 0;
             // Clear the container to remove placeholder content immediately
             animationContainer.innerHTML = '';
+            // Reset container styles to prevent previous animation from affecting layout
+            animationContainer.style.width = '';
+            animationContainer.style.height = '';
             animation = bodymovin.loadAnimation({
                 container: animationContainer, renderer: 'svg', loop: true, autoplay: true, animationData: jsonData
             });
@@ -986,6 +804,14 @@ function initializeLottiePlayer() {
                 if (!isDragging && animation && progressBar) {
                     progressBar.value = (animation.currentFrame / animation.totalFrames) * 100;
                     updateTimeDisplay();
+                }
+            });
+            // Force SVG to fill container regardless of original animation dimensions
+            animation.addEventListener('DOMLoaded', () => {
+                const svg = animationContainer.querySelector('svg');
+                if (svg) {
+                    svg.removeAttribute('width');
+                    svg.removeAttribute('height');
                 }
             });
             lucide.createIcons();
@@ -1161,7 +987,6 @@ function initializeLottiePlayer() {
                     const jsonData = JSON.parse(fileContent);
                     updateJsonEditor(jsonData);
                     loadAnimation(jsonData);
-                    if (exportGifBtn) exportGifBtn.disabled = false;
                     updateGradientNamesList();
                 } catch (error) {
                     console.error('JSON parse error:', error);
@@ -1295,145 +1120,6 @@ function initializeLottiePlayer() {
         bgAlphaBtn.classList.remove('bg-blue-100', 'text-blue-600');
         bgAlphaBtn.classList.add('text-slate-400');
     });
-
-    if (exportGifBtn) {
-        exportGifBtn.addEventListener('click', () => {
-            if (!animation) { alert(t('alertNoAnimation')); return; }
-            gifExportPanel.classList.toggle('hidden');
-            if (!gifExportPanel.classList.contains('hidden')) {
-                const data = animation.animationData;
-                const fr = data.fr || 30;
-                const w = data.w || 512;
-                const h = data.h || 512;
-                const totalFrames = Math.round(data.op - data.ip);
-                if (gifFpsInput) gifFpsInput.value = Math.min(fr, 30);
-                if (gifWidthInput) gifWidthInput.value = w;
-                if (gifHeightInput) gifHeightInput.value = h;
-                if (gifFrameInfo) {
-                    const fps = parseInt(gifFpsInput?.value || fr);
-                    const frames = Math.min(Math.round((totalFrames / fr) * fps), 500);
-                    gifFrameInfo.textContent = `${frames} 帧 / ${(frames / fps).toFixed(1)} 秒`;
-                }
-            }
-        });
-    }
-
-    if (closeGifPanel) {
-        closeGifPanel.addEventListener('click', () => {
-            gifExportPanel.classList.add('hidden');
-        });
-    }
-
-    let lastRatio = 1;
-    if (gifWidthInput && gifHeightInput) {
-        gifWidthInput.addEventListener('focus', () => {
-            const w = parseInt(gifWidthInput.value) || 1;
-            const h = parseInt(gifHeightInput.value) || 1;
-            lastRatio = h / w;
-        });
-        gifWidthInput.addEventListener('input', () => {
-            const w = parseInt(gifWidthInput.value) || 1;
-            gifHeightInput.value = Math.round(w * lastRatio);
-            updateFrameInfo();
-        });
-        gifHeightInput.addEventListener('focus', () => {
-            const w = parseInt(gifWidthInput.value) || 1;
-            const h = parseInt(gifHeightInput.value) || 1;
-            lastRatio = w / h;
-        });
-        gifHeightInput.addEventListener('input', () => {
-            const h = parseInt(gifHeightInput.value) || 1;
-            gifWidthInput.value = Math.round(h * lastRatio);
-            updateFrameInfo();
-        });
-    }
-
-    function updateFrameInfo() {
-        if (!gifFrameInfo || !animation) return;
-        const data = animation.animationData;
-        const fr = data.fr || 30;
-        const totalFrames = Math.round(data.op - data.ip);
-        const fps = parseInt(gifFpsInput?.value || fr);
-        const frames = Math.min(Math.round((totalFrames / fr) * fps), 500);
-        const duration = (frames / fps).toFixed(1);
-        gifFrameInfo.textContent = `${frames} 帧 / ${duration} 秒`;
-    }
-
-    if (gifFpsInput) {
-        gifFpsInput.addEventListener('input', updateFrameInfo);
-    }
-
-    if (startGifExport) {
-        startGifExport.addEventListener('click', async () => {
-            if (!animation) return;
-
-            const jsonData = animation.animationData;
-            const fps = parseInt(gifFpsInput?.value) || 30;
-            const width = parseInt(gifWidthInput?.value) || jsonData.w || 512;
-            const height = parseInt(gifHeightInput?.value) || jsonData.h || 512;
-            const colors = parseInt(gifColorsInput?.value) || 128;
-
-            const maxW = (jsonData.w || 512) * 2;
-            const maxH = (jsonData.h || 512) * 2;
-            const finalW = Math.min(width, maxW);
-            const finalH = Math.min(height, maxH);
-
-            const fr = jsonData.fr || 30;
-            const totalFrames = Math.round(jsonData.op - jsonData.ip);
-            const exportFrames = Math.min(Math.round((totalFrames / fr) * fps), 500);
-            if (exportFrames >= 500) {
-                alert(t('maxFramesWarning'));
-            }
-
-            gifProgressOverlay.classList.remove('hidden');
-            gifProgressBar.style.width = '0%';
-            gifProgressText.textContent = `0 / ${exportFrames}`;
-            gifExportPanel.classList.add('hidden');
-
-            const wasPlaying = !animation.isPaused;
-            if (wasPlaying) animation.pause();
-
-            try {
-                gifExporter = new GifExporter(jsonData);
-                const blob = await gifExporter.export({
-                    fps: fps,
-                    width: finalW,
-                    height: finalH,
-                    colors: colors,
-                    onProgress: (current, total) => {
-                        const pct = (current / total) * 100;
-                        gifProgressBar.style.width = pct + '%';
-                        gifProgressText.textContent = `${current} / ${total}`;
-                    }
-                });
-
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = 'animation.gif';
-                a.click();
-                URL.revokeObjectURL(url);
-
-            } catch (err) {
-                if (err.message !== 'Cancelled') {
-                    console.error('GIF export error:', err);
-                    alert(t('exportFailed') + ': ' + err.message);
-                }
-            } finally {
-                gifProgressOverlay.classList.add('hidden');
-                if (wasPlaying && animation) animation.play();
-                gifExporter = null;
-            }
-        });
-    }
-
-    if (cancelGifExport) {
-        cancelGifExport.addEventListener('click', () => {
-            if (gifExporter) {
-                gifExporter.cancel();
-            }
-        });
-    }
 
     bgAlphaBtn.addEventListener('click', () => {
         animationContainer.style.backgroundColor = '';

@@ -1,0 +1,98 @@
+<h2>画布式 UI 设计概览</h2>
+<p class="subtitle">三个可拖动面板 + 贝塞尔连线 + 点阵背景</p>
+
+<div class="mockup">
+  <div class="mockup-header">画布区域预览</div>
+  <div class="mockup-body" style="position:relative;height:380px;background:#f8fafc;">
+    <!-- 点阵背景示意 -->
+    <div style="position:absolute;inset:0;opacity:0.3;background-image:radial-gradient(#94a3b8 1px,transparent 1px);background-size:20px 20px;"></div>
+
+    <!-- 动画预览面板 -->
+    <div style="position:absolute;left:20px;top:40px;width:240px;height:280px;background:white;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 4px 6px -1px rgba(0,0,0,0.1);display:flex;flex-direction:column;overflow:hidden;">
+      <div style="padding:8px 12px;background:#f8fafc;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;gap:6px;cursor:grab;">
+        <span style="font-size:12px;color:#3b82f6;">▶</span>
+        <span style="font-size:12px;font-weight:600;color:#1e293b;">动画预览</span>
+        <div style="margin-left:auto;width:12px;height:12px;background:#3b82f6;border-radius:50%;"></div>
+      </div>
+      <div style="flex:1;display:flex;align-items:center;justify-content:center;background:#f1f5f9;">
+        <div style="width:120px;height:120px;background:linear-gradient(135deg,#3b82f6,#2563eb);border-radius:8px;"></div>
+      </div>
+      <div style="padding:8px 12px;background:#f8fafc;border-top:1px solid #e2e8f0;display:flex;align-items:center;gap:8px;">
+        <span style="font-size:11px;">▶</span>
+        <div style="flex:1;height:4px;background:#e2e8f0;border-radius:2px;"><div style="width:40%;height:100%;background:#3b82f6;border-radius:2px;"></div></div>
+        <span style="font-size:11px;color:#64748b;">30 / 120</span>
+      </div>
+      <!-- 右下角调整手柄 -->
+      <div style="position:absolute;right:0;bottom:0;width:16px;height:16px;cursor:nwse-resize;background:linear-gradient(135deg,transparent 50%,#94a3b8 50%);border-bottom-right-radius:12px;"></div>
+    </div>
+
+    <!-- 渐变列表面板 -->
+    <div style="position:absolute;left:340px;top:60px;width:200px;height:240px;background:white;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 4px 6px -1px rgba(0,0,0,0.1);display:flex;flex-direction:column;overflow:hidden;">
+      <div style="padding:8px 12px;background:#f8fafc;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;gap:6px;cursor:grab;">
+        <span style="font-size:12px;color:#a855f7;">☰</span>
+        <span style="font-size:12px;font-weight:600;color:#1e293b;">渐变列表</span>
+        <div style="margin-left:auto;width:12px;height:12px;background:#a855f7;border-radius:50%;"></div>
+      </div>
+      <div style="flex:1;padding:8px;overflow:hidden;">
+        <div style="padding:6px 8px;background:#eff6ff;border-radius:6px;margin-bottom:4px;border-left:3px solid #3b82f6;">
+          <span style="font-size:11px;color:#1e293b;">Gradient 1</span>
+        </div>
+        <div style="padding:6px 8px;background:#f8fafc;border-radius:6px;margin-bottom:4px;">
+          <span style="font-size:11px;color:#64748b;">Gradient 2</span>
+        </div>
+        <div style="padding:6px 8px;background:#f8fafc;border-radius:6px;margin-bottom:4px;">
+          <span style="font-size:11px;color:#64748b;">Gradient 3</span>
+        </div>
+      </div>
+      <!-- 右下角调整手柄 -->
+      <div style="position:absolute;right:0;bottom:0;width:16px;height:16px;cursor:nwse-resize;background:linear-gradient(135deg,transparent 50%,#94a3b8 50%);border-bottom-right-radius:12px;"></div>
+    </div>
+
+    <!-- 颜色编辑器面板 -->
+    <div style="position:absolute;left:620px;top:40px;width:220px;height:260px;background:white;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 4px 6px -1px rgba(0,0,0,0.1);display:flex;flex-direction:column;overflow:hidden;">
+      <div style="padding:8px 12px;background:#f8fafc;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;gap:6px;cursor:grab;">
+        <span style="font-size:12px;color:#22c55e;">⚙</span>
+        <span style="font-size:12px;font-weight:600;color:#1e293b;">Gradient 1</span>
+        <div style="margin-left:auto;width:12px;height:12px;background:#22c55e;border-radius:50%;"></div>
+      </div>
+      <div style="flex:1;padding:12px;">
+        <div style="height:24px;background:linear-gradient(90deg,#3b82f6,#a855f7,#ef4444);border-radius:4px;margin-bottom:12px;"></div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+          <div style="width:16px;height:16px;background:#3b82f6;border-radius:3px;border:1px solid #cbd5e1;"></div>
+          <span style="font-size:11px;color:#64748b;">0%</span>
+          <span style="font-size:11px;color:#1e293b;margin-left:auto;">#3B82F6</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+          <div style="width:16px;height:16px;background:#a855f7;border-radius:3px;border:1px solid #cbd5e1;"></div>
+          <span style="font-size:11px;color:#64748b;">50%</span>
+          <span style="font-size:11px;color:#1e293b;margin-left:auto;">#A855F7</span>
+        </div>
+      </div>
+      <!-- 右下角调整手柄 -->
+      <div style="position:absolute;right:0;bottom:0;width:16px;height:16px;cursor:nwse-resize;background:linear-gradient(135deg,transparent 50%,#94a3b8 50%);border-bottom-right-radius:12px;"></div>
+    </div>
+
+    <!-- 连线示意（静态 SVG） -->
+    <svg style="position:absolute;inset:0;pointer-events:none;" width="100%" height="100%">
+      <!-- 动画预览右侧 → 渐变列表左侧 -->
+      <path d="M 260 160 C 300 160, 300 160, 340 160" stroke="#cbd5e1" stroke-width="2" fill="none"/>
+      <circle cx="260" cy="160" r="4" fill="#3b82f6"/>
+      <circle cx="340" cy="160" r="4" fill="#a855f7"/>
+      <!-- 渐变列表右侧 → 颜色编辑器左侧 -->
+      <path d="M 540 160 C 580 160, 580 160, 620 160" stroke="#cbd5e1" stroke-width="2" fill="none"/>
+      <circle cx="540" cy="160" r="4" fill="#a855f7"/>
+      <circle cx="620" cy="160" r="4" fill="#22c55e"/>
+    </svg>
+  </div>
+</div>
+
+<div class="section">
+  <h3>设计要点</h3>
+  <ul>
+    <li><strong>画布背景</strong>：点阵/网格图案，类似 Figma 的设计工具风格</li>
+    <li><strong>三个面板</strong>：绝对定位，各自独立的 left/top/width/height</li>
+    <li><strong>标题栏</strong>：蓝色/紫色/绿色圆点表示连接点，拖拽标题栏移动面板</li>
+    <li><strong>贝塞尔连线</strong>：SVG path，从面板 A 右侧中点 → 面板 B 左侧中点</li>
+    <li><strong>调整大小</strong>：右下角斜线手柄，拖拽时改变面板宽高</li>
+  </ul>
+</div>

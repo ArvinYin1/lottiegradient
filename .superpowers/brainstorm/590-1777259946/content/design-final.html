@@ -1,0 +1,65 @@
+<h2>设计文档 — 完整方案确认</h2>
+<p class="subtitle">画布式 UI 重构 — 最终设计汇总</p>
+
+<div class="section">
+  <h3>核心设计决策</h3>
+  <table style="width:100%;border-collapse:collapse;font-size:13px;">
+    <tr style="border-bottom:1px solid #e2e8f0;">
+      <td style="padding:8px 0;font-weight:600;width:30%;">画布背景</td>
+      <td style="padding:8px 0;">点阵图案（radial-gradient dot pattern），slate-50 底色</td>
+    </tr>
+    <tr style="border-bottom:1px solid #e2e8f0;">
+      <td style="padding:8px 0;font-weight:600;">面板定位</td>
+      <td style="padding:8px 0;">position: absolute + transform: translate(x, y)</td>
+    </tr>
+    <tr style="border-bottom:1px solid #e2e8f0;">
+      <td style="padding:8px 0;font-weight:600;">初始布局</td>
+      <td style="padding:8px 0;">左中右排列，间距 60px</td>
+    </tr>
+    <tr style="border-bottom:1px solid #e2e8f0;">
+      <td style="padding:8px 0;font-weight:600;">连线样式</td>
+      <td style="padding:8px 0;">SVG path，C 命令贝塞尔曲线，控制点水平偏移面板间距的 50%</td>
+    </tr>
+    <tr style="border-bottom:1px solid #e2e8f0;">
+      <td style="padding:8px 0;font-weight:600;">连接点</td>
+      <td style="padding:8px 0;">标题栏右侧 12px 圆点（颜色区分：蓝/紫/绿）</td>
+    </tr>
+    <tr style="border-bottom:1px solid #e2e8f0;">
+      <td style="padding:8px 0;font-weight:600;">拖动</td>
+      <td style="padding:8px 0;">仅标题栏可拖拽，实时更新位置</td>
+    </tr>
+    <tr style="border-bottom:1px solid #e2e8f0;">
+      <td style="padding:8px 0;font-weight:600;">调整大小</td>
+      <td style="padding:8px 0;">右下角 16×16px 斜线手柄，最小 200×150px</td>
+    </tr>
+    <tr style="border-bottom:1px solid #e2e8f0;">
+      <td style="padding:8px 0;font-weight:600;">连线关系</td>
+      <td style="padding:8px 0;">固定：preview → list → editor</td>
+    </tr>
+    <tr>
+      <td style="padding:8px 0;font-weight:600;">位置持久化</td>
+      <td style="padding:8px 0;">不持久化，每次刷新重置为默认布局</td>
+    </tr>
+  </table>
+</div>
+
+<div class="section">
+  <h3>文件变更计划</h3>
+  <ul>
+    <li><code>index.html</code>：将 grid 布局替换为 canvas-container + 三个 canvas-panel</li>
+    <li><code>css/style.css</code>：新增画布面板、连线、拖拽相关的样式（约 80 行）</li>
+    <li><code>js/main.js</code>：新增 <code>CanvasWorkspace</code> 类（约 250 行），负责拖拽、调整大小、连线绘制</li>
+  </ul>
+</div>
+
+<div class="section">
+  <h3>边界情况处理</h3>
+  <ul>
+    <li><strong>窗口 resize</strong>：面板超出可视区域时自动移回</li>
+    <li><strong>面板重叠</strong>：拖拽时提升 z-index，释放后恢复默认层级</li>
+    <li><strong>快速拖拽</strong>：使用 document 级 mousemove/mouseup 监听，防止鼠标移出面板时丢失事件</li>
+    <li><strong>面板内容滚动</strong>：拖拽标题栏时不影响面板内部滚动（事件不冒泡）</li>
+  </ul>
+</div>
+
+<p><strong>请确认以上设计是否完整、是否需要修改？确认后我将写入设计文档并开始编写实现计划。</strong></p>

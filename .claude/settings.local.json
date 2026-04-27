@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git pull *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(git config *)",
+      "Bash(python *)",
+      "Skill(agent-browser)",
+      "Bash(npx playwright *)",
+      "Bash(pip install *)",
+      "Bash(pip3 install *)",
+      "WebFetch(domain:unpkg.com)",
+      "Bash(curl -s \"https://unpkg.com/modern-gif@2.0.3/dist/index.global.js\")",
+      "Bash(curl -s \"https://unpkg.com/modern-gif@2.0.3/\")",
+      "Bash(curl -s \"https://unpkg.com/modern-gif@2.0.3/dist/\")",
+      "Bash(npm view *)",
+      "Bash(sed -n '90,102p')",
+      "Bash(sed -n '126,146p' index.html)",
+      "Bash(bash *)",
+      "Bash(git reset *)",
+      "Bash(ls -d .worktrees)",
+      "Bash(ls -d worktrees)",
+      "Bash(git worktree *)",
+      "Bash(node --check js/main.js)",
+      "Bash(curl -s http://localhost:8080)",
+      "Bash(echo \"Exit code: $?\")"
+    ]
+  }
+}
