@@ -1643,7 +1643,56 @@ class CanvasWorkspace {
     }
 
     drawConnections() {
-        // Stub: will be implemented in Task 6
+        if (!this.svg) return;
+
+        // 清空现有连线
+        this.svg.innerHTML = '';
+
+        for (const conn of this.connections) {
+            const fromPanel = this.panels[conn.from];
+            const toPanel = this.panels[conn.to];
+            if (!fromPanel || !toPanel) continue;
+
+            const path = this.getConnectionPath(fromPanel, toPanel);
+
+            // 创建 path 元素
+            const pathEl = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            pathEl.setAttribute('d', path);
+            pathEl.setAttribute('class', 'connection-line');
+            this.svg.appendChild(pathEl);
+
+            // 绘制连接点
+            this.drawConnectionDot(fromPanel.x + fromPanel.w, fromPanel.y + fromPanel.h / 2, this.getPanelColor(conn.from));
+            this.drawConnectionDot(toPanel.x, toPanel.y + toPanel.h / 2, this.getPanelColor(conn.to));
+        }
+    }
+
+    getConnectionPath(a, b) {
+        const sx = a.x + a.w;       // A 右边缘
+        const sy = a.y + a.h / 2;   // A 垂直中点
+        const ex = b.x;             // B 左边缘
+        const ey = b.y + b.h / 2;   // B 垂直中点
+
+        const offset = Math.abs(ex - sx) * 0.5;
+        return `M ${sx} ${sy} C ${sx + offset} ${sy}, ${ex - offset} ${ey}, ${ex} ${ey}`;
+    }
+
+    getPanelColor(name) {
+        const colors = {
+            preview: '#3b82f6',
+            list:    '#a855f7',
+            editor:  '#22c55e'
+        };
+        return colors[name] || '#94a3b8';
+    }
+
+    drawConnectionDot(cx, cy, color) {
+        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        circle.setAttribute('cx', cx);
+        circle.setAttribute('cy', cy);
+        circle.setAttribute('r', 4);
+        circle.setAttribute('fill', color);
+        this.svg.appendChild(circle);
     }
 
     onDragStart(e, panelName) {
