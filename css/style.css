@@ -152,8 +152,17 @@ input[type=color]:focus-visible {
 .lottie-1x1 {
     aspect-ratio: 1 / 1;
     width: 100%;
+    max-width: 100%;
     height: auto;
     max-height: 100%;
+    min-width: 0;
+    min-height: 0;
+}
+
+/* 防止 flex 容器被动画内容撑大 */
+#drop-zone {
+    min-width: 0;
+    min-height: 0;
 }
 
 /* 强制 Lottie 渲染的 SVG 填满容器，不受动画原始尺寸影响 */
