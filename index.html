@@ -16,8 +16,8 @@
     </script>
     <link rel="stylesheet" href="css/style.css">
 </head>
-<body class="bg-slate-50 text-slate-800 h-screen overflow-hidden">
-<div class="app-wrapper h-screen flex flex-col overflow-hidden animate-enter-fade">
+<body class="bg-slate-50 text-slate-800 overflow-y-auto">
+<div class="app-wrapper min-h-screen flex flex-col animate-enter-fade">
     <header class="z-50 glass border-b border-slate-200 flex-shrink-0 animate-enter-header">
         <div class="content-max-w px-6 py-4">
             <div class="flex items-center justify-between">
@@ -78,13 +78,17 @@
             </span>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 flex-1 min-h-0">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 flex-1 min-h-[420px]">
             <div id="preview-card" class="card bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden flex flex-col h-full w-full animate-enter-card enter-d4">
                 <div class="p-4 border-b border-slate-200 flex items-center justify-between">
                     <h2 class="font-semibold text-slate-800 flex items-center gap-2">
                         <i data-lucide="play" class="w-4 h-4 text-blue-500"></i><span data-i18n="animationPreview">动画预览</span>
                     </h2>
                     <div class="flex items-center gap-2">
+                        <button id="export-frame-btn" class="w-8 h-8 rounded-md bg-slate-100 text-slate-600 flex items-center justify-center flex-shrink-0 hover:bg-slate-200 transition-colors" title="Export frame">
+                            <i data-lucide="camera" class="w-4 h-4"></i>
+                        </button>
+                        <div class="w-px h-5 bg-slate-300"></div>
                         <span class="text-xs text-slate-500" data-i18n="background">背景</span>
                         <button id="bg-alpha-btn" class="w-8 h-8 rounded-md bg-blue-100 text-blue-600 flex items-center justify-center flex-shrink-0">
                             <i data-lucide="grid-3x3" class="w-4 h-4"></i>

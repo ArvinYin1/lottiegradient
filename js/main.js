@@ -54,6 +54,7 @@ const i18n = {
         syncSuccess: '成功同步 {count} 个渐变',
         syncFailed: '同步渐变失败',
         exportFailed: '导出失败',
+        exportFrame: '导出帧',
         demoVideo: '使用演示',
         videoTutorial: '视频教程',
         aboutTool: '关于本工具',
@@ -111,6 +112,7 @@ const i18n = {
         syncSuccess: 'Successfully synced {count} gradients',
         syncFailed: 'Failed to sync gradients',
         exportFailed: 'Export failed',
+        exportFrame: 'Export Frame',
         demoVideo: 'Demo',
         videoTutorial: 'Video Tutorial',
         aboutTool: 'About This Tool',
@@ -394,8 +396,8 @@ class GradientPreviewEditor {
         // 中间：HEX 输入
         const hexInput = document.createElement('input');
         hexInput.type = 'text';
-        hexInput.value = color.color;
-        hexInput.className = 'w-20 px-2 py-1.5 rounded-lg bg-white border border-slate-200 text-xs font-mono uppercase text-center shrink-0';
+        hexInput.value = color.color.slice(1);
+        hexInput.className = 'w-16 px-2 py-1.5 rounded-lg bg-white border border-slate-200 text-xs font-mono uppercase text-center shrink-0';
         colorRow.appendChild(hexInput);
 
         // 右侧：位置和透明度控制
@@ -457,7 +459,7 @@ class GradientPreviewEditor {
 
         colorPicker.addEventListener('input', () => {
             color.color = colorPicker.value;
-            hexInput.value = colorPicker.value;
+            hexInput.value = colorPicker.value.slice(1);
             self._debounced_change();
         });
 
@@ -465,14 +467,13 @@ class GradientPreviewEditor {
             const hexRegex = /^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/;
             const match = hexInput.value.match(hexRegex);
             if (match) {
-                let hexValue = match[1];
-                if (!hexInput.value.startsWith('#')) hexValue = '#' + hexValue;
+                let hexValue = '#' + match[1];
                 if (hexValue.length === 4) {
                     hexValue = '#' + hexValue[1] + hexValue[1] + hexValue[2] + hexValue[2] + hexValue[3] + hexValue[3];
                 }
                 color.color = hexValue;
                 colorPicker.value = hexValue;
-                hexInput.value = hexValue;
+                hexInput.value = hexValue.slice(1);
                 self._debounced_change();
             }
         });
@@ -1106,27 +1107,120 @@ function initializeLottiePlayer() {
         bgAlphaBtn.classList.add('bg-blue-100', 'text-blue-600');
         bgAlphaBtn.classList.remove('text-slate-400');
     });
+
+    const exportFrameBtn = document.getElementById('export-frame-btn');
+    if (exportFrameBtn) {
+        exportFrameBtn.title = t('exportFrame');
+        exportFrameBtn.addEventListener('click', () => {
+            const svg = animationContainer.querySelector('svg');
+            if (!svg) { alert(t('alertNoAnimation')); return; }
+
+            const wasPlaying = animation && !animation.isPaused;
+            const currentFrame = animation ? Math.round(animation.currentFrame) : 0;
+            if (animation && !animation.isPaused) animation.pause();
+
+            let svgWidth, svgHeight;
+            const viewBox = svg.getAttribute('viewBox');
+            if (viewBox) {
+                const parts = viewBox.split(/\s+/);
+                svgWidth = parseFloat(parts[2]);
+                svgHeight = parseFloat(parts[3]);
+            } else {
+                svgWidth = parseFloat(svg.getAttribute('width')) || svg.clientWidth;
+                svgHeight = parseFloat(svg.getAttribute('height')) || svg.clientHeight;
+            }
+            if (!svgWidth || !svgHeight) {
+                const rect = svg.getBoundingClientRect();
+                svgWidth = rect.width;
+                svgHeight = rect.height;
+            }
+
+            const dpr = window.devicePixelRatio || 1;
+            const clonedSvg = svg.cloneNode(true);
+            clonedSvg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+            clonedSvg.setAttribute('width', svgWidth);
+            clonedSvg.setAttribute('height', svgHeight);
+
+            const serializer = new XMLSerializer();
+            const svgString = serializer.serializeToString(clonedSvg);
+
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.round(svgWidth * dpr);
+            canvas.height = Math.round(svgHeight * dpr);
+            const ctx = canvas.getContext('2d');
+            ctx.scale(dpr, dpr);
+
+            if (animationContainer.classList.contains('alpha-checkered')) {
+                const tileSize = 16;
+                for (let y = 0; y < svgHeight; y += tileSize) {
+                    for (let x = 0; x < svgWidth; x += tileSize) {
+                        ctx.fillStyle = ((Math.floor(x / tileSize) + Math.floor(y / tileSize)) % 2 === 0) ? '#ffffff' : '#e5e7eb';
+                        ctx.fillRect(x, y, tileSize, tileSize);
+                    }
+                }
+            } else {
+                const bgColor = animationContainer.style.backgroundColor || '#ffffff';
+                ctx.fillStyle = bgColor;
+                ctx.fillRect(0, 0, svgWidth, svgHeight);
+            }
+
+            const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+            const url = URL.createObjectURL(svgBlob);
+            const img = new Image();
+            img.onload = () => {
+                ctx.drawImage(img, 0, 0, svgWidth, svgHeight);
+                canvas.toBlob(blob => {
+                    const downloadUrl = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = downloadUrl;
+                    a.download = `lottie_frame_${currentFrame}.png`;
+                    a.click();
+                    URL.revokeObjectURL(downloadUrl);
+                    URL.revokeObjectURL(url);
+                    if (wasPlaying && animation) animation.play();
+                }, 'image/png');
+            };
+            img.onerror = () => {
+                URL.revokeObjectURL(url);
+                alert(t('exportFailed'));
+                if (wasPlaying && animation) animation.play();
+            };
+            img.src = url;
+        });
+    }
 }
 
-// 高分屏检测 - 4K屏幕自动放大
+// 响应式缩放 - 综合视口宽度 + 高分屏放大
 (function() {
-    // 检测物理屏幕分辨率
-    const width = window.screen.width;
-    const height = window.screen.height;
-    const dpr = window.devicePixelRatio || 1;
-    
-    // 4K 屏幕检测：物理分辨率宽度 >= 3840 或 (宽度 >= 2560 且 DPR >= 2)
-    const is4K = (width >= 3840) || (width >= 2560 && dpr >= 2);
-    const is2K = width >= 2560 && width < 3840;
-    
-    if (is4K) {
-        // 4K 屏幕：使用 1.3 倍缩放
-        document.documentElement.style.fontSize = '18px';
-    } else if (is2K) {
-        // 2K 屏幕：使用 1.15 倍缩放
-        document.documentElement.style.fontSize = '16px';
+    function updateResponsiveScale() {
+        const innerW = window.innerWidth;
+        const screenW = window.screen.width;
+        const dpr = window.devicePixelRatio || 1;
+
+        // 按视口宽度取基准字号（对应 CSS 媒体查询断点）
+        let baseSize = 14;
+        if (innerW >= 4800) baseSize = 32;
+        else if (innerW >= 3200) baseSize = 26;
+        else if (innerW >= 2400) baseSize = 20;
+        else if (innerW >= 1920) baseSize = 16;
+        else if (innerW >= 1440) baseSize = 15;
+
+        // 高分屏额外放大
+        const is4K = (screenW >= 3840) || (screenW >= 2560 && dpr >= 2);
+        const is2K = screenW >= 2560 && screenW < 3840;
+
+        if (is4K) {
+            document.documentElement.style.fontSize = Math.round(baseSize * 1.3) + 'px';
+        } else if (is2K) {
+            document.documentElement.style.fontSize = Math.round(baseSize * 1.15) + 'px';
+        } else {
+            // 普通屏幕：移除内联样式，让 CSS 媒体查询完全接管
+            document.documentElement.style.fontSize = '';
+        }
     }
-    // 其他屏幕使用 CSS 默认的 14px
+
+    updateResponsiveScale();
+    window.addEventListener('resize', updateResponsiveScale);
 })();
 
 // 右侧列高度与预览卡片同步
