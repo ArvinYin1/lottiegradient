@@ -55,6 +55,19 @@ const i18n = {
         syncFailed: '同步渐变失败',
         exportFailed: '导出失败',
         exportFrame: '导出帧',
+        exportGif: '导出 GIF',
+        exportGifDesc: '将 Lottie 动画导出为 GIF 格式',
+        fps: '帧率 (FPS)',
+        scale: '缩放比例',
+        startFrame: '起始帧',
+        endFrame: '结束帧',
+        quality: '质量',
+        qualityTip: '数值越小质量越好，文件越大',
+        exporting: '导出中...',
+        cancel: '取消',
+        startExport: '开始导出',
+        exportGifFailed: '导出 GIF 失败',
+        noAnimationForGif: '请先导入动画再导出 GIF',
         demoVideo: '使用演示',
         videoTutorial: '视频教程',
         aboutTool: '关于本工具',
@@ -113,6 +126,19 @@ const i18n = {
         syncFailed: 'Failed to sync gradients',
         exportFailed: 'Export failed',
         exportFrame: 'Export Frame',
+        exportGif: 'Export GIF',
+        exportGifDesc: 'Export Lottie animation as GIF',
+        fps: 'FPS',
+        scale: 'Scale',
+        startFrame: 'Start Frame',
+        endFrame: 'End Frame',
+        quality: 'Quality',
+        qualityTip: 'Lower value = better quality, larger file',
+        exporting: 'Exporting...',
+        cancel: 'Cancel',
+        startExport: 'Start Export',
+        exportGifFailed: 'Export GIF failed',
+        noAnimationForGif: 'Please import an animation first',
         demoVideo: 'Demo',
         videoTutorial: 'Video Tutorial',
         aboutTool: 'About This Tool',
@@ -1187,6 +1213,275 @@ function initializeLottiePlayer() {
             };
             img.src = url;
         });
+    }
+
+    // ========== GIF 导出 ==========
+    const exportGifBtn = document.getElementById('export-gif-btn');
+    const gifModal = document.getElementById('gif-modal');
+    const gifModalOverlay = document.getElementById('gif-modal-overlay');
+    const closeGifModalBtn = document.getElementById('close-gif-modal');
+    const cancelGifBtn = document.getElementById('cancel-gif-btn');
+    const startGifBtn = document.getElementById('start-gif-btn');
+    const gifFps = document.getElementById('gif-fps');
+    const gifScale = document.getElementById('gif-scale');
+    const gifStart = document.getElementById('gif-start');
+    const gifEnd = document.getElementById('gif-end');
+    const gifQuality = document.getElementById('gif-quality');
+    const gifStartVal = document.getElementById('gif-start-val');
+    const gifEndVal = document.getElementById('gif-end-val');
+    const gifQualityVal = document.getElementById('gif-quality-val');
+    const gifProgressArea = document.getElementById('gif-progress-area');
+    const gifProgressBar = document.getElementById('gif-progress-bar');
+    const gifProgressText = document.getElementById('gif-progress-text');
+
+    let gifExportAbort = false;
+    let currentGif = null;
+
+    if (exportGifBtn) {
+        exportGifBtn.title = t('exportGif');
+        exportGifBtn.addEventListener('click', () => {
+            if (!animation) { alert(t('noAnimationForGif')); return; }
+            openGifModal();
+        });
+    }
+
+    function openGifModal() {
+        if (!gifModal) return;
+        const totalFrames = Math.round(animation.totalFrames);
+        gifStart.max = totalFrames;
+        gifEnd.max = totalFrames;
+        gifEnd.value = totalFrames;
+        gifStartVal.textContent = gifStart.value;
+        gifEndVal.textContent = gifEnd.value;
+        gifModal.classList.remove('hidden');
+        requestAnimationFrame(() => {
+            gifModalOverlay.classList.remove('opacity-0');
+            const content = gifModal.querySelector('.gif-modal-content');
+            if (content) {
+                content.classList.remove('scale-95', 'opacity-0');
+                content.classList.add('scale-100', 'opacity-100');
+            }
+        });
+        lucide.createIcons();
+    }
+
+    function closeGifModal() {
+        if (!gifModal) return;
+        gifModalOverlay.classList.add('opacity-0');
+        const content = gifModal.querySelector('.gif-modal-content');
+        if (content) {
+            content.classList.remove('scale-100', 'opacity-100');
+            content.classList.add('scale-95', 'opacity-0');
+        }
+        setTimeout(() => {
+            gifModal.classList.add('hidden');
+            resetGifModal();
+        }, 200);
+    }
+
+    function resetGifModal() {
+        gifProgressArea.classList.add('hidden');
+        startGifBtn.disabled = false;
+        startGifBtn.textContent = t('startExport');
+        cancelGifBtn.textContent = t('cancel');
+        gifExportAbort = false;
+    }
+
+    if (gifStart) {
+        gifStart.addEventListener('input', () => {
+            const val = parseInt(gifStart.value);
+            const endVal = parseInt(gifEnd.value);
+            if (val > endVal) { gifEnd.value = val; gifEndVal.textContent = val; }
+            gifStartVal.textContent = val;
+        });
+    }
+    if (gifEnd) {
+        gifEnd.addEventListener('input', () => {
+            const val = parseInt(gifEnd.value);
+            const startVal = parseInt(gifStart.value);
+            if (val < startVal) { gifStart.value = val; gifStartVal.textContent = val; }
+            gifEndVal.textContent = val;
+        });
+    }
+    if (gifQuality) {
+        gifQuality.addEventListener('input', () => { gifQualityVal.textContent = gifQuality.value; });
+    }
+
+    if (closeGifModalBtn) closeGifModalBtn.addEventListener('click', closeGifModal);
+    if (cancelGifBtn) {
+        cancelGifBtn.addEventListener('click', () => {
+            if (currentGif) { gifExportAbort = true; }
+            else { closeGifModal(); }
+        });
+    }
+    if (gifModalOverlay) {
+        gifModalOverlay.addEventListener('click', closeGifModal);
+    }
+
+    if (startGifBtn) {
+        startGifBtn.addEventListener('click', async () => {
+            if (!animation) { alert(t('noAnimationForGif')); return; }
+            const fps = parseInt(gifFps.value) || 20;
+            const scale = parseFloat(gifScale.value) || 1;
+            const startFrame = parseInt(gifStart.value) || 0;
+            const endFrame = parseInt(gifEnd.value) || Math.round(animation.totalFrames);
+            const quality = parseInt(gifQuality.value) || 10;
+
+            startGifBtn.disabled = true;
+            startGifBtn.textContent = t('exporting');
+            gifProgressArea.classList.remove('hidden');
+            gifProgressBar.style.width = '0%';
+            gifProgressText.textContent = '0%';
+            gifExportAbort = false;
+
+            try {
+                await exportGif(fps, scale, startFrame, endFrame, quality);
+            } catch (error) {
+                console.error('GIF export error:', error);
+                if (!gifExportAbort) alert(t('exportGifFailed') + ': ' + error.message);
+            } finally {
+                resetGifModal();
+                closeGifModal();
+            }
+        });
+    }
+
+    async function exportGif(fps, scale, startFrame, endFrame, quality) {
+        let svg = animationContainer.querySelector('svg');
+        if (!svg) throw new Error('No SVG found');
+
+        let svgWidth, svgHeight;
+        const viewBox = svg.getAttribute('viewBox');
+        if (viewBox) {
+            const parts = viewBox.split(/\s+/);
+            svgWidth = parseFloat(parts[2]);
+            svgHeight = parseFloat(parts[3]);
+        } else {
+            svgWidth = parseFloat(svg.getAttribute('width')) || svg.clientWidth;
+            svgHeight = parseFloat(svg.getAttribute('height')) || svg.clientHeight;
+        }
+        if (!svgWidth || !svgHeight) {
+            const rect = svg.getBoundingClientRect();
+            svgWidth = rect.width;
+            svgHeight = rect.height;
+        }
+
+        let exportWidth = Math.round(svgWidth * scale);
+        let exportHeight = Math.round(svgHeight * scale);
+        const MAX_SIZE = 800;
+        if (exportWidth > MAX_SIZE || exportHeight > MAX_SIZE) {
+            const ratio = Math.min(MAX_SIZE / exportWidth, MAX_SIZE / exportHeight);
+            exportWidth = Math.round(exportWidth * ratio);
+            exportHeight = Math.round(exportHeight * ratio);
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = exportWidth;
+        canvas.height = exportHeight;
+        const ctx = canvas.getContext('2d');
+
+        const isAlphaBg = animationContainer.classList.contains('alpha-checkered');
+        const bgColor = animationContainer.style.backgroundColor || '#ffffff';
+
+        const animFrameRate = animation.frameRate || 30;
+        const frameStep = Math.max(1, Math.round(animFrameRate / fps));
+        const framesToRender = [];
+        for (let f = startFrame; f <= endFrame; f += frameStep) {
+            framesToRender.push(f);
+        }
+
+        let workerUrl = null;
+        try {
+            const response = await fetch('https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.worker.js');
+            const code = await response.text();
+            const blob = new Blob([code], { type: 'application/javascript' });
+            workerUrl = URL.createObjectURL(blob);
+        } catch (e) {
+            console.warn('Failed to load gif.worker.js, will use main thread');
+        }
+
+        const gif = new GIF({
+            workers: workerUrl ? 2 : 0,
+            quality: quality,
+            width: exportWidth,
+            height: exportHeight,
+            workerScript: workerUrl || undefined
+        });
+        currentGif = gif;
+
+        const wasPlaying = animation && !animation.isPaused;
+        if (wasPlaying) animation.pause();
+
+        for (let i = 0; i < framesToRender.length; i++) {
+            if (gifExportAbort) break;
+            const frame = framesToRender[i];
+            animation.goToAndStop(frame, true);
+            await new Promise(r => requestAnimationFrame(r));
+
+            const currentSvg = animationContainer.querySelector('svg');
+            if (!currentSvg) continue;
+
+            const clonedSvg = currentSvg.cloneNode(true);
+            clonedSvg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+            clonedSvg.setAttribute('width', svgWidth);
+            clonedSvg.setAttribute('height', svgHeight);
+
+            const serializer = new XMLSerializer();
+            const svgString = serializer.serializeToString(clonedSvg);
+
+            ctx.clearRect(0, 0, exportWidth, exportHeight);
+            if (isAlphaBg) {
+                const tileSize = Math.max(8, Math.round(16 * scale));
+                for (let y = 0; y < exportHeight; y += tileSize) {
+                    for (let x = 0; x < exportWidth; x += tileSize) {
+                        ctx.fillStyle = ((Math.floor(x / tileSize) + Math.floor(y / tileSize)) % 2 === 0) ? '#ffffff' : '#e5e7eb';
+                        ctx.fillRect(x, y, tileSize, tileSize);
+                    }
+                }
+            } else {
+                ctx.fillStyle = bgColor;
+                ctx.fillRect(0, 0, exportWidth, exportHeight);
+            }
+
+            await new Promise((resolve, reject) => {
+                const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+                const url = URL.createObjectURL(svgBlob);
+                const img = new Image();
+                img.onload = () => {
+                    ctx.drawImage(img, 0, 0, exportWidth, exportHeight);
+                    URL.revokeObjectURL(url);
+                    resolve();
+                };
+                img.onerror = () => { URL.revokeObjectURL(url); reject(); };
+                img.src = url;
+            });
+
+            gif.addFrame(canvas, { delay: Math.round(1000 / fps), copy: true });
+
+            const progress = Math.round(((i + 1) / framesToRender.length) * 100);
+            gifProgressBar.style.width = progress + '%';
+            gifProgressText.textContent = progress + '%';
+        }
+
+        if (!gifExportAbort) {
+            await new Promise((resolve, reject) => {
+                gif.on('finished', (blob) => {
+                    const downloadUrl = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = downloadUrl;
+                    a.download = 'lottie_animation.gif';
+                    a.click();
+                    URL.revokeObjectURL(downloadUrl);
+                    resolve();
+                });
+                gif.on('error', reject);
+                gif.render();
+            });
+        }
+
+        if (workerUrl) URL.revokeObjectURL(workerUrl);
+        currentGif = null;
+        if (wasPlaying && animation) animation.play();
     }
 }
 

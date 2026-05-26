@@ -7,6 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bodymovin/5.12.2/lottie.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.js"></script>
     <link rel="stylesheet" data-name="vs/editor/editor.main" href="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.41.0/min/vs/editor/editor.main.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.41.0/min/vs/loader.js"></script>
     <script>
@@ -88,6 +89,9 @@
                         <button id="export-frame-btn" class="w-8 h-8 rounded-md bg-slate-100 text-slate-600 flex items-center justify-center flex-shrink-0 hover:bg-slate-200 transition-colors" title="Export frame">
                             <i data-lucide="camera" class="w-4 h-4"></i>
                         </button>
+                        <button id="export-gif-btn" class="w-8 h-8 rounded-md bg-slate-100 text-slate-600 flex items-center justify-center flex-shrink-0 hover:bg-slate-200 transition-colors" title="Export GIF">
+                            <i data-lucide="film" class="w-4 h-4"></i>
+                        </button>
                         <div class="w-px h-5 bg-slate-300"></div>
                         <span class="text-xs text-slate-500" data-i18n="background">背景</span>
                         <button id="bg-alpha-btn" class="w-8 h-8 rounded-md bg-blue-100 text-blue-600 flex items-center justify-center flex-shrink-0">
@@ -163,6 +167,86 @@
         <div id="monaco-editor-container" style="height: 400px;"></div>
         <textarea id="json-editor" style="display: none;"></textarea>
         <pre><code class="language-json" id="json_viewer"></code></pre>
+    </div>
+
+    <!-- GIF 导出弹窗 -->
+    <div id="gif-modal" class="hidden fixed inset-0 z-[100]">
+        <div id="gif-modal-overlay" class="absolute inset-0 bg-black/40 backdrop-blur-sm opacity-0 transition-opacity duration-200"></div>
+        <div class="relative h-full flex items-center justify-center p-4">
+            <div class="gif-modal-content bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[85vh] overflow-hidden scale-95 opacity-0 transition-all duration-200">
+                <div class="flex items-center justify-between p-5 border-b border-slate-200 bg-slate-50/50">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-pink-500 to-orange-500 flex items-center justify-center shadow-lg">
+                            <i data-lucide="film" class="w-5 h-5 text-white"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-lg font-bold text-slate-800" data-i18n="exportGif">导出 GIF</h2>
+                            <p class="text-xs text-slate-500" data-i18n="exportGifDesc">将 Lottie 动画导出为 GIF 格式</p>
+                        </div>
+                    </div>
+                    <button id="close-gif-modal" class="p-2 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors" aria-label="Close GIF Modal">
+                        <i data-lucide="x" class="w-5 h-5"></i>
+                    </button>
+                </div>
+                <div class="p-5 space-y-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-600 mb-1.5" data-i18n="fps">帧率 (FPS)</label>
+                            <select id="gif-fps" class="w-full px-3 py-2 rounded-lg bg-slate-50 border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20">
+                                <option value="10">10</option>
+                                <option value="15">15</option>
+                                <option value="20" selected>20</option>
+                                <option value="30">30</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-600 mb-1.5" data-i18n="scale">缩放比例</label>
+                            <select id="gif-scale" class="w-full px-3 py-2 rounded-lg bg-slate-50 border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20">
+                                <option value="0.5">0.5x</option>
+                                <option value="1" selected>1x</option>
+                                <option value="1.5">1.5x</option>
+                                <option value="2">2x</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex items-center justify-between mb-1.5">
+                            <label class="text-xs font-medium text-slate-600" data-i18n="startFrame">起始帧</label>
+                            <span id="gif-start-val" class="text-xs font-mono text-slate-500">0</span>
+                        </div>
+                        <input type="range" id="gif-start" min="0" max="100" value="0" class="w-full">
+                    </div>
+                    <div>
+                        <div class="flex items-center justify-between mb-1.5">
+                            <label class="text-xs font-medium text-slate-600" data-i18n="endFrame">结束帧</label>
+                            <span id="gif-end-val" class="text-xs font-mono text-slate-500">100</span>
+                        </div>
+                        <input type="range" id="gif-end" min="0" max="100" value="100" class="w-full">
+                    </div>
+                    <div>
+                        <div class="flex items-center justify-between mb-1.5">
+                            <label class="text-xs font-medium text-slate-600" data-i18n="quality">质量</label>
+                            <span id="gif-quality-val" class="text-xs font-mono text-slate-500">10</span>
+                        </div>
+                        <input type="range" id="gif-quality" min="1" max="20" value="10" class="w-full">
+                        <p class="text-xs text-slate-400 mt-1" data-i18n="qualityTip">数值越小质量越好，文件越大</p>
+                    </div>
+                    <div id="gif-progress-area" class="hidden">
+                        <div class="flex items-center justify-between mb-1.5">
+                            <span class="text-xs font-medium text-slate-600" data-i18n="exporting">导出中...</span>
+                            <span id="gif-progress-text" class="text-xs font-mono text-slate-500">0%</span>
+                        </div>
+                        <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                            <div id="gif-progress-bar" class="h-full bg-gradient-to-r from-pink-500 to-orange-500 rounded-full transition-all duration-200" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex items-center justify-end gap-3 p-4 border-t border-slate-200 bg-slate-50/50">
+                    <button id="cancel-gif-btn" class="px-4 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors" data-i18n="cancel">取消</button>
+                    <button id="start-gif-btn" class="px-4 py-2 rounded-lg bg-gradient-to-r from-pink-500 to-orange-500 text-white text-sm font-medium hover:opacity-90 transition-opacity" data-i18n="startExport">开始导出</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- 帮助弹窗 -->
