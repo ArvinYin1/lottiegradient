@@ -765,30 +765,43 @@ function initializeLottiePlayer() {
     let isDragging = false;
 
     function initMonacoEditor() {
-        require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.41.0/min/vs' } });
-        require(['vs/editor/editor.main'], function() {
-            const container = document.getElementById('monaco-editor-container');
-            container.style.display = 'block';
-            container.style.width = '100%';
-            container.style.height = '400px';
-            monacoEditor = monaco.editor.create(container, {
-                value: '', language: 'json', theme: document.body.classList.contains('dark') ? 'vs-dark' : 'vs',
-                automaticLayout: true, minimap: { enabled: true }, scrollBeyondLastLine: false, wordWrap: 'on',
-                formatOnPaste: true, formatOnType: true, tabSize: 2
+        if (monacoEditor || document.getElementById('monaco-editor-script')) return;
+
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.41.0/min/vs/editor/editor.main.css';
+        document.head.appendChild(link);
+
+        const script = document.createElement('script');
+        script.id = 'monaco-editor-script';
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.41.0/min/vs/loader.js';
+        script.onload = function() {
+            require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.41.0/min/vs' } });
+            require(['vs/editor/editor.main'], function() {
+                const container = document.getElementById('monaco-editor-container');
+                container.style.display = 'block';
+                container.style.width = '100%';
+                container.style.height = '400px';
+                monacoEditor = monaco.editor.create(container, {
+                    value: '', language: 'json', theme: document.body.classList.contains('dark') ? 'vs-dark' : 'vs',
+                    automaticLayout: true, minimap: { enabled: true }, scrollBeyondLastLine: false, wordWrap: 'on',
+                    formatOnPaste: true, formatOnType: true, tabSize: 2
+                });
+                monaco.languages.json.jsonDefaults.setDiagnosticsOptions({ validate: true, schemas: [] });
+                window.addEventListener('resize', () => monacoEditor.layout());
+                monacoEditor.onDidChangeModelContent(() => {
+                    if (debounceTimer) clearTimeout(debounceTimer);
+                    debounceTimer = setTimeout(() => {
+                        if (!isProgrammaticUpdate) updateAnimationFromEditor();
+                        updateGradientNamesList();
+                        isProgrammaticUpdate = false;
+                    }, 500);
+                });
             });
-            monaco.languages.json.jsonDefaults.setDiagnosticsOptions({ validate: true, schemas: [] });
-            window.addEventListener('resize', () => monacoEditor.layout());
-            monacoEditor.onDidChangeModelContent(() => {
-                if (debounceTimer) clearTimeout(debounceTimer);
-                debounceTimer = setTimeout(() => {
-                    if (!isProgrammaticUpdate) updateAnimationFromEditor();
-                    updateGradientNamesList();
-                    isProgrammaticUpdate = false;
-                }, 500);
-            });
-        });
+        };
+        document.head.appendChild(script);
     }
-    if (typeof require !== 'undefined') setTimeout(initMonacoEditor, 100);
+    setTimeout(initMonacoEditor, 2000);
 
     const gradientSearch = document.getElementById('gradient-search');
     if (gradientSearch) {
@@ -1347,6 +1360,9 @@ function initializeLottiePlayer() {
     }
 
     async function exportGif(fps, scale, startFrame, endFrame, quality) {
+        if (!window.GIF) {
+            await preloadGifJs();
+        }
         let svg = animationContainer.querySelector('svg');
         if (!svg) throw new Error('No SVG found');
 
@@ -1588,4 +1604,23 @@ document.addEventListener('DOMContentLoaded', function() {
             lucide.createIcons();
         }, 10);
     });
+
+    // ========== gif.js 预加载 ==========
+    let gifJsPromise = null;
+    function preloadGifJs() {
+        if (window.GIF || gifJsPromise) return gifJsPromise;
+        gifJsPromise = new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = 'https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.js';
+            script.onload = () => resolve();
+            script.onerror = () => reject(new Error('Failed to load gif.js'));
+            document.head.appendChild(script);
+        });
+        return gifJsPromise;
+    }
+    if (typeof requestIdleCallback !== 'undefined') {
+        requestIdleCallback(() => preloadGifJs(), { timeout: 5000 });
+    } else {
+        setTimeout(preloadGifJs, 3000);
+    }
 });

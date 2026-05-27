@@ -1,0 +1,26 @@
+{
+  "name": "lottiegradient",
+  "version": "1.0.0",
+  "description": "> 一个用于修复和编辑 Lottie 动画渐变色的在线工具  \r > An online tool for fixing and editing gradient colors in Lottie animations",
+  "main": "index.js",
+  "scripts": {
+    "build:css": "tailwindcss -i tailwind-input.css -o css/tailwind.min.css --minify",
+    "watch:css": "tailwindcss -i tailwind-input.css -o css/tailwind.min.css --watch",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ArvinYin1/lottiegradient.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/ArvinYin1/lottiegradient/issues"
+  },
+  "homepage": "https://github.com/ArvinYin1/lottiegradient#readme",
+  "devDependencies": {
+    "tailwindcss": "^3.4.19"
+  }
+}
