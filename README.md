@@ -149,6 +149,36 @@ python3 -m http.server 8080
 
 ---
 
+## 部署 / Deployment
+
+本项目是纯静态站点，同时托管在 GitHub Pages 与自建 nginx 服务器上。
+
+- **GitHub Pages**：推送到 `main` 分支后自动更新，备用地址 https://arvinyin1.github.io/lottiegradient/
+- **自建服务器**：通过 `deploy.sh` 用 rsync over SSH 同步到服务器的 nginx 站点目录（HTTPS 由 Let's Encrypt 自动续期）
+
+```bash
+./deploy.sh            # 同步静态文件并自动验收（检查线上 HTTP 200 与页面标题）
+./deploy.sh --dry-run  # 只预览将要传输的文件，不改动服务器
+```
+
+> 服务器地址、SSH 密钥、目标目录等配置位于 `deploy.sh` 顶部，也可用环境变量临时覆盖，例如 `SSH_KEY=/path/to/key ./deploy.sh`。脚本只同步运行时所需的 `index.html css js svg`，自动跳过 `node_modules` 等构建期产物。
+
+---
+
+This is a pure static site, hosted on both GitHub Pages and a self-managed nginx server.
+
+- **GitHub Pages**: auto-updates on push to `main`; fallback URL https://arvinyin1.github.io/lottiegradient/
+- **Self-hosted**: `deploy.sh` syncs the static files to the server's nginx web root via rsync over SSH (HTTPS auto-renewed by Let's Encrypt)
+
+```bash
+./deploy.sh            # Sync static files and auto-verify (checks live HTTP 200 + page title)
+./deploy.sh --dry-run  # Preview which files would transfer, without touching the server
+```
+
+> Server host, SSH key, and target directory are configured at the top of `deploy.sh`, and can be overridden via environment variables, e.g. `SSH_KEY=/path/to/key ./deploy.sh`. The script only syncs the runtime files (`index.html css js svg`), skipping build-time artifacts like `node_modules`.
+
+---
+
 ## 相关链接 / Related Links
 
 - [Lottie 官方文档](https://airbnb.io/lottie/)

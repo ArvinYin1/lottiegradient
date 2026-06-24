@@ -1,1 +1,7 @@
 node_modules/
+
+# macOS 系统文件
+.DS_Store
+
+# 部署脚本含服务器地址与密钥路径，不提交到公开仓库
+deploy.sh
