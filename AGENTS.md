@@ -219,6 +219,13 @@ npx serve .
 
 然后访问 `http://localhost:8000`
 
+### Cursor Cloud specific instructions
+
+- `npm ci` installs the Tailwind CLI (`tailwindcss` is the only npm dependency). The committed `css/tailwind.min.css` already matches `npm run build:css`; rebuild only after changing Tailwind classes in `index.html` or `js/main.js`.
+- Serve the site from the repo root with `python3 -m http.server 8000 --bind 0.0.0.0` and open `http://localhost:8000`. Cloud Agents start this server automatically.
+- Lucide, Lottie Web (bodymovin), and Monaco Editor load from CDNs (`unpkg.com`, `cdnjs.cloudflare.com`, `cdn.jsdelivr.net`) and need outbound network access.
+- `npm test` is a placeholder and exits 1. There is no lint or unit-test suite.
+
 ### 代码规范
 
 #### JavaScript
