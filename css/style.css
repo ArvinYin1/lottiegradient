@@ -558,12 +558,8 @@ html.dark .canvas-frame { box-shadow: 0 18px 40px -18px rgba(0, 0, 0, .8); }
 }
 .stage-empty .dz-icon {
   width: 44px; height: 44px;
-  border-radius: 14px;
-  background: var(--background);
-  border: 1px solid var(--border);
   display: grid; place-items: center;
   color: var(--foreground);
-  box-shadow: var(--shadow-sm);
   margin-bottom: 2px;
 }
 .stage-empty .dz-icon svg { width: 20px; height: 20px; }
@@ -1396,7 +1392,8 @@ html.dark .badge--warn { color: #fbbf24; }
 .gif-modal-content { max-width: 460px; }
 
 /* 未选择渐变时隐藏底部提示，避免空态啰嗦 */
-#editor:has(.empty) ~ .hint { display: none; }
+#editor.is-empty ~ .hint { display: none; }
+#editor:has([data-editor-notice]) ~ .hint { display: none; }
 
 /* 关键帧渐变没有静态色值，用斜纹表示不可视化编辑 */
 .g-swatch.is-animated {

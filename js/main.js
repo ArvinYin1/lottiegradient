@@ -959,10 +959,10 @@ function loadAnimation(jsonData, preserveState = false) {
 // ========== 渐变列表与编辑器渲染 ==========
 
 function renderListEmptyState() {
+    // 未上传状态：列表区保持空白，不显示图标与说明文字
     const listEl = document.getElementById('gradient-names-list');
     if (!listEl) return;
-    listEl.innerHTML = `<div class="empty"><div class="empty-icon"><i data-lucide="sparkles"></i></div><div class="empty-title">${t('noJsonUploaded')}</div></div>`;
-    lucide.createIcons();
+    listEl.innerHTML = '';
 }
 
 function renderEditorEmptyState() {
@@ -973,9 +973,10 @@ function renderEditorEmptyState() {
     if (titleEl) titleEl.textContent = t('noGradientSelected');
     if (typeBadge) typeBadge.classList.add('hidden');
     if (editorEl) {
-        editorEl.innerHTML = `<div class="empty empty--fill"><div class="empty-icon"><i data-lucide="mouse-pointer-click"></i></div><div class="empty-title">${t('clickGradientToEdit')}</div></div>`;
+        // 未上传状态：编辑区保持空白，不显示图标与说明文字
+        editorEl.innerHTML = '';
+        editorEl.classList.add('is-empty');
     }
-    lucide.createIcons();
 }
 
 function updateGradientNamesList() {
@@ -1104,6 +1105,7 @@ function renderEditorForSelection() {
 
     const { arr, keyframed } = unwrapGradientK(target.g);
     if (keyframed) {
+        editorEl.classList.remove('is-empty');
         editorEl.innerHTML = `
             <div class="empty empty--fill" data-editor-notice="keyframed">
                 <div class="empty-icon"><i data-lucide="film"></i></div>
@@ -1114,6 +1116,7 @@ function renderEditorForSelection() {
         return;
     }
 
+    editorEl.classList.remove('is-empty');
     gradientEditorInstance = new GradientPreviewEditor(editorEl, arr, target.g.p, (result) => {
         applyEditToSelected(result);
     });
