@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
-      SSH_KEY: ${{ runner.temp }}/deploy_ssh_key
+      SSH_KEY: /tmp/lottiegradient_deploy_ssh_key
       HOST: root@43.155.27.82
       REMOTE_DIR: /var/www/lottiegradient
       SITE_URL: https://www.lottie.uno/
