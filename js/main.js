@@ -34,7 +34,7 @@ const i18n = {
         step3: '在右侧编辑器中调整颜色、位置、透明度',
         step4: '点击「导出 JSON」保存修复后的文件',
         tips: '使用技巧',
-        tip1: '点击「网格」按钮可切换透明背景，方便查看透明动画',
+        tip1: '点击「背景」按钮可切换透明棋盘格，方便查看透明动画',
         tip2: '「同步渐变」功能可将一个动画的渐变配置批量应用到其他动画',
         gotIt: '知道了',
         subtitle: '渐变色编辑器',
@@ -79,7 +79,18 @@ const i18n = {
         demoVideo: '使用演示',
         videoTutorial: '视频教程',
         aboutTool: '关于本工具',
-        aboutAuthor: '关于我'
+        aboutAuthor: '关于我',
+        gradientPreview: '渐变预览',
+        stops: '色标',
+        color: '颜色',
+        opacity: '不透明度',
+        supportBodymovin: '支持 Bodymovin 导出的 .json 文件',
+        hintDrag: '颜色色标与透明度色标相互独立：拖动圆点调整位置，也可直接输入数值。',
+        alphaOffHint: '开启后可为透明度单独添加色标',
+        themeDark: '切换为深色主题',
+        themeLight: '切换为浅色主题',
+        alphaChannel: '透明度色标',
+        removeStop: '删除色标'
     },
     en: {
         help: 'Help',
@@ -113,7 +124,7 @@ const i18n = {
         step3: 'Adjust colors, positions, and transparency in the editor',
         step4: 'Click "Export JSON" to save the fixed file',
         tips: 'Tips',
-        tip1: 'Click the "Grid" button to toggle transparent background for viewing transparent animations',
+        tip1: 'Click the "Background" button to toggle the transparency checkerboard',
         tip2: 'The "Sync Gradient" feature can batch apply gradient configurations from one animation to others',
         gotIt: 'Got it',
         subtitle: 'Gradient Editor',
@@ -158,7 +169,18 @@ const i18n = {
         demoVideo: 'Demo',
         videoTutorial: 'Video Tutorial',
         aboutTool: 'About This Tool',
-        aboutAuthor: 'About Me'
+        aboutAuthor: 'About Me',
+        gradientPreview: 'Gradient Preview',
+        stops: 'Stops',
+        color: 'Color',
+        opacity: 'Opacity',
+        supportBodymovin: 'Supports .json files exported by Bodymovin',
+        hintDrag: 'Color stops and alpha stops are independent: drag the handles or type exact values.',
+        alphaOffHint: 'Enable alpha to add independent alpha stops',
+        themeDark: 'Switch to dark theme',
+        themeLight: 'Switch to light theme',
+        alphaChannel: 'Alpha Stops',
+        removeStop: 'Remove stop'
     }
 };
 
@@ -198,6 +220,14 @@ function updateLanguage(lang) {
     });
 
     refreshDynamicTexts();
+
+    const themeBtnEl = document.getElementById('theme-btn');
+    if (themeBtnEl) {
+        const dark = document.documentElement.classList.contains('dark');
+        const label = i18n[lang][dark ? 'themeLight' : 'themeDark'];
+        themeBtnEl.setAttribute('aria-label', label);
+        themeBtnEl.setAttribute('data-tip', label);
+    }
 }
 
 // 更新由 JS 动态生成的文案（工具提示、列表、编辑器）
@@ -324,8 +354,15 @@ function forEachGradient(root, cb) {
 function getGradientList(jsonData) {
     const list = [];
     forEachGradient(jsonData, (node, index) => {
-        const { keyframed } = unwrapGradientK(node.g);
-        list.push({ index, node, name: node.nm || t('unnamedGradient'), keyframed });
+        const { arr, keyframed } = unwrapGradientK(node.g);
+        let colorCount = 0;
+        let hasAlpha = false;
+        if (!keyframed && arr) {
+            const parsed = parseGradientArray(arr, node.g.p);
+            colorCount = parsed.colors.length;
+            hasAlpha = parsed.alphaStops.length > 0;
+        }
+        list.push({ index, node, name: node.nm || t('unnamedGradient'), type: node.ty, keyframed, colorCount, hasAlpha });
     });
     // 同名渐变追加序号后缀，方便区分
     const counts = {};
@@ -387,6 +424,35 @@ function hexToRgbArr(hex) {
 
 // ========== 渐变编辑器 ==========
 
+// 把颜色色标 + 透明度色标合成为一条 CSS 渐变（用于列表缩略图与预览条）
+function gradient_css_from_stops(colors, alphaStops) {
+    const cs = [...colors].sort((a, b) => a.offset - b.offset);
+    if (!cs.length) return 'var(--muted)';
+    const as = alphaStops && alphaStops.length ? [...alphaStops].sort((a, b) => a.offset - b.offset) : null;
+    const offsets = [...new Set([
+        ...cs.map(c => c.offset),
+        ...(as ? as.map(a => a.offset) : [])
+    ])].sort((a, b) => a - b);
+    const stops = offsets.map(o => {
+        const rgb = samplePiecewise(cs, o, c => hexToRgbArr(c.color));
+        const alpha = as ? samplePiecewise(as, o, a => a.alpha) : 1;
+        const [r, g, b] = rgb.map(Math.round);
+        return `rgba(${r}, ${g}, ${b}, ${truncate_float(alpha)}) ${Math.round(o * 100)}%`;
+    });
+    return `linear-gradient(90deg, ${stops.join(', ')})`;
+}
+
+function gradient_swatch_css(node) {
+    try {
+        const { arr } = unwrapGradientK(node.g);
+        if (!arr || !arr.length) return 'var(--muted)';
+        const parsed = parseGradientArray(arr, node.g.p);
+        return gradient_css_from_stops(parsed.colors, parsed.alphaStops);
+    } catch (e) {
+        return 'var(--muted)';
+    }
+}
+
 class GradientPreviewEditor {
     constructor(parent, lottieArr, colorCount, on_change) {
         this.parent = parent;
@@ -403,72 +469,133 @@ class GradientPreviewEditor {
         this.render();
     }
 
+    // ---------- 渲染 ----------
     render() {
         const self = this;
         this.parent.innerHTML = '';
         const container = document.createElement('div');
-        container.className = 'space-y-4';
+        container.className = 'editor-stack';
         this.parent.appendChild(container);
 
-        // 渐变预览条
-        const previewWrapper = document.createElement('div');
-        previewWrapper.className = 'alpha-checkered rounded-lg p-1';
+        // 合并预览条
+        const previewBlock = document.createElement('div');
+        const previewLabel = document.createElement('div');
+        previewLabel.className = 'section-label';
+        previewLabel.innerHTML = `<span>${t('gradientPreview')}</span><span class="spacer"></span><span class="count">${this.colors.length} ${t('stops')}</span>`;
+        previewBlock.appendChild(previewLabel);
+        const previewRail = document.createElement('div');
+        previewRail.className = 'rail-block';
+        const previewTrack = document.createElement('div');
+        previewTrack.className = 'rail-track';
         this.preview = document.createElement('div');
-        this.preview.className = 'gradient-preview-bar';
+        this.preview.className = 'rail';
         this.preview.style.background = this.to_css();
-        previewWrapper.appendChild(this.preview);
-        container.appendChild(previewWrapper);
+        previewTrack.appendChild(this.preview);
+        previewRail.appendChild(previewTrack);
+        previewBlock.appendChild(previewRail);
+        container.appendChild(previewBlock);
 
-        // 颜色色标区
+        // ---- 颜色色标 ----
         const colorSection = document.createElement('div');
-        colorSection.className = 'space-y-2';
-        const colorHeader = document.createElement('p');
-        colorHeader.className = 'text-xs font-medium text-slate-500';
-        colorHeader.textContent = t('colorStops');
-        colorSection.appendChild(colorHeader);
+        const colorLabel = document.createElement('div');
+        colorLabel.className = 'section-label';
+        colorLabel.innerHTML = `<span>${t('colorStops')}</span><span class="spacer"></span><span class="count" data-count="color">${this.colors.length}</span>`;
+        colorSection.appendChild(colorLabel);
+
+        const colorRailBlock = document.createElement('div');
+        colorRailBlock.className = 'rail-block';
+        const colorTrack = document.createElement('div');
+        colorTrack.className = 'rail-track';
+        this.colorRail = document.createElement('div');
+        this.colorRail.className = 'rail';
+        this.colorRail.dataset.rail = 'color';
+        this.colorRail.style.background = gradient_css_from_stops(this.colors, null);
+        colorTrack.appendChild(this.colorRail);
+        this.colorRailStops = document.createElement('div');
+        this.colorRailStops.className = 'rail-stops';
+        colorTrack.appendChild(this.colorRailStops);
+        colorRailBlock.appendChild(colorTrack);
+        colorSection.appendChild(colorRailBlock);
+
+        const colorHead = document.createElement('div');
+        colorHead.className = 'stops-head stops-head--color';
+        colorHead.innerHTML = `<span></span><span>${t('color')}</span><span>${t('position')}</span><span></span>`;
+        colorSection.appendChild(colorHead);
+
         this.colorsContainer = document.createElement('div');
-        this.colorsContainer.className = 'space-y-2';
+        this.colorsContainer.className = 'stops-rows';
         colorSection.appendChild(this.colorsContainer);
         this.colors.forEach(c => this.colorsContainer.appendChild(this._buildColorRow(c)));
-
-        const addColorBtn = document.createElement('button');
-        addColorBtn.type = 'button';
-        addColorBtn.className = 'w-full py-2 rounded-lg border-2 border-dashed border-slate-300 text-slate-500 hover:border-blue-500 hover:text-blue-500 transition-colors flex items-center justify-center gap-2 text-sm';
-        addColorBtn.innerHTML = `<i data-lucide="plus" class="w-4 h-4"></i> ${t('addStop')}`;
-        addColorBtn.addEventListener('click', () => {
+        colorSection.appendChild(this._buildAddButton('add-color-stop', t('addStop'), () => {
             const color = { offset: 1, color: '#000000' };
             self.colors.push(color);
             self.colorsContainer.appendChild(self._buildColorRow(color));
+            self._refreshColorRail();
+            self._syncCounts();
             self._on_change();
             lucide.createIcons();
-        });
-        colorSection.appendChild(addColorBtn);
+        }));
         container.appendChild(colorSection);
 
-        // 透明度色标区（与颜色色标相互独立）
-        const alphaSection = document.createElement('div');
-        alphaSection.className = 'space-y-2';
-        const alphaHeader = document.createElement('div');
-        alphaHeader.className = 'flex items-center justify-between';
-        const alphaLabel = document.createElement('p');
-        alphaLabel.className = 'text-xs font-medium text-slate-500';
-        alphaLabel.textContent = t('alphaStopsLabel');
-        this.alphaToggle = document.createElement('button');
-        this.alphaToggle.type = 'button';
-        this.alphaToggle.textContent = t('enableAlpha');
-        alphaHeader.appendChild(alphaLabel);
-        alphaHeader.appendChild(this.alphaToggle);
-        alphaSection.appendChild(alphaHeader);
+        container.appendChild(Object.assign(document.createElement('div'), { className: 'divider' }));
 
-        this.alphaRowsWrapper = document.createElement('div');
-        this.alphaRowsWrapper.className = 'space-y-2';
-        alphaSection.appendChild(this.alphaRowsWrapper);
+        // ---- 透明度色标（与颜色色标相互独立）----
+        const alphaSection = document.createElement('div');
+        const alphaHeadRow = document.createElement('div');
+        alphaHeadRow.className = 'section-label';
+        alphaHeadRow.innerHTML = `<span>${t('alphaStopsLabel')}</span><span class="spacer"></span>`;
+        const alphaToggle = document.createElement('button');
+        alphaToggle.type = 'button';
+        alphaToggle.className = 'switch';
+        alphaToggle.dataset.action = 'toggle-alpha';
+        alphaToggle.setAttribute('role', 'switch');
+        alphaToggle.setAttribute('aria-checked', String(this.with_alpha));
+        alphaToggle.setAttribute('aria-label', t('enableAlpha'));
+        alphaHeadRow.appendChild(alphaToggle);
+        alphaSection.appendChild(alphaHeadRow);
+        this.alphaToggle = alphaToggle;
+
+        if (!this.with_alpha) {
+            const off = document.createElement('div');
+            off.className = 'rail-empty';
+            off.textContent = t('alphaOffHint');
+            alphaSection.appendChild(off);
+        } else {
+            const alphaRailBlock = document.createElement('div');
+            alphaRailBlock.className = 'rail-block rail-block--alpha';
+            const alphaTrack = document.createElement('div');
+            alphaTrack.className = 'rail-track';
+            this.alphaRail = document.createElement('div');
+            this.alphaRail.className = 'rail rail--alpha';
+            this.alphaRail.dataset.rail = 'alpha';
+            alphaTrack.appendChild(this.alphaRail);
+            this.alphaRailStops = document.createElement('div');
+            this.alphaRailStops.className = 'rail-stops';
+            alphaTrack.appendChild(this.alphaRailStops);
+            alphaRailBlock.appendChild(alphaTrack);
+            alphaSection.appendChild(alphaRailBlock);
+
+            const alphaHead = document.createElement('div');
+            alphaHead.className = 'stops-head stops-head--alpha';
+            alphaHead.innerHTML = `<span>${t('position')}</span><span>${t('opacity')}</span><span></span>`;
+            alphaSection.appendChild(alphaHead);
+
+            this.alphaRowsWrapper = document.createElement('div');
+            this.alphaRowsWrapper.className = 'stops-rows';
+            alphaSection.appendChild(this.alphaRowsWrapper);
+            this.alphaStops.forEach(a => this.alphaRowsWrapper.appendChild(this._buildAlphaRow(a)));
+            alphaSection.appendChild(this._buildAddButton('add-alpha-stop', t('addAlphaStop'), () => {
+                const stop = { offset: 1, alpha: 1 };
+                self.alphaStops.push(stop);
+                self.alphaRowsWrapper.appendChild(self._buildAlphaRow(stop));
+                self._refreshAlphaRail();
+                self._on_change();
+                lucide.createIcons();
+            }));
+        }
         container.appendChild(alphaSection);
 
-        this._updateAlphaToggleStyle();
-        this._renderAlphaRows();
-
-        this.alphaToggle.addEventListener('click', () => {
+        alphaToggle.addEventListener('click', () => {
             self.with_alpha = !self.with_alpha;
             if (self.with_alpha && self.alphaStops.length === 0) {
                 // 首次开启：按颜色色标位置生成全不透明的透明度色标
@@ -477,198 +604,268 @@ class GradientPreviewEditor {
                     self.alphaStops = [{ offset: 0, alpha: 1 }, { offset: 1, alpha: 1 }];
                 }
             }
-            self._updateAlphaToggleStyle();
-            self._renderAlphaRows();
+            self.render();
             self._on_change();
             lucide.createIcons();
         });
 
+        this._refreshColorRail();
+        this._refreshAlphaRail();
+        this._syncCounts();
         lucide.createIcons();
     }
 
-    _updateAlphaToggleStyle() {
-        if (this.with_alpha) {
-            this.alphaToggle.className = 'px-3 py-1.5 rounded-full text-xs font-medium border transition-colors shrink-0 bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100';
-        } else {
-            this.alphaToggle.className = 'px-3 py-1.5 rounded-full text-xs font-medium border transition-colors shrink-0 bg-white text-slate-500 border-slate-200 hover:bg-slate-50';
-        }
+    _buildAddButton(action, label, handler) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'add-stop';
+        btn.dataset.action = action;
+        btn.innerHTML = `<i data-lucide="plus"></i> ${label}`;
+        btn.addEventListener('click', handler);
+        return btn;
     }
 
-    _renderAlphaRows() {
-        const self = this;
-        this.alphaRowsWrapper.innerHTML = '';
-        if (!this.with_alpha) return;
-        this.alphaStops.forEach(a => this.alphaRowsWrapper.appendChild(this._buildAlphaRow(a)));
-        const addAlphaBtn = document.createElement('button');
-        addAlphaBtn.type = 'button';
-        addAlphaBtn.className = 'w-full py-2 rounded-lg border-2 border-dashed border-slate-300 text-slate-500 hover:border-blue-500 hover:text-blue-500 transition-colors flex items-center justify-center gap-2 text-sm';
-        addAlphaBtn.innerHTML = `<i data-lucide="plus" class="w-4 h-4"></i> ${t('addAlphaStop')}`;
-        addAlphaBtn.addEventListener('click', () => {
-            const stop = { offset: 1, alpha: 1 };
-            self.alphaStops.push(stop);
-            addAlphaBtn.before(self._buildAlphaRow(stop));
-            self._on_change();
-            lucide.createIcons();
+    // ---------- 缩略轨与圆点 ----------
+    _refreshColorRail() {
+        if (this.colorRail) this.colorRail.style.background = gradient_css_from_stops(this.colors, null);
+        if (this.colorRailStops) this.colorRailStops.innerHTML = '';
+        this.colors.forEach(color => {
+            const handle = this._buildRailStop(color, this.colorRail, (pct) => {
+                color.offset = pct;
+                if (color.pos_input) color.pos_input.value = Math.round(pct * 100);
+                this._updatePreview();
+                this._debounced_change();
+            });
+            if (this.colorRailStops) this.colorRailStops.appendChild(handle);
+            color.rail_stop = handle;
         });
-        this.alphaRowsWrapper.appendChild(addAlphaBtn);
     }
 
-    // 位置控制组（滑杆 + 数字输入），颜色行与透明度行共用
-    _buildSliderGroup(labelText, initialValue, onUpdate) {
-        const group = document.createElement('div');
-        group.className = 'flex items-center gap-2 flex-1 min-w-[180px]';
-        const label = document.createElement('span');
-        label.className = 'text-xs text-slate-500 shrink-0';
-        label.textContent = labelText;
-        group.appendChild(label);
+    _refreshAlphaRail() {
+        if (!this.alphaRail || !this.alphaRailStops) return;
+        const stops = [...this.alphaStops].sort((a, b) => a.offset - b.offset);
+        const css = stops.map(s => `rgba(0, 0, 0, ${truncate_float(s.alpha)}) ${Math.round(s.offset * 100)}%`);
+        this.alphaRail.style.backgroundImage = stops.length
+            ? `linear-gradient(90deg, ${css.join(', ')})`
+            : 'none';
+        this.alphaRailStops.innerHTML = '';
+        this.alphaStops.forEach(stop => {
+            const handle = this._buildRailStop(stop, this.alphaRail, (pct) => {
+                stop.offset = pct;
+                if (stop.pos_input) stop.pos_input.value = Math.round(pct * 100);
+                this._refreshAlphaRail();
+                this._updatePreview();
+                this._debounced_change();
+            });
+            this.alphaRailStops.appendChild(handle);
+            stop.rail_stop = handle;
+        });
+    }
 
-        const slider = document.createElement('input');
-        slider.type = 'range';
-        slider.min = 0; slider.max = 100; slider.step = 1;
-        slider.value = initialValue;
-        slider.className = 'flex-1 min-w-[60px]';
-        group.appendChild(slider);
+    _buildRailStop(item, railEl, applyPct) {
+        const self = this;
+        const handle = document.createElement('button');
+        handle.type = 'button';
+        handle.className = 'rail-stop';
+        handle.style.setProperty('--p', Math.round(item.offset * 100) + '%');
+        handle.setAttribute('aria-label', `${t('position')} ${Math.round(item.offset * 100)}%`);
 
-        const num = document.createElement('input');
-        num.type = 'number';
-        num.min = 0; num.max = 100;
-        num.value = initialValue;
-        num.className = 'w-12 px-1 py-1 rounded-md bg-white border border-slate-200 text-xs text-center';
-        group.appendChild(num);
-        group.appendChild(document.createTextNode('%'));
-
-        const update = (value) => {
-            let v = Number(value);
-            if (isNaN(v) || v < 0) v = 0;
-            if (v > 100) v = 100;
-            slider.value = v;
-            num.value = v;
-            onUpdate(v / 100);
+        let dragging = false;
+        const moveTo = (clientX) => {
+            const rect = railEl.getBoundingClientRect();
+            if (!rect.width) return;
+            const pct = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
+            applyPct(pct);
+            handle.style.setProperty('--p', Math.round(pct * 100) + '%');
         };
-        slider.addEventListener('input', () => update(slider.value));
-        num.addEventListener('input', () => update(num.value));
-        return group;
+        handle.addEventListener('pointerdown', (ev) => {
+            ev.preventDefault();
+            dragging = true;
+            try { handle.setPointerCapture(ev.pointerId); } catch (e) {}
+            handle.classList.add('is-active');
+            handle.focus();
+        });
+        handle.addEventListener('pointermove', (ev) => { if (dragging) moveTo(ev.clientX); });
+        handle.addEventListener('pointerup', (ev) => {
+            dragging = false;
+            handle.classList.remove('is-active');
+            try { handle.releasePointerCapture(ev.pointerId); } catch (e) {}
+        });
+        handle.addEventListener('pointercancel', () => { dragging = false; handle.classList.remove('is-active'); });
+        handle.addEventListener('keydown', (ev) => {
+            if (ev.key !== 'ArrowLeft' && ev.key !== 'ArrowRight') return;
+            ev.preventDefault();
+            const step = (ev.shiftKey ? 10 : 1) / 100;
+            const pct = Math.min(1, Math.max(0, item.offset + (ev.key === 'ArrowRight' ? step : -step)));
+            applyPct(pct);
+            handle.style.setProperty('--p', Math.round(pct * 100) + '%');
+        });
+        return handle;
+    }
+
+    _updatePreview() {
+        this.preview.style.background = this.to_css();
+    }
+
+    _syncCounts() {
+        const colorCountEl = this.parent.querySelector('[data-count="color"]');
+        if (colorCountEl) colorCountEl.textContent = String(this.colors.length);
+        const previewCount = this.parent.querySelector('.section-label .count');
+        if (previewCount) previewCount.textContent = `${this.colors.length} ${t('stops')}`;
+    }
+
+    // ---------- 行构建 ----------
+    _buildNumField(value, ariaLabel, onInput) {
+        const wrap = document.createElement('div');
+        wrap.className = 'num-wrap';
+        const input = document.createElement('input');
+        input.type = 'number';
+        input.min = 0; input.max = 100; input.step = 1;
+        input.value = value;
+        input.className = 'num-input';
+        input.setAttribute('aria-label', ariaLabel);
+        wrap.appendChild(input);
+        const suffix = document.createElement('span');
+        suffix.className = 'num-suffix';
+        suffix.textContent = '%';
+        wrap.appendChild(suffix);
+
+        const apply = (raw) => {
+            let v = Number(raw);
+            if (!isFinite(v) || v < 0) v = 0;
+            if (v > 100) v = 100;
+            input.value = v;
+            onInput(v / 100);
+        };
+        input.addEventListener('input', () => apply(input.value));
+        return { wrap, input };
     }
 
     _buildColorRow(color) {
         const self = this;
         const row = document.createElement('div');
-        row.className = 'bg-slate-50 rounded-xl p-2 flex flex-wrap items-center gap-x-3 gap-y-2';
+        row.className = 'stop-row stop-row--color';
+        row.dataset.row = 'color';
 
-        const leftGroup = document.createElement('div');
-        leftGroup.className = 'flex items-center gap-1 shrink-0';
-        row.appendChild(leftGroup);
-
-        const colorPickerWrapper = document.createElement('div');
-        colorPickerWrapper.className = 'w-7 h-7 rounded-lg border border-slate-300 overflow-hidden flex-shrink-0';
-        const colorPicker = document.createElement('input');
-        colorPicker.type = 'color';
-        colorPicker.value = color.color;
-        colorPicker.className = 'w-full h-full p-0 cursor-pointer border-0';
-        colorPickerWrapper.appendChild(colorPicker);
-        leftGroup.appendChild(colorPickerWrapper);
-
-        const deleteBtn = document.createElement('button');
-        deleteBtn.type = 'button';
-        deleteBtn.className = 'p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50';
-        deleteBtn.innerHTML = '<i data-lucide="trash-2" class="w-3.5 h-3.5"></i>';
-        deleteBtn.addEventListener('click', () => {
-            if (self.colors.length <= 2) { showToast(t('minStopsWarning'), 'info'); return; }
-            row.remove();
-            self.colors.splice(self.colors.indexOf(color), 1);
-            self._on_change();
-        });
-        leftGroup.appendChild(deleteBtn);
+        const swatch = document.createElement('input');
+        swatch.type = 'color';
+        swatch.value = color.color;
+        swatch.className = 'swatch-input';
+        swatch.setAttribute('aria-label', t('color'));
+        row.appendChild(swatch);
 
         const hexInput = document.createElement('input');
         hexInput.type = 'text';
         hexInput.value = color.color.slice(1);
-        hexInput.className = 'w-16 px-2 py-1.5 rounded-lg bg-white border border-slate-200 text-xs font-mono uppercase text-center shrink-0';
+        hexInput.className = 'hex-input';
+        hexInput.spellcheck = false;
+        hexInput.setAttribute('aria-label', 'HEX');
         row.appendChild(hexInput);
 
-        row.appendChild(this._buildSliderGroup(t('position'), Math.round(color.offset * 100), (v) => {
+        const pos = this._buildNumField(Math.round(color.offset * 100), t('position'), (v) => {
             color.offset = v;
-            self._debounced_change();
-        }));
-
-        colorPicker.addEventListener('input', () => {
-            color.color = colorPicker.value;
-            hexInput.value = colorPicker.value.slice(1);
-            self._debounced_change();
+            if (color.rail_stop) color.rail_stop.style.setProperty('--p', Math.round(v * 100) + '%');
+            this._updatePreview();
+            this._debounced_change();
         });
+        row.appendChild(pos.wrap);
+        color.pos_input = pos.input;
 
+        const del = document.createElement('button');
+        del.type = 'button';
+        del.className = 'row-del';
+        del.dataset.action = 'delete-color-stop';
+        del.setAttribute('aria-label', t('removeStop') || 'remove stop');
+        del.innerHTML = '<i data-lucide="trash-2"></i>';
+        del.addEventListener('click', () => {
+            if (this.colors.length <= 2) { showToast(t('minStopsWarning'), 'info'); return; }
+            row.remove();
+            this.colors.splice(this.colors.indexOf(color), 1);
+            this._refreshColorRail();
+            this._syncCounts();
+            this._on_change();
+        });
+        row.appendChild(del);
+
+        const applyColor = (hexValue) => {
+            color.color = hexValue;
+            swatch.value = hexValue;
+            hexInput.value = hexValue.slice(1);
+            if (this.colorRail) this.colorRail.style.background = gradient_css_from_stops(this.colors, null);
+            this._updatePreview();
+            this._debounced_change();
+        };
+
+        swatch.addEventListener('input', () => applyColor(swatch.value));
         hexInput.addEventListener('input', () => {
             const match = hexInput.value.match(/^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/);
-            if (match) {
-                let hexValue = '#' + match[1];
-                if (hexValue.length === 4) {
-                    hexValue = '#' + hexValue[1] + hexValue[1] + hexValue[2] + hexValue[2] + hexValue[3] + hexValue[3];
-                }
-                color.color = hexValue;
-                colorPicker.value = hexValue;
-                self._debounced_change();
+            if (!match) return;
+            let hexValue = '#' + match[1];
+            if (hexValue.length === 4) {
+                hexValue = '#' + hexValue[1] + hexValue[1] + hexValue[2] + hexValue[2] + hexValue[3] + hexValue[3];
             }
+            applyColor(hexValue);
         });
 
+        color.swatch = swatch;
+        color.hex_input = hexInput;
         return row;
     }
 
     _buildAlphaRow(stop) {
-        const self = this;
         const row = document.createElement('div');
-        row.className = 'bg-slate-50 rounded-xl p-2 flex flex-wrap items-center gap-x-3 gap-y-2';
+        row.className = 'stop-row stop-row--alpha';
+        row.dataset.row = 'alpha';
 
-        row.appendChild(this._buildSliderGroup(t('position'), Math.round(stop.offset * 100), (v) => {
+        const pos = this._buildNumField(Math.round(stop.offset * 100), t('position'), (v) => {
             stop.offset = v;
-            self._debounced_change();
-        }));
-        row.appendChild(this._buildSliderGroup(t('alpha'), Math.round(stop.alpha * 100), (v) => {
-            stop.alpha = v;
-            self._debounced_change();
-        }));
-
-        const deleteBtn = document.createElement('button');
-        deleteBtn.type = 'button';
-        deleteBtn.className = 'p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 shrink-0';
-        deleteBtn.innerHTML = '<i data-lucide="trash-2" class="w-3.5 h-3.5"></i>';
-        deleteBtn.addEventListener('click', () => {
-            if (self.alphaStops.length <= 2) { showToast(t('minStopsWarning'), 'info'); return; }
-            row.remove();
-            self.alphaStops.splice(self.alphaStops.indexOf(stop), 1);
-            self._on_change();
+            if (stop.rail_stop) stop.rail_stop.style.setProperty('--p', Math.round(v * 100) + '%');
+            this._refreshAlphaRail();
+            this._updatePreview();
+            this._debounced_change();
         });
-        row.appendChild(deleteBtn);
+        row.appendChild(pos.wrap);
+        stop.pos_input = pos.input;
 
+        const alpha = this._buildNumField(Math.round(stop.alpha * 100), t('opacity'), (v) => {
+            stop.alpha = v;
+            this._refreshAlphaRail();
+            this._updatePreview();
+            this._debounced_change();
+        });
+        row.appendChild(alpha.wrap);
+        stop.alpha_input = alpha.input;
+
+        const del = document.createElement('button');
+        del.type = 'button';
+        del.className = 'row-del';
+        del.dataset.action = 'delete-alpha-stop';
+        del.setAttribute('aria-label', t('removeStop') || 'remove stop');
+        del.innerHTML = '<i data-lucide="trash-2"></i>';
+        del.addEventListener('click', () => {
+            if (this.alphaStops.length <= 2) { showToast(t('minStopsWarning'), 'info'); return; }
+            row.remove();
+            this.alphaStops.splice(this.alphaStops.indexOf(stop), 1);
+            this._refreshAlphaRail();
+            this._on_change();
+        });
+        row.appendChild(del);
         return row;
     }
 
+    // ---------- 数据输出 ----------
     _debounced_change() {
         if (this.debounceTimer) clearTimeout(this.debounceTimer);
         this.debounceTimer = setTimeout(() => this._on_change(), 100);
     }
 
     _on_change() {
-        this.preview.style.background = this.to_css();
+        this._updatePreview();
         if (this.on_change) this.on_change(this.to_lottie());
     }
 
     to_css() {
-        const colors = [...this.colors].sort((a, b) => a.offset - b.offset);
-        if (colors.length === 0) return 'transparent';
-        const alphas = this.with_alpha && this.alphaStops.length > 0
-            ? [...this.alphaStops].sort((a, b) => a.offset - b.offset)
-            : null;
-        const offsets = [...new Set([
-            ...colors.map(c => c.offset),
-            ...(alphas ? alphas.map(a => a.offset) : [])
-        ])].sort((a, b) => a - b);
-        const stops = offsets.map(o => {
-            const rgb = samplePiecewise(colors, o, c => hexToRgbArr(c.color));
-            const alpha = alphas ? samplePiecewise(alphas, o, a => a.alpha) : 1;
-            const [r, g, b] = rgb.map(Math.round);
-            return `rgba(${r}, ${g}, ${b}, ${truncate_float(alpha)}) ${Math.round(o * 100)}%`;
-        });
-        return `linear-gradient(90deg, ${stops.join(', ')})`;
+        return gradient_css_from_stops(this.colors, this.with_alpha ? this.alphaStops : null);
     }
 
     // 返回 { k: 平铺数组, p: 颜色色标数 }；透明度色标独立保留
@@ -764,20 +961,19 @@ function loadAnimation(jsonData, preserveState = false) {
 function renderListEmptyState() {
     const listEl = document.getElementById('gradient-names-list');
     if (!listEl) return;
-    listEl.innerHTML = `<div class="text-center py-8 text-slate-400"><i data-lucide="sparkles" class="w-10 h-10 mx-auto mb-2 opacity-50"></i><p class="text-sm">${t('noJsonUploaded')}</p></div>`;
+    listEl.innerHTML = `<div class="empty"><div class="empty-icon"><i data-lucide="sparkles"></i></div><div class="empty-title">${t('noJsonUploaded')}</div></div>`;
     lucide.createIcons();
 }
 
 function renderEditorEmptyState() {
     const titleEl = document.getElementById('editor-title');
     const editorEl = document.getElementById('editor');
+    const typeBadge = document.getElementById('gradient-type');
     gradientEditorInstance = null;
-    if (titleEl) {
-        titleEl.innerHTML = '<i data-lucide="sliders" class="w-4 h-4 text-green-500"></i>';
-        titleEl.appendChild(document.createTextNode(t('noGradientSelected')));
-    }
+    if (titleEl) titleEl.textContent = t('noGradientSelected');
+    if (typeBadge) typeBadge.classList.add('hidden');
     if (editorEl) {
-        editorEl.innerHTML = `<div class="text-center py-8 text-slate-400"><i data-lucide="mouse-pointer-click" class="w-10 h-10 mx-auto mb-2 opacity-50"></i><p class="text-sm">${t('clickGradientToEdit')}</p></div>`;
+        editorEl.innerHTML = `<div class="empty empty--fill"><div class="empty-icon"><i data-lucide="mouse-pointer-click"></i></div><div class="empty-title">${t('clickGradientToEdit')}</div></div>`;
     }
     lucide.createIcons();
 }
@@ -801,7 +997,7 @@ function updateGradientNamesList() {
     if (countEl) countEl.textContent = String(gradients.length);
 
     if (gradients.length === 0) {
-        listEl.innerHTML = `<div class="text-center py-8 text-slate-400"><p class="text-sm">${t('noGradientsFound')}</p></div>`;
+        listEl.innerHTML = `<div class="empty"><div class="empty-icon"><i data-lucide="search-x"></i></div><div class="empty-title">${t('noGradientsFound')}</div></div>`;
         selectedGradient = null;
         renderEditorEmptyState();
         return;
@@ -811,32 +1007,47 @@ function updateGradientNamesList() {
     let selectionStillValid = false;
     gradients.forEach(g => {
         const item = document.createElement('div');
-        item.className = 'gradient-item rounded-lg p-3 cursor-pointer';
+        item.className = 'gradient-item';
         item.tabIndex = 0;
         item.setAttribute('role', 'button');
+        item.dataset.index = String(g.index);
 
-        const inner = document.createElement('div');
-        inner.className = 'flex items-center gap-3';
-        const num = document.createElement('span');
-        num.className = 'text-xs font-mono text-slate-400 w-6 shrink-0';
-        num.textContent = String(g.index + 1);
-        const nameSpan = document.createElement('span');
-        nameSpan.className = 'gradient-name flex-1 text-sm font-medium text-slate-700 truncate';
+        const swatch = document.createElement('div');
+        swatch.className = 'g-swatch' + (g.keyframed ? ' is-animated' : '');
+        if (!g.keyframed) swatch.style.background = gradient_swatch_css(g.node);
+
+        const text = document.createElement('div');
+        text.className = 'g-text';
+        const nameSpan = document.createElement('div');
+        nameSpan.className = 'gradient-name';
         nameSpan.textContent = g.displayName;
         nameSpan.title = g.displayName;
-        inner.appendChild(num);
-        inner.appendChild(nameSpan);
+        const meta = document.createElement('div');
+        meta.className = 'g-meta';
+        const typeTag = document.createElement('span');
+        typeTag.className = 'type';
+        typeTag.textContent = g.type || 'gf';
+        meta.appendChild(typeTag);
+        if (g.colorCount) {
+            const countTag = document.createElement('span');
+            countTag.textContent = `${g.colorCount} ${t('stops')}${g.hasAlpha ? ' · α' : ''}`;
+            meta.appendChild(countTag);
+        }
         if (g.keyframed) {
             const badge = document.createElement('span');
-            badge.className = 'text-[10px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-600 shrink-0';
+            badge.className = 'badge badge--warn';
             badge.textContent = t('keyframedBadge');
-            inner.appendChild(badge);
+            meta.appendChild(badge);
         }
+        text.appendChild(nameSpan);
+        text.appendChild(meta);
+
         const chevron = document.createElement('i');
         chevron.setAttribute('data-lucide', 'chevron-right');
-        chevron.className = 'w-4 h-4 text-slate-400 shrink-0';
-        inner.appendChild(chevron);
-        item.appendChild(inner);
+        chevron.className = 'chev';
+        item.appendChild(swatch);
+        item.appendChild(text);
+        item.appendChild(chevron);
 
         if (selectedGradient && selectedGradient.index === g.index) {
             item.classList.add('selected');
@@ -844,7 +1055,7 @@ function updateGradientNamesList() {
         }
 
         const select = () => {
-            selectedGradient = { index: g.index, displayName: g.displayName };
+            selectedGradient = { index: g.index, displayName: g.displayName, type: g.type };
             listEl.querySelectorAll('.gradient-item').forEach(el => el.classList.remove('selected'));
             item.classList.add('selected');
             renderEditorForSelection();
@@ -867,6 +1078,7 @@ function updateGradientNamesList() {
 function renderEditorForSelection() {
     const editorEl = document.getElementById('editor');
     const titleEl = document.getElementById('editor-title');
+    const typeBadge = document.getElementById('gradient-type');
     if (!editorEl || !titleEl) return;
     gradientEditorInstance = null;
 
@@ -884,12 +1096,20 @@ function renderEditorForSelection() {
         return;
     }
 
-    titleEl.innerHTML = '<i data-lucide="sliders" class="w-4 h-4 text-green-500"></i>';
-    titleEl.appendChild(document.createTextNode(selectedGradient.displayName));
+    titleEl.textContent = selectedGradient.displayName;
+    if (typeBadge) {
+        typeBadge.textContent = target.ty || 'gf';
+        typeBadge.classList.remove('hidden');
+    }
 
     const { arr, keyframed } = unwrapGradientK(target.g);
     if (keyframed) {
-        editorEl.innerHTML = `<div class="text-center py-8 px-4 text-slate-400"><i data-lucide="film" class="w-10 h-10 mx-auto mb-2 opacity-50"></i><p class="text-sm">${t('animatedGradientNotice')}</p></div>`;
+        editorEl.innerHTML = `
+            <div class="empty empty--fill" data-editor-notice="keyframed">
+                <div class="empty-icon"><i data-lucide="film"></i></div>
+                <div class="empty-title">${t('keyframedBadge')}</div>
+                <div class="empty-desc">${t('animatedGradientNotice')}</div>
+            </div>`;
         lucide.createIcons();
         return;
     }
@@ -1043,7 +1263,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const searchTerm = gradientSearch.value.toLowerCase().trim();
             document.querySelectorAll('.gradient-item').forEach(item => {
                 const name = item.querySelector('.gradient-name').textContent.toLowerCase();
-                item.style.display = name.includes(searchTerm) ? 'block' : 'none';
+                item.style.display = name.includes(searchTerm) ? '' : 'none';
             });
         });
     }
@@ -1127,14 +1347,14 @@ document.addEventListener('DOMContentLoaded', function () {
     bgColorPicker.addEventListener('input', () => {
         animationContainer.style.backgroundColor = bgColorPicker.value;
         animationContainer.classList.remove('alpha-checkered');
-        bgAlphaBtn.classList.remove('bg-blue-100', 'text-blue-600');
-        bgAlphaBtn.classList.add('text-slate-400');
+        bgAlphaBtn.classList.remove('is-active');
+        bgAlphaBtn.setAttribute('aria-pressed', 'false');
     });
     bgAlphaBtn.addEventListener('click', () => {
         animationContainer.style.backgroundColor = '';
         animationContainer.classList.add('alpha-checkered');
-        bgAlphaBtn.classList.add('bg-blue-100', 'text-blue-600');
-        bgAlphaBtn.classList.remove('text-slate-400');
+        bgAlphaBtn.classList.add('is-active');
+        bgAlphaBtn.setAttribute('aria-pressed', 'true');
     });
 
     // ----- 导出当前帧 PNG -----
@@ -1251,25 +1471,13 @@ document.addEventListener('DOMContentLoaded', function () {
         gifStartVal.textContent = gifStart.value;
         gifEndVal.textContent = gifEnd.value;
         gifModal.classList.remove('hidden');
-        requestAnimationFrame(() => {
-            gifModalOverlay.classList.remove('opacity-0');
-            const content = gifModal.querySelector('.gif-modal-content');
-            if (content) {
-                content.classList.remove('scale-95', 'opacity-0');
-                content.classList.add('scale-100', 'opacity-100');
-            }
-        });
+        requestAnimationFrame(() => gifModal.classList.add('is-open'));
         lucide.createIcons();
     }
 
     function closeGifModal() {
         if (!gifModal) return;
-        gifModalOverlay.classList.add('opacity-0');
-        const content = gifModal.querySelector('.gif-modal-content');
-        if (content) {
-            content.classList.remove('scale-100', 'opacity-100');
-            content.classList.add('scale-95', 'opacity-0');
-        }
+        gifModal.classList.remove('is-open');
         setTimeout(() => {
             gifModal.classList.add('hidden');
             resetGifModal();
@@ -1481,24 +1689,12 @@ document.addEventListener('DOMContentLoaded', function () {
     function openHelpModal() {
         helpModal.classList.remove('hidden');
         document.body.style.overflow = 'hidden';
-        requestAnimationFrame(() => {
-            modalOverlay.classList.remove('opacity-0');
-            const modalContent = helpModal.querySelector('.modal-content');
-            if (modalContent) {
-                modalContent.classList.remove('scale-95', 'opacity-0');
-                modalContent.classList.add('scale-100', 'opacity-100');
-            }
-        });
+        requestAnimationFrame(() => helpModal.classList.add('is-open'));
         lucide.createIcons();
     }
 
     function closeHelpModal() {
-        modalOverlay.classList.add('opacity-0');
-        const modalContent = helpModal.querySelector('.modal-content');
-        if (modalContent) {
-            modalContent.classList.remove('scale-100', 'opacity-100');
-            modalContent.classList.add('scale-95', 'opacity-0');
-        }
+        helpModal.classList.remove('is-open');
         setTimeout(() => {
             helpModal.classList.add('hidden');
             document.body.style.overflow = '';
@@ -1527,31 +1723,6 @@ document.addEventListener('DOMContentLoaded', function () {
     // 右侧列高度无需 JS 同步：锁高布局下网格行高确定，
     // CSS 拉伸 + h-full 已保证左右列等高
 
-    // ----- 预览容器保持正方形 -----
-    // 桌面锁高布局下 CSS 无法同时受宽、高约束并保持比例，
-    // 取可用区域的 min(宽, 高) 作为边长
-    const lottieBox = document.getElementById('lottie-animation');
-    if (lottieBox && dropZone) {
-        function fitPreviewBox() {
-            if (window.matchMedia('(min-width: 1024px)').matches) {
-                const cs = getComputedStyle(dropZone);
-                const contentW = dropZone.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
-                const contentH = dropZone.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
-                const side = Math.floor(Math.min(contentW, contentH));
-                if (side > 0) {
-                    lottieBox.style.width = side + 'px';
-                    lottieBox.style.height = side + 'px';
-                }
-            } else {
-                lottieBox.style.width = '';
-                lottieBox.style.height = '';
-            }
-        }
-        new ResizeObserver(fitPreviewBox).observe(dropZone);
-        window.addEventListener('resize', fitPreviewBox);
-        fitPreviewBox();
-    }
-
     // ----- gif.js 空闲预加载 -----
     if (typeof requestIdleCallback !== 'undefined') {
         requestIdleCallback(() => preloadGifJs().catch(() => {}), { timeout: 5000 });
@@ -1560,35 +1731,28 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 });
 
-// 响应式缩放 - 综合视口宽度 + 高分屏放大
-(function () {
-    function updateResponsiveScale() {
-        const innerW = window.innerWidth;
-        const screenW = window.screen.width;
-        const dpr = window.devicePixelRatio || 1;
+// ========== 主题切换 ==========
+document.addEventListener('DOMContentLoaded', function () {
+    const themeBtn = document.getElementById('theme-btn');
+    const root = document.documentElement;
 
-        // 按视口宽度取基准字号（对应 CSS 媒体查询断点）
-        let baseSize = 14;
-        if (innerW >= 4800) baseSize = 32;
-        else if (innerW >= 3200) baseSize = 26;
-        else if (innerW >= 2400) baseSize = 20;
-        else if (innerW >= 1920) baseSize = 16;
-        else if (innerW >= 1440) baseSize = 15;
-
-        // 高分屏额外放大
-        const is4K = (screenW >= 3840) || (screenW >= 2560 && dpr >= 2);
-        const is2K = screenW >= 2560 && screenW < 3840;
-
-        if (is4K) {
-            document.documentElement.style.fontSize = Math.round(baseSize * 1.3) + 'px';
-        } else if (is2K) {
-            document.documentElement.style.fontSize = Math.round(baseSize * 1.15) + 'px';
-        } else {
-            // 普通屏幕：移除内联样式，让 CSS 媒体查询完全接管
-            document.documentElement.style.fontSize = '';
-        }
+    function syncThemeButton() {
+        if (!themeBtn) return;
+        const dark = root.classList.contains('dark');
+        const label = i18n[currentLang][dark ? 'themeLight' : 'themeDark'];
+        themeBtn.innerHTML = `<i data-lucide="${dark ? 'sun' : 'moon'}"></i>`;
+        themeBtn.setAttribute('aria-label', label);
+        themeBtn.setAttribute('data-tip', label);
+        lucide.createIcons();
     }
 
-    updateResponsiveScale();
-    window.addEventListener('resize', updateResponsiveScale);
-})();
+    syncThemeButton();
+
+    if (themeBtn) {
+        themeBtn.addEventListener('click', () => {
+            const dark = root.classList.toggle('dark');
+            try { localStorage.setItem('lottie-theme', dark ? 'dark' : 'light'); } catch (e) {}
+            syncThemeButton();
+        });
+    }
+});

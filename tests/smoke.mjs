@@ -33,6 +33,10 @@ const REPO_ROOT = path.resolve(__dirname, '..');
 const SITE_ROOT = process.env.SITE_ROOT ? path.resolve(process.env.SITE_ROOT) : REPO_ROOT;
 const INDEX_URL = 'file://' + path.join(SITE_ROOT, 'index.html');
 const FIXTURE = path.join(TESTS_DIR, 'fixtures', 'master.json');
+// 用例 11-14 专用 fixture（新功能覆盖，不改动 master.json）
+const FIXTURE_DUPLICATE_NAMES = path.join(TESTS_DIR, 'fixtures', 'duplicate-names.json');
+const FIXTURE_STOP_MODES = path.join(TESTS_DIR, 'fixtures', 'stop-modes.json');
+const FIXTURE_KEYFRAMED = path.join(TESTS_DIR, 'fixtures', 'keyframed.json');
 const ARTIFACTS = process.env.ARTIFACTS_DIR
   ? path.resolve(TESTS_DIR, process.env.ARTIFACTS_DIR)
   : path.join(TESTS_DIR, 'artifacts');
@@ -78,10 +82,43 @@ const SELECTORS = {
   addStopButton: null, // 默认：plus 图标按钮 > 色标行之后、非开关类按钮中的最后一个
   deleteButton: null, // 默认：色标行内 .row-del > 第一个 button
 
-  // 动画 JSON 镜像（Monaco 隐藏区 / 隐藏 textarea）
+  /* ------------------------------------------------------------------ */
+  /* 线上版（13d5c54+）新增的稳定钩子：Lead 重写 UI 时保证不变。          */
+  /* 用例 11-14 优先用这些钩子断言；当前基线 DOM 还没有它们时，           */
+  /* window.__smoke 里的 *Rows() / *Button() 会退化为结构识别，并在         */
+  /* 结果 detail 里标注 [降级]，不把缺失钩子包装成通过。                   */
+  /* ------------------------------------------------------------------ */
+  hooks: {
+    gradientType: '#gradient-type',
+    editorColorRow: '[data-row="color"]',
+    editorAlphaRow: '[data-row="alpha"]',
+    addColorStop: '[data-action="add-color-stop"]',
+    addAlphaStop: '[data-action="add-alpha-stop"]',
+    toggleAlpha: '[data-action="toggle-alpha"]',
+    railColor: '.rail[data-rail="color"]',
+    railAlpha: '.rail[data-rail="alpha"]',
+    railStop: '.rail-stop',
+    keyframedNotice: '[data-editor-notice="keyframed"]',
+  },
+
+  // 动画 JSON 镜像（Monaco 隐藏区 / 隐藏 textarea；线上版已不再内嵌 Monaco）
   monacoContainer: '#monaco-editor-container',
   jsonMirror: '#json-editor',
 };
+
+// 稳定钩子短别名，供页面辅助函数直接引用
+Object.assign(SELECTORS, {
+  gradientType: SELECTORS.hooks.gradientType,
+  editorColorRow: SELECTORS.hooks.editorColorRow,
+  editorAlphaRow: SELECTORS.hooks.editorAlphaRow,
+  addColorStop: SELECTORS.hooks.addColorStop,
+  addAlphaStop: SELECTORS.hooks.addAlphaStop,
+  toggleAlpha: SELECTORS.hooks.toggleAlpha,
+  railColor: SELECTORS.hooks.railColor,
+  railAlpha: SELECTORS.hooks.railAlpha,
+  railStop: SELECTORS.hooks.railStop,
+  keyframedNotice: SELECTORS.hooks.keyframedNotice,
+});
 
 /* ------------------------------------------------------------------ */
 /* fixture 事实                                                        */
@@ -258,12 +295,199 @@ async function installPageHelpers() {
         b.querySelector('[data-lucide="plus"], .lucide-plus')
       );
 
+    const uniq = (arr) => arr.filter((el, i) => arr.indexOf(el) === i);
+
+    /* ---------- 色标行：优先稳定钩子，基线 DOM 退化为结构识别 ---------- */
+
+    // 颜色行：优先 [data-row="color"]；兜底 = 含 input[type=color] 且含文本输入的行
+    const colorRows = () => {
+      const root = document.querySelector(s.editor);
+      if (!root) return [];
+      const hooked = [...root.querySelectorAll(s.editorColorRow)];
+      if (hooked.length) return hooked;
+      return [...root.querySelectorAll('input[type="color"]')].map(rowOf).filter(Boolean);
+    };
+
+    // 透明度行：优先 [data-row="alpha"]；兜底 = 含 ≥2 个 range 且不含颜色输入的行
+    // （基线 DOM：alpha 行 = 两个「位置/透明度」滑杆组，颜色行只有 1 个 range）
+    const alphaRows = () => {
+      const root = document.querySelector(s.editor);
+      if (!root) return [];
+      const hooked = [...root.querySelectorAll(s.editorAlphaRow)];
+      if (hooked.length) return hooked;
+      const findRow = (rangeEl) => {
+        let el = rangeEl;
+        for (let i = 0; i < 8; i++) {
+          el = el.parentElement;
+          if (!el || el === root || el === document.body) return null;
+          const ranges = el.querySelectorAll('input[type="range"]');
+          if (ranges.length >= 2 && !el.querySelector('input[type="color"]')) return el;
+        }
+        return null;
+      };
+      return uniq([...root.querySelectorAll('input[type="range"]')].map(findRow).filter(Boolean));
+    };
+
+    const rowMode = {
+      color: () => (document.querySelector(s.editorColorRow) ? 'hook' : 'fallback'),
+      alpha: () => (document.querySelector(s.editorAlphaRow) ? 'hook' : 'fallback'),
+      addColor: () => (document.querySelector(s.addColorStop) ? 'hook' : 'fallback'),
+      addAlpha: () => (document.querySelector(s.addAlphaStop) ? 'hook' : 'fallback'),
+      notice: () => (document.querySelector(s.keyframedNotice) ? 'hook' : 'fallback'),
+    };
+
+    // 基线 DOM 里「添加透明度色标」按钮 = 与 alpha 行同父容器的 plus 图标按钮
+    const alphaAddButtonByStructure = () => {
+      const plus = plusIconButtons();
+      const aRows = alphaRows();
+      return (
+        plus.find((b) => b.parentElement && aRows.some((r) => b.parentElement.contains(r))) || null
+      );
+    };
+
+    /* ---------- 页面辅助对象 ---------- */
+
     window.__smoke = {
       selectors: s,
 
       rowOf,
       rows: rowsOf,
       rowCount: () => rowsOf().length,
+
+      /** 颜色色标行（钩子优先，基线退化） */
+      colorRows,
+      /** 透明度色标行（钩子优先，基线退化） */
+      alphaRows,
+      /** 断言用的行计数与识别方式，便于在报告里说明是否降级 */
+      rowCounts() {
+        const colors = colorRows();
+        const alphas = alphaRows();
+        return {
+          colors: colors.length,
+          alphas: alphas.length,
+          colorMode: rowMode.color(),
+          alphaMode: rowMode.alpha(),
+        };
+      },
+
+      /** 添加颜色色标按钮 */
+      addColorStopButton() {
+        const hooked = document.querySelector(s.addColorStop);
+        if (hooked) return hooked;
+        const plus = plusIconButtons();
+        if (!plus.length) return null;
+        const alphaAdd = alphaAddButtonByStructure();
+        const remaining = plus.filter((b) => b !== alphaAdd);
+        return remaining[remaining.length - 1] || null;
+      },
+
+      /** 添加透明度色标按钮（需要当前渐变已启用透明度/已有 alpha 行） */
+      addAlphaStopButton() {
+        const hooked = document.querySelector(s.addAlphaStop);
+        if (hooked) return hooked;
+        return alphaAddButtonByStructure();
+      },
+
+      /** 透明度开关（仅用于信息采集，用例不硬依赖） */
+      alphaToggleButton() {
+        const hooked = document.querySelector(s.toggleAlpha);
+        if (hooked) return hooked;
+        const root = document.querySelector(s.editor);
+        if (!root) return null;
+        return (
+          [...root.querySelectorAll('button')].find(
+            (b) =>
+              b.matches('[role="switch"],[aria-checked],[aria-pressed]') ||
+              /switch/i.test(typeof b.className === 'string' ? b.className : '')
+          ) || null
+        );
+      },
+
+      /**
+       * 关键帧提示状态。
+       * hook 模式：存在 [data-editor-notice="keyframed"]；
+       * 基线无此钩子 → structural 模式：编辑区非空且没有任何可编辑色标行（即"只提示不编辑"）。
+       * 注意：structural 只用于基线降级，会在结果里标注 [降级]；改版后钩子应在则应走 hook。
+       */
+      keyframedState() {
+        const root = document.querySelector(s.editor);
+        if (!root) return { found: false, mode: 'none', reason: '找不到 #editor' };
+        const hooked =
+          root.querySelector(s.keyframedNotice) || document.querySelector(s.keyframedNotice);
+        const colorCount = colorRows().length;
+        const alphaCount = alphaRows().length;
+        const text = (root.textContent || '').replace(/\s+/g, ' ').trim();
+        if (hooked) {
+          return {
+            found: true,
+            mode: 'hook',
+            colorRows: colorCount,
+            alphaRows: alphaCount,
+            text: (hooked.textContent || text).replace(/\s+/g, ' ').trim().slice(0, 160),
+          };
+        }
+        return {
+          found: colorCount === 0 && alphaCount === 0 && text.length > 0,
+          mode: 'structural',
+          colorRows: colorCount,
+          alphaRows: alphaCount,
+          text: text.slice(0, 160),
+        };
+      },
+
+      /** 预览条导轨（新 UI 才有，信息采集用，用例不硬依赖） */
+      rails() {
+        const color = document.querySelector(s.railColor);
+        const alpha = document.querySelector(s.railAlpha);
+        // .rail-stop 可能挂在 .rail 内，也可能与其并列在 .rail-track 里，两种都兼容
+        const count = (el) => {
+          if (!el) return null;
+          const inRail = el.querySelectorAll(s.railStop).length;
+          if (inRail) return inRail;
+          const track = el.parentElement;
+          return track ? track.querySelectorAll(s.railStop).length : inRail;
+        };
+        return {
+          colorRail: !!color,
+          alphaRail: !!alpha,
+          colorStops: count(color),
+          alphaStops: count(alpha),
+        };
+      },
+
+      /** 稳定钩子存在性快照（报告用） */
+      hookProbe() {
+        const out = {};
+        for (const [name, sel] of Object.entries(s.hooks)) out[name] = !!document.querySelector(sel);
+        return out;
+      },
+
+      /** 播放状态多信号采集：实例最准，其次按钮 UI，最后靠 #time-display 冻结 */
+      playbackSignals() {
+        const btn = document.querySelector(s.playPauseButton);
+        let pausedByUi = null;
+        let uiSignal = null;
+        if (btn) {
+          const aria = btn.getAttribute('aria-pressed');
+          const state = btn.getAttribute('data-state');
+          const icons = [...btn.querySelectorAll('svg,i')].map(
+            (el) => el.getAttribute('data-lucide') || (typeof el.className === 'string' ? el.className : '')
+          );
+          const hasPlay = icons.some((x) => /play/i.test(x));
+          const hasPause = icons.some((x) => /pause/i.test(x));
+          if (aria === 'true' || state === 'paused') {
+            pausedByUi = true;
+            uiSignal = 'aria/data-state';
+          } else if (hasPlay && !hasPause) {
+            pausedByUi = true;
+            uiSignal = 'play-icon';
+          } else if (hasPause && !hasPlay) {
+            pausedByUi = false;
+            uiSignal = 'pause-icon';
+          }
+        }
+        return { timeText: this.timeText(), anim: this.playback().anim, pausedByUi, uiSignal };
+      },
 
       /** 添加色标按钮 */
       addStopButton() {
@@ -402,6 +626,151 @@ async function pollJson(predicate, { timeout = 6000, interval = 120, label = 'JS
 
 async function readPlayback() {
   return page.evaluate(() => window.__smoke.playback());
+}
+
+/* ------------------------------------------------------------------ */
+/* 用例 11-14 专用辅助                                                  */
+/* ------------------------------------------------------------------ */
+
+/** 降级登记：基线 DOM 缺稳定钩子时，用结构近似断言替代，并如实记录 */
+const degradations = [];
+function noteDegrade(id, message) {
+  degradations.push({ case: id, message });
+  return `[降级] ${message}`;
+}
+
+/** 钩子存在性快照：在「可正常编辑的渐变被选中」时采集，避免受后续关键帧空态影响 */
+let hookSnapshot = null;
+let railsSnapshot = null;
+
+/** 上传 fixture 并等待列表更新为期望条数 + 文件名正确 */
+async function importFixture(filePath, expectedCount, label) {
+  const input = await page.$(SELECTORS.lottieFileInput);
+  assert(input, `找不到文件输入 ${SELECTORS.lottieFileInput}`);
+  await input.uploadFile(filePath);
+  const expectedName = path.basename(filePath);
+  const items = await poll(
+    (arg) => {
+      const items = window.__smoke.items();
+      const fn = document.querySelector(window.__smoke.selectors.filename);
+      const okName = fn && fn.textContent.trim() === arg.file;
+      return items.length === arg.expected && okName ? items : false;
+    },
+    { expected: expectedCount, file: expectedName },
+    { label: label || `导入 ${expectedName} 后列表出现 ${expectedCount} 项` }
+  );
+  return items;
+}
+
+/** 下载导出的 JSON（每次导出用独立目录，避免与用例 09 的文件混淆） */
+const cdpSessions = [];
+async function setDownloadDir(dir) {
+  ensureDir(dir);
+  const cdp = await page.createCDPSession();
+  cdpSessions.push(cdp);
+  try {
+    await cdp.send('Browser.setDownloadBehavior', { behavior: 'allow', downloadPath: dir, eventsEnabled: true });
+  } catch {
+    await cdp.send('Page.setDownloadBehavior', { behavior: 'allow', downloadPath: dir });
+  }
+  return cdp;
+}
+
+async function exportAndParse(tag) {
+  const dir = path.join(DOWNLOADS, tag);
+  fs.rmSync(dir, { recursive: true, force: true });
+  ensureDir(dir);
+  await setDownloadDir(dir);
+  // 清掉用例 09 旁路观测到的旧 blob/anchor，避免兜底时拿到上一轮内容
+  await page.evaluate(() => {
+    if (window.__smokeExport) {
+      window.__smokeExport.blobs.length = 0;
+      window.__smokeExport.anchors.length = 0;
+    }
+  });
+
+  const btn = await page.$(SELECTORS.exportButton);
+  assert(btn, `找不到导出按钮 ${SELECTORS.exportButton}`);
+  await btn.click();
+
+  const deadline = Date.now() + 15000;
+  let lastParseError = null;
+  while (Date.now() < deadline) {
+    const files = fs.existsSync(dir) ? fs.readdirSync(dir).filter((f) => !f.endsWith('.crdownload')) : [];
+    const jsonFile = files.find((f) => f.toLowerCase().endsWith('.json'));
+    if (jsonFile) {
+      const full = path.join(dir, jsonFile);
+      const text = fs.readFileSync(full, 'utf8');
+      try {
+        return { tag, file: jsonFile, path: full, size: text.length, json: JSON.parse(text), source: 'download' };
+      } catch (err) {
+        lastParseError = err.message;
+      }
+    }
+    await sleep(150);
+  }
+
+  // 下载落盘失败时，用用例 09 安装的 URL.createObjectURL 旁路兜底
+  const blobText = await page.evaluate(async () => {
+    try {
+      const cap = window.__smokeExport;
+      if (!cap || !cap.blobs || !cap.blobs.length) return null;
+      for (const b of cap.blobs) {
+        try {
+          const text = await b.text();
+          JSON.parse(text);
+          return text;
+        } catch {
+          /* 不是完整 JSON，继续 */
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+    return null;
+  });
+  if (blobText) {
+    return { tag, file: null, path: null, size: blobText.length, json: JSON.parse(blobText), source: 'blob' };
+  }
+  throw new Error(
+    `导出(${tag}): 15s 内没有可解析的 JSON 下载文件（${rel(dir)}）` +
+      (lastParseError ? `，最后解析错误: ${lastParseError}` : '')
+  );
+}
+
+/** 按遍历顺序收集所有渐变的原始数据（与页面 forEachGradient 顺序一致） */
+function collectGradients(json) {
+  const out = [];
+  const walk = (node) => {
+    if (!node || typeof node !== 'object') return;
+    if ((node.ty === 'gf' || node.ty === 'gs') && node.g) {
+      const raw = node.g.k;
+      let keyframed = false;
+      let arr = null;
+      if (Array.isArray(raw)) {
+        if (raw.length && typeof raw[0] === 'object') keyframed = true;
+        else arr = raw;
+      } else if (raw && typeof raw === 'object') {
+        if (raw.a === 1) keyframed = true;
+        else if (Array.isArray(raw.k)) {
+          if (raw.k.length && typeof raw.k[0] === 'object') keyframed = true;
+          else arr = raw.k;
+        }
+      }
+      out.push({ name: node.nm, p: node.g.p, keyframed, raw, k: arr });
+    }
+    if (Array.isArray(node)) node.forEach(walk);
+    else Object.values(node).forEach((v) => { if (v && typeof v === 'object') walk(v); });
+  };
+  walk(json);
+  return out;
+}
+
+/** "#time-display" → { current, total }（取不到返回 null） */
+function parseTimeText(text) {
+  const m = /(\d+(?:\.\d+)?)\s*\/\s*(\d+(?:\.\d+)?)/.exec(text || '');
+  if (!m) return null;
+  return { current: Number(m[1]), total: Number(m[2]) };
 }
 
 async function screenshot(name) {
@@ -961,6 +1330,354 @@ async function case10() {
 }
 
 /* ------------------------------------------------------------------ */
+/* 用例 11：同名渐变逐条列出，编辑只影响选中的那一条                    */
+/* ------------------------------------------------------------------ */
+async function case11() {
+  // 用例 10 把视口改成了 900x1200，恢复默认，避免影响后续布局
+  await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1 });
+  await sleep(300);
+
+  const items = await importFixture(
+    FIXTURE_DUPLICATE_NAMES,
+    2,
+    '导入 duplicate-names.json 后出现 2 条同名渐变'
+  );
+  const names = items.map((i) => i.name);
+  assert(
+    names.length === 2 && names[0] === 'Name #1' && names[1] === 'Name #2',
+    `同名渐变未逐条列出为 Name #1 / Name #2：${JSON.stringify(names)}`
+  );
+  const nameHook = await page.evaluate((sel) => !!document.querySelector(sel), SELECTORS.gradientName);
+
+  // 选中第 1 条（不依赖 nth-child，按列表顺序取第一个 .gradient-item）
+  const clicked = await page.evaluate(() => {
+    const el = document.querySelectorAll(window.__smoke.selectors.gradientItem)[0];
+    if (!el) return false;
+    el.click();
+    return true;
+  });
+  assert(clicked, '找不到第一个 .gradient-item');
+  await poll(
+    () => {
+      const items = window.__smoke.items();
+      return items[0] && items[0].selected;
+    },
+    undefined,
+    { label: '第 1 个同名渐变获得 .selected' }
+  );
+
+  const counts = await poll(
+    () => {
+      const c = window.__smoke.rowCounts();
+      return c.colors >= 2 ? c : false;
+    },
+    undefined,
+    { label: '同名渐变编辑器出现 ≥2 个颜色色标行' }
+  );
+
+  // 改第 1 条的首色标为 #00ff00
+  const edited = await page.evaluate(() => {
+    const row = window.__smoke.colorRows()[0];
+    const ci = row && row.querySelector('input[type="color"]');
+    if (!ci) return false;
+    ci.value = '#00ff00';
+    ci.dispatchEvent(new Event('input', { bubbles: true }));
+    ci.dispatchEvent(new Event('change', { bubbles: true }));
+    return true;
+  });
+  assert(edited, '同名渐变编辑区找不到首个颜色 input[type=color]');
+  await sleep(450); // 100ms 编辑防抖 + 动画重建
+
+  const exported = await exportAndParse('case11');
+  const same = collectGradients(exported.json).filter((g) => g.name === 'Name');
+  assert(same.length === 2, `导出 JSON 中名为 "Name" 的渐变应为 2 个，实际 ${same.length} 个`);
+  assert(!same[0].keyframed && !same[1].keyframed, '导出 JSON 中同名渐变不应变成关键帧');
+  const first = same[0].k;
+  const second = same[1].k;
+  assert(first && first.length >= 8 && second && second.length >= 8, '同名渐变的色标数组长度异常');
+
+  assertClose(first[1], 0, 0.002, '第 1 个同名渐变首色标 R');
+  assertClose(first[2], 1, 0.002, '第 1 个同名渐变首色标 G（应为 #00ff00）');
+  assertClose(first[3], 0, 0.002, '第 1 个同名渐变首色标 B');
+  assertClose(second[1], 0.3, 0.002, '第 2 个同名渐变首色标 R（应保持原值）');
+  assertClose(second[2], 0.6, 0.002, '第 2 个同名渐变首色标 G（应保持原值）');
+  assertClose(second[3], 0.9, 0.002, '第 2 个同名渐变首色标 B（应保持原值）');
+
+  await screenshot('11-duplicate-names.png');
+  return (
+    `列表=${JSON.stringify(names)}（.gradient-name ${nameHook ? '命中' : '缺失→回退 item 文本'}，颜色行=${counts.colors}）；` +
+    `改第 1 条首色标 #00ff00 后导出：第 1 条 RGB=[${first[1]},${first[2]},${first[3]}]，` +
+    `第 2 条仍为 RGB=[${second[1]},${second[2]},${second[3]}]（source=${exported.source}）`
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* 用例 12：颜色色标与透明度色标相互独立                                */
+/* ------------------------------------------------------------------ */
+async function case12() {
+  const items = await importFixture(FIXTURE_STOP_MODES, 1, '导入 stop-modes.json 后出现 1 条渐变');
+  assert(items.length === 1, `stop-modes.json 应只有 1 条渐变，实际 ${items.length}`);
+  assert(items[0].selected, '导入后应自动选中唯一的渐变');
+
+  const base = await poll(
+    () => {
+      const c = window.__smoke.rowCounts();
+      return c.colors === 3 && c.alphas === 2 ? c : false;
+    },
+    undefined,
+    { label: '颜色行=3、透明度行=2（两种色标数量可以不同）' }
+  );
+  assert(base.colors !== base.alphas, `颜色行(${base.colors})与透明度行(${base.alphas})应可不同`);
+
+  // 透明度轨（新 UI 才有的稳定钩子；仅信息采集）
+  const rails = await page.evaluate(() => window.__smoke.rails());
+  // 在「普通渐变可编辑」状态下采集钩子快照（末尾关键帧空态会让部分钩子暂时不在 DOM 里）
+  hookSnapshot = await page.evaluate(() => window.__smoke.hookProbe());
+  railsSnapshot = rails;
+
+  // 加一个透明度色标：alpha 行 +1，color 行不变
+  const alphaHandle = await page.evaluateHandle(() => window.__smoke.addAlphaStopButton());
+  const alphaBtn = alphaHandle.asElement();
+  assert(alphaBtn, '未找到「添加透明度色标」按钮');
+  await alphaBtn.click();
+  const afterAlpha = await poll(
+    (arg) => {
+      const c = window.__smoke.rowCounts();
+      return c.alphas === arg.expected ? c : false;
+    },
+    { expected: base.alphas + 1 },
+    { label: `透明度行从 ${base.alphas} 增加到 ${base.alphas + 1}` }
+  );
+  assert(afterAlpha.colors === base.colors, `添加透明度色标不应改变颜色行数（实际 ${afterAlpha.colors}）`);
+
+  // 加一个颜色色标：color 行 +1，alpha 行不变
+  const colorHandle = await page.evaluateHandle(() => window.__smoke.addColorStopButton());
+  const colorBtn = colorHandle.asElement();
+  assert(colorBtn, '未找到「添加颜色色标」按钮');
+  await colorBtn.click();
+  const afterColor = await poll(
+    (arg) => {
+      const c = window.__smoke.rowCounts();
+      return c.colors === arg.expected ? c : false;
+    },
+    { expected: base.colors + 1 },
+    { label: `颜色行从 ${base.colors} 增加到 ${base.colors + 1}` }
+  );
+  assert(afterColor.alphas === afterAlpha.alphas, `添加颜色色标不应改变透明度行数（实际 ${afterColor.alphas}）`);
+
+  const notes = [];
+  if (base.colorMode !== 'hook') {
+    notes.push(noteDegrade('12', '基线无 [data-row="color"]，颜色行按「含颜色输入的行容器」计数'));
+  }
+  if (base.alphaMode !== 'hook') {
+    notes.push(noteDegrade('12', '基线无 [data-row="alpha"]，透明度行按「含 ≥2 个滑杆且无颜色输入的行容器」计数'));
+  }
+  const railNote = rails.colorRail
+    ? `；预览条颜色轨=${rails.colorStops} 个 .rail-stop、透明度轨=${rails.alphaStops} 个`
+    : '；基线无 .rail 预览条（信息采集跳过）';
+
+  await screenshot('12-stop-modes.png');
+  return (
+    `颜色行=${base.colors}、透明度行=${base.alphas}（可不等；识别=${base.colorMode}/${base.alphaMode}）；` +
+    `点「加透明度」→ alpha ${base.alphas}→${afterAlpha.alphas}、color 保持 ${afterAlpha.colors}；` +
+    `点「加颜色」→ color ${base.colors}→${afterColor.colors}、alpha 保持 ${afterColor.alphas}` +
+    railNote +
+    (notes.length ? ' ' + notes.join(' ') : '')
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* 用例 13：改色保留播放状态（不跳回 0、不自动播放）                    */
+/* ------------------------------------------------------------------ */
+async function case13() {
+  await importFixture(FIXTURE, 3, '重新导入 master.json 供播放状态用例使用');
+  await poll(
+    () => window.__smoke.rowCounts().colors >= 2,
+    undefined,
+    { label: '编辑器颜色行出现（默认选中第一个渐变）' }
+  );
+
+  const btn = await page.$(SELECTORS.playPauseButton);
+  assert(btn, `找不到播放按钮 ${SELECTORS.playPauseButton}`);
+  const readSignals = () => page.evaluate(() => window.__smoke.playbackSignals());
+  const isPaused = (s) => (s.anim ? s.anim.paused === true : s.pausedByUi === true);
+  const isPlaying = (s) => (s.anim ? s.anim.paused === false : s.pausedByUi === false);
+
+  // 1) 统一从「播放中」开始
+  let state = await readSignals();
+  if (!isPlaying(state)) {
+    await btn.click();
+    await sleep(400);
+    state = await readSignals();
+  }
+  assert(isPlaying(state), `无法让动画进入播放状态（anim=${JSON.stringify(state.anim)}, ui=${state.pausedByUi}）`);
+
+  // 2) 拖进度条到中间（input 开始 scrub + change 结束 scrub 并恢复拖前状态）
+  const hasProgress = await page.evaluate((sel) => {
+    const bar = document.querySelector(sel);
+    if (!bar) return false;
+    bar.value = '50';
+    bar.dispatchEvent(new Event('input', { bubbles: true }));
+    bar.dispatchEvent(new Event('change', { bubbles: true }));
+    return true;
+  }, SELECTORS.progressBar);
+  assert(hasProgress, `找不到进度条 ${SELECTORS.progressBar}`);
+  await sleep(500);
+
+  // 3) 点击播放/暂停暂停（scrub 后若已暂停则不再点）
+  for (let i = 0; i < 3; i++) {
+    state = await readSignals();
+    if (isPaused(state)) break;
+    await btn.click();
+    await sleep(300);
+  }
+  state = await readSignals();
+  assert(isPaused(state), `点击播放/暂停后仍未暂停（anim=${JSON.stringify(state.anim)}, ui=${state.pausedByUi}/${state.uiSignal}）`);
+
+  const beforeTime = state.timeText;
+  const parsedBefore = parseTimeText(beforeTime);
+  assert(parsedBefore && parsedBefore.total > 0, `#time-display 无法解析：'${beforeTime}'`);
+  assert(
+    parsedBefore.current > parsedBefore.total * 0.1,
+    `拖到中间后当前帧应远离 0：'${beforeTime}'（总帧数 ${parsedBefore.total}）`
+  );
+  const beforeFrame = state.anim ? state.anim.currentFrame : parsedBefore.current;
+
+  // 4) 改一个色标颜色
+  const edited = await page.evaluate(() => {
+    const row = window.__smoke.colorRows()[0];
+    const ci = row && row.querySelector('input[type="color"]');
+    if (!ci) return null;
+    ci.value = '#ff00ff';
+    ci.dispatchEvent(new Event('input', { bubbles: true }));
+    ci.dispatchEvent(new Event('change', { bubbles: true }));
+    const hex = row.querySelector('input[type="text"]');
+    return { hex: hex ? hex.value : null };
+  });
+  assert(edited, '播放状态用例：找不到颜色 input[type=color]');
+  await sleep(900);
+
+  const after = await readSignals();
+  const parsedAfter = parseTimeText(after.timeText);
+  // 与实例无关的旁证：进度条没被重置、动画 DOM 还在（防止"动画被销毁所以看起来冻结"的假通过）
+  const domState = await page.evaluate((sel) => {
+    const bar = document.querySelector(sel.progressBar);
+    return {
+      progressValue: bar ? Number(bar.value) : null,
+      hasSvg: !!document.querySelector(sel.animationContainer + ' svg'),
+    };
+  }, SELECTORS);
+  assert(
+    domState.progressValue !== null && domState.progressValue > 5,
+    `改色后进度条被重置（value=${domState.progressValue}），播放进度未保留`
+  );
+  assert(domState.hasSvg, '改色后预览区没有 SVG，动画可能未正确重建');
+
+  // 暂停语义：实例最准；否则按钮 UI；都拿不到才降级为「时间冻结」
+  if (after.anim) {
+    assert(after.anim.paused === true, `改色后 animation.isPaused=${after.anim.paused}，暂停状态未被保留`);
+  } else if (after.pausedByUi !== null) {
+    assert(after.pausedByUi === true, `改色后播放按钮显示为播放中（ui=${after.uiSignal}），暂停状态未被保留`);
+  }
+
+  assert(parsedAfter, `改色后 #time-display 无法解析：'${after.timeText}'`);
+  assert(
+    parsedAfter.current > parsedAfter.total * 0.1,
+    `改色后帧跳回开头：'${beforeTime}' → '${after.timeText}'`
+  );
+  assert(after.timeText === beforeTime, `改色后暂停帧未冻结：'${beforeTime}' → '${after.timeText}'`);
+
+  let degradeNote = '';
+  if (!after.anim && after.pausedByUi === null) {
+    degradeNote =
+      ' ' +
+      noteDegrade(
+        '13',
+        '拿不到 animation 实例与按钮暂停语义，仅用 #time-display 900ms 冻结 + 当前帧非 0 判断播放状态'
+      );
+  }
+  const hexNote = edited.hex ? `，hex 同步='${edited.hex}'` : '';
+
+  await screenshot('13-preserve-playback.png');
+  return (
+    `暂停在 '${beforeTime}'（frame=${beforeFrame}）；改首色标 #ff00ff 后 900ms 仍为 '${after.timeText}'，` +
+    `anim.isPaused=${after.anim ? after.anim.paused : 'n/a'}，按钮信号=${after.pausedByUi}/${after.uiSignal}${hexNote}${degradeNote}`
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* 用例 14：关键帧渐变只提示、不提供编辑                                */
+/* ------------------------------------------------------------------ */
+async function case14() {
+  const items = await importFixture(FIXTURE_KEYFRAMED, 2, '导入 keyframed.json 后出现 2 条渐变');
+  assert(items.length === 2, `keyframed.json 应有 2 条渐变，实际 ${items.length}`);
+
+  // 默认选中第 1 条（静态渐变）：编辑器应正常出现颜色行
+  const staticCounts = await poll(
+    () => {
+      const c = window.__smoke.rowCounts();
+      return c.colors >= 2 ? c : false;
+    },
+    undefined,
+    { label: '静态渐变编辑器出现颜色行（对照组）' }
+  );
+
+  // 选中第 2 条（关键帧渐变）
+  const clicked = await page.evaluate(() => {
+    const els = document.querySelectorAll(window.__smoke.selectors.gradientItem);
+    if (!els[1]) return false;
+    els[1].click();
+    return true;
+  });
+  assert(clicked, '找不到第 2 个 .gradient-item（关键帧渐变）');
+
+  const state = await poll(
+    () => {
+      const s = window.__smoke.keyframedState();
+      return s.found ? s : false;
+    },
+    undefined,
+    { label: '选中关键帧渐变后编辑区出现提示' }
+  );
+
+  assert(
+    state.colorRows === 0,
+    `关键帧渐变的编辑区不应有颜色色标行（实际 ${state.colorRows}）`
+  );
+  assert(
+    state.alphaRows === 0,
+    `关键帧渐变的编辑区不应有透明度色标行（实际 ${state.alphaRows}）`
+  );
+  if (state.mode !== 'hook') {
+    noteDegrade(
+      '14',
+      `基线无 [data-editor-notice="keyframed"]，降级为结构近似断言：编辑区无任何色标行且有提示文本（'${state.text.slice(0, 40)}…'）`
+    );
+  } else if (hookSnapshot) {
+    // 关键帧提示只在选中关键帧渐变时存在于 DOM：这里把两态快照合并
+    hookSnapshot.keyframedNotice = true;
+  }
+
+  // 数据层：导出后关键帧结构应原样保留（只提示不编辑）
+  const exported = await exportAndParse('case14');
+  const animated = collectGradients(exported.json).find((g) => g.name === 'Grad-Animated');
+  assert(animated, '导出 JSON 中找不到 Grad-Animated');
+  assert(animated.keyframed, '关键帧渐变被改成了静态数组（不再识别为关键帧）');
+  assert(animated.raw && animated.raw.a === 1, `关键帧渐变 g.k.a=${animated.raw && animated.raw.a}，应保持为 1`);
+  assert(
+    Array.isArray(animated.raw.k) && animated.raw.k.length === 2,
+    '关键帧数组长度应保持 2 帧不变'
+  );
+
+  await screenshot('14-keyframed.png');
+  return (
+    `提示方式=${state.mode === 'hook' ? '[data-editor-notice="keyframed"] 命中' : '结构近似（无钩子）'}，` +
+    `颜色行=${state.colorRows}、透明度行=${state.alphaRows}（静态渐变对照组颜色行=${staticCounts.colors}）；` +
+    `导出后 Grad-Animated 仍为 a=1、${animated.raw.k.length} 个关键帧（提示='${state.text.slice(0, 60)}'）`
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /* 主流程                                                              */
 /* ------------------------------------------------------------------ */
 async function main() {
@@ -1018,6 +1735,45 @@ async function main() {
   await runCase('08', '播放控制：播放时进度前进，再次点击暂停并冻结进度', case08);
   await runCase('09', '导出 JSON：生成可 JSON.parse 的文件且含全部渐变', case09);
   await runCase('10', '响应式：1280x900 与 900x1200 无横向溢出（并截图）', case10);
+  await runCase('11', '同名渐变：逐条列出 Name #1 / Name #2，改第 1 条不影响第 2 条', case11);
+  await runCase('12', '色标分离：颜色行与透明度行独立增删、互不影响', case12);
+  await runCase('13', '改色保状态：暂停在中段改色后不跳回 0、不自动播放', case13);
+  await runCase('14', '关键帧渐变：出现提示且无编辑行，导出后关键帧原样保留', case14);
+
+  // 稳定钩子覆盖快照（给 Lead 看改版进度：哪些钩子已就位、哪些还缺）
+  // 优先用用例 12 在「普通渐变可编辑」状态采集的快照；否则退回当前 DOM 探测。
+  let hookProbe = hookSnapshot;
+  if (!hookProbe) {
+    try {
+      hookProbe = await page.evaluate(() => window.__smoke.hookProbe());
+    } catch {
+      /* ignore */
+    }
+  }
+  if (hookProbe) {
+    const missing = Object.entries(hookProbe).filter(([, ok]) => !ok).map(([name]) => name);
+    log('');
+    log(
+      `稳定钩子（普通渐变编辑态）：${
+        missing.length === 0 ? '全部就位' : `缺 ${missing.length} 个 → ${missing.join(', ')}`
+      }` +
+        `（就位: ${Object.entries(hookProbe).filter(([, ok]) => ok).map(([n]) => n).join(', ') || '无'}）`
+    );
+    if (railsSnapshot && (railsSnapshot.colorRail || railsSnapshot.alphaRail)) {
+      log(
+        `预览条导轨：颜色轨=${railsSnapshot.colorRail ? '有' : '无'}（${railsSnapshot.colorStops} 个 .rail-stop），` +
+          `透明度轨=${railsSnapshot.alphaRail ? '有' : '无'}（${railsSnapshot.alphaStops} 个 .rail-stop）`
+      );
+    } else if (railsSnapshot) {
+      log('预览条导轨：基线 DOM 无 .rail[data-rail] 钩子（信息采集跳过）');
+    }
+  }
+
+  if (degradations.length) {
+    log('');
+    log(`因基线 DOM 缺稳定钩子而降级的断言（${degradations.length} 处，用例仍按结构近似断言判定）:`);
+    for (const d of degradations) log(`  - 用例 ${d.case}: ${d.message}`);
+  }
 
   const elapsed = Date.now() - startedAt.getTime();
   const pass = results.filter((r) => r.status === 'PASS').length;
@@ -1054,6 +1810,9 @@ async function main() {
     fixture: { path: rel(FIXTURE), gradients: FIXTURE_GRADIENT_NAMES, frames: FIXTURE_FRAMES },
     totals: { pass, fail, total: results.length },
     results,
+    hookProbe,
+    railsSnapshot,
+    degradations,
     consoleErrors: runtime.consoleErrors,
     pageErrors: runtime.pageErrors,
     warnings: runtime.consoleWarnings,

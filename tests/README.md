@@ -10,7 +10,7 @@
 ```bash
 cd tests
 npm install          # 只装 puppeteer-core（不下载 Chromium，用系统 Chrome）
-npm test             # 10 条用例，退出码 0 = 全绿，1 = 有失败
+npm test             # 14 条用例，退出码 0 = 全绿，1 = 有失败
 ```
 
 依赖前提：
@@ -19,7 +19,7 @@ npm test             # 10 条用例，退出码 0 = 全绿，1 = 有失败
 |---|---|
 | Chrome | macOS 默认 `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`（实测 Chrome 156） |
 | Node | ≥ 18（本机实测 v25.8.2 / npm 11.11.1） |
-| 网络 | 需要访问 CDN：lucide、bodymovin、monaco（`file://` 页面联网加载） |
+| 网络 | 不需要外网：重写后 lucide / lottie / gif.js 均为 `js/vendor/` 自托管；测试仍会等 Monaco 约 12s（取不到就用例 04 降级为只断言 UI） |
 | 系统 | 无头启动必须带 `--no-sandbox --disable-breakpad --disable-crash-reporter --user-data-dir=…`（已内置，否则本机 sandbox 报错） |
 
 ## 目录
@@ -29,7 +29,10 @@ tests/
 ├── smoke.mjs            # 单文件测试（可 node 直接跑）
 ├── package.json         # scripts.test = node smoke.mjs
 ├── smoke.mjs 的 SELECTORS 常量  # 唯一的「改版适配点」
-├── fixtures/master.json # 自己造的合法 Lottie：3 个渐变、90 帧 30fps、bm=0
+├── fixtures/master.json          # 自己造的合法 Lottie：3 个渐变、90 帧 30fps、bm=0
+├── fixtures/duplicate-names.json # 用例 11：两个同名（nm="Name"）渐变
+├── fixtures/stop-modes.json      # 用例 12：3 个颜色色标 + 2 个透明度色标（数量不等）
+├── fixtures/keyframed.json       # 用例 14：1 个静态渐变 + 1 个 g.k={a:1,k:[…]} 关键帧渐变
 ├── README.md
 ├── BASELINE.md          # 首次基线结果 + 已发现的现有 bug（只报告不修）
 ├── .npmrc               # 公共 registry + 本地缓存（绕过本机 npm 配置问题）
@@ -47,7 +50,7 @@ tests/
 | `HEADFUL` | 无（无头） | `HEADFUL=1` 有头模式，方便肉眼调试 |
 | `WAIT_TIMEOUT` | `8000` | 单个等待条件的超时（ms） |
 
-## 用例清单（10 条）
+## 用例清单（14 条）
 
 | # | 用例 | 主要断言 |
 |---|---|---|
@@ -61,8 +64,35 @@ tests/
 | 08 | 播放控制 | 播放中 `#time-display`/`currentFrame` 前进；再点一次 → `animation.isPaused===true` 且进度冻结 |
 | 09 | 导出 JSON | 点 `#export-btn`，通过 CDP `Browser.setDownloadBehavior` 捕获真实下载文件；文件名以 `.json` 结尾、`JSON.parse` 成功、含 layers、含全部 3 个渐变、`op` 与 fixture 一致 |
 | 10 | 响应式 | 1280×900 与 900×1200 两个视口：`documentElement.scrollWidth` 与 `body.scrollWidth` 均 ≤ `innerWidth + 2`；各存一张截图 |
+| 11 | 同名渐变 | `duplicate-names.json`（2 个 `nm="Name"`）：列表出现 2 条、名字分别是 `Name #1` / `Name #2`；点第 1 条改首色标 `#00ff00`，导出 JSON 中**只有第 1 条**变色（RGB≈[0,1,0]），第 2 条保持 [0.3,0.6,0.9] |
+| 12 | 色标分离 | `stop-modes.json`（3 颜色 / 2 透明度）：颜色行=3、透明度行=2（数量可不同）；点「加透明度」→ alpha +1、color 不变；点「加颜色」→ color +1、alpha 不变 |
+| 13 | 改色保状态 | 播放中拖到中间并暂停，记录 `#time-display`；改一个色标颜色后等 900ms：仍为暂停（`animation.isPaused`/按钮信号）、时间显示与帧号不跳回 0、进度完全冻结 |
+| 14 | 关键帧渐变 | `keyframed.json`：静态渐变可正常编辑（对照组）；选中 `g.k={a:1,k:[…]}` 的关键帧渐变后出现提示、编辑区**没有**任何色标行；导出后 `g.k.a` 仍为 1、关键帧数组原样保留 |
 
 失败时：该用例截图到 `artifacts/FAIL-<编号>.png`，其余用例继续跑，最后打印失败清单并以退出码 1 结束。
+
+### 用例 11-14 的稳定钩子与降级机制
+
+线上版（`13d5c54+`）为 UI 重写预留了一批**稳定选择器钩子**，用例 11-14 优先用它们断言，不依赖 Tailwind 类名/文案/视觉顺序：
+
+| 钩子 | 用途 |
+|---|---|
+| `.gradient-item` / `.gradient-name` / `.selected` | 列表条目、显示名（同名 `Name #1`/`Name #2`）、选中态 |
+| `#editor [data-row="color"]` / `[data-row="alpha"]` | 颜色色标行 / 透明度色标行 |
+| `[data-action="add-color-stop"]` / `[data-action="add-alpha-stop"]` | 添加颜色/透明度色标按钮 |
+| `[data-action="toggle-alpha"]` | 透明度开关 |
+| `.rail[data-rail="color"]` / `.rail[data-rail="alpha"]` + `.rail-stop` | 预览条颜色轨/透明度轨及其圆点（信息采集） |
+| `#editor [data-editor-notice="keyframed"]` | 关键帧渐变「只提示不编辑」提示块 |
+| `#gradient-type` | 渐变类型徽标（`gf`/`gs`，信息采集） |
+
+当前**生产基线 DOM 还没有这些钩子**（旧视觉）。所以 `window.__smoke` 里每个钩子都带向后兼容 fallback：
+
+- 颜色行：`[data-row="color"]` 缺失 → 退化为「含 `input[type=color]` 的行容器」；
+- 透明度行：`[data-row="alpha"]` 缺失 → 退化为「含 ≥2 个 range 滑杆且不含颜色输入的行容器」；
+- 加按钮：`[data-action=…]` 缺失 → 退化为 plus 图标按钮与 alpha 行同父容器的结构识别；
+- 关键帧提示：`[data-editor-notice="keyframed"]` 缺失 → 退化为「编辑区无任何色标行且提示文本非空」的结构近似断言。
+
+**降级是显式记录的**：用例详情里带 `[降级]`，控制台末尾汇总「因基线 DOM 缺稳定钩子而降级的断言」，`artifacts/last-run.json` 里有 `degradations` 与 `hookProbe`（每个钩子是否就位）。改版后钩子就位时会自动走 hook 路径，不再产生降级记录；若某条用例仍降级，说明对应钩子还没接上。
 
 ## 输出与产物
 
@@ -102,16 +132,28 @@ const SELECTORS = {
 cd tests
 # 1) 导出改版前的干净代码树（不碰当前工作区）
 git archive <baseline-commit> | tar -x -C .baseline-src
+# 1b) 线上版把拉取/导出依赖放在 js/vendor/，其中 gif.js / gif.worker.js 可能未纳入 git：
+#     基线副本要补齐，否则页面会报 ERR_FILE_NOT_FOUND、用例 01 会失败
+cp ../js/vendor/gif.js ../js/vendor/gif.worker.js .baseline-src/js/vendor/ 2>/dev/null || true
 # 2) 跑基线
 SITE_ROOT="$PWD/.baseline-src" ARTIFACTS_DIR=artifacts/baseline npm test
-# 3) 跑当前工作区
+# 3) 跑当前工作区（同一时间只能跑一个 npm test）
 npm test
 # 4) 对比
 node -e "const a=require('./artifacts/baseline/last-run.json'),b=require('./artifacts/last-run.json');
 console.log(a.results.map(r=>r.id+':'+r.status).join(' '));console.log(b.results.map(r=>r.id+':'+r.status).join(' '))"
 ```
 
-见 [BASELINE.md](BASELINE.md)：基线（commit `afc4c09`，与 `main` 同一棵树）**10 PASS / 0 FAIL**。
+当前生产基线（commit `13d5c54`，ui/redesign-v3 起点）实测：**14 PASS / 0 FAIL**（用时 27.1s），
+产物在 `artifacts/prod-baseline/`。其中用例 12/14 因基线 DOM 缺稳定钩子各产生一条 `[降级]` 记录（见上节），
+其余断言均为真实数据/DOM 断言；同名渐变独立性（用例 11）与改色保留播放状态（用例 13）在基线已是修复后的行为。
+
+UI 重写后的工作区实测：**14 PASS / 0 FAIL**（用时 27.6s），`hookProbe` 显示 10 个稳定钩子**全部就位**，
+用例 12/14 自动走 hook 路径、不再产生任何 `[降级]` 记录；预览条导轨计数为颜色 3 / 透明度 2 个 `.rail-stop`。
+产物在 `artifacts/last-run.json`。
+
+> 早期的 10 条基线（commit `afc4c09`，与 `main` 同一棵树）见 [BASELINE.md](BASELINE.md)：**10 PASS / 0 FAIL**。
+> 该文档里的 BUG-2（改色跳帧自动播放）与 BUG-5（同名渐变无法分别编辑）在 `13d5c54` 已修复，用例 11/13 就是回归护栏。
 
 ## 常见问题
 

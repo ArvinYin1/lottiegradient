@@ -1,4 +1,4 @@
-# CLAUDE.md - Lottie Gradient Editor
+# AGENTS.md - Lottie Gradient Editor
 
 > 本文档供 AI 编程助手阅读，用于快速了解本项目架构和开发规范。
 
@@ -8,254 +8,200 @@
 
 用户可以通过本工具：
 - 上传和预览 Lottie JSON 动画文件
-- 可视化编辑动画中的渐变色
-- 导出修复后的 JSON 文件
+- 可视化编辑动画中的渐变色（色标颜色 / 位置 / 透明度）
+- 同步其他文件的渐变配置
+- 导出修复后的 JSON（或导出当前帧 PNG / GIF）
 
-**在线地址**: https://www.lottie.uno  
+**在线地址**: https://www.lottie.uno
 **备用地址**: https://arvinyin1.github.io/lottiegradient/
 
 ## 技术栈
 
-本项目是一个纯前端静态网站，无需构建工具：
+纯前端静态站点，**无构建步骤**：
 
 | 技术 | 用途 | 来源 |
 |------|------|------|
 | HTML5 + Vanilla JS | 页面结构和逻辑 | 原生 |
-| Tailwind CSS | UI 样式框架 | CDN |
-| Lottie Web (bodymovin) | Lottie 动画渲染 | CDN |
-| Monaco Editor | JSON 代码编辑器 | CDN |
-| Lucide Icons | 图标库 | CDN |
+| 手写 CSS 设计系统 | UI 样式与主题 tokens | `css/style.css` |
+| Lottie Web (bodymovin) | Lottie 动画渲染 | `js/vendor/lottie.min.js`（自托管） |
+| gif.js | GIF 导出（含 worker） | `js/vendor/gif.js`（自托管） |
+| Lucide Icons | 图标库 | `js/vendor/lucide.min.js`（自托管） |
+
+> 历史说明：UI 重写后已去掉 Tailwind CDN / 构建链（`tailwind.config.js`、`tailwind-input.css`、`css/tailwind.min.css` 均已删除）。样式全部收敛到 `css/style.css` 的设计系统，便于切主题与做深浅色。
 
 ## 项目结构
 
 ```
 lottiegradient/
-├── index.html          # 主 HTML 文件（约 288 行）
+├── index.html          # 页面结构（顶栏 + 三栏工作台 + 两个弹窗）
 ├── css/
-│   └── style.css       # 样式文件（约 193 行）
+│   └── style.css       # 设计系统：tokens / 组件 / 响应式 / 深色主题
 ├── js/
-│   └── main.js         # JavaScript 逻辑（约 930 行）
-├── CNAME               # GitHub Pages 自定义域名配置 (www.lottie.uno)
-├── README.md           # 项目说明文档（中文）
-├── AGENTS.md           # AI 助手文档
-├── CLAUDE.md           # AI 助手文档（副本）
-└── svg/                # 本地 SVG 图标资源（备用）
-    └── ...
+│   ├── main.js         # 全部逻辑：i18n、渐变编辑器、导入导出、GIF 导出
+│   └── vendor/         # 自托管依赖：lucide / lottie / gif.js + gif.worker
+├── tests/
+│   ├── smoke.mjs       # puppeteer-core 真实浏览器冒烟测试（14 条用例）
+│   ├── fixtures/       # 测试用 Lottie JSON
+│   └── README.md       # 跑测说明 / 改版适配
+├── svg/                # 本地 SVG 图标备用资源（运行时实际用 js/vendor/lucide）
+├── README.md / AGENTS.md / CLAUDE.md
+└── package.json        # 仅提供 serve / test 脚本，无运行时依赖
 ```
 
-**注意**: 实际运行时使用 CDN 加载的 Lucide 图标，本地 SVG 文件为备用资源。
+## 界面结构（三栏工作台）
 
-## 核心功能模块
+```
+┌ topbar: 品牌 · 文件名 chip · 导入/导出/同步 · 帮助/语言/主题/GitHub ┐
+├ gradient list (272px) │ preview canvas (flex) │ editor panel (344px) ┤
+└───────────────────────┴──────────────────────┴──────────────────────┘
+```
 
-### 1. 文件操作模块
-- **导入 JSON**: 通过文件选择器或拖拽上传 `.json` 文件
-- **导出 JSON**: 将编辑后的动画导出为压缩格式的 JSON 文件
-- **同步渐变**: 从另一个 JSON 文件中提取并应用渐变数据
+- **左栏** `#gradient-names-list`：每个渐变显示真实渐变缩略图、`gf/gs` 类型、色标数；搜索框 `#gradient-search` 做本地过滤。
+- **中栏** `#drop-zone`：画布 + 背景切换（棋盘格/纯色）+ 播放条（`#play-pause-btn` / `#animation-progress` / `#time-display`）。
+- **右栏** `#editor`：渐变预览条（色标可拖动）+ 色标表格 + 添加色标 + 透明度开关。
+- 弹窗：`#help-modal`（帮助）、`#gif-modal`（GIF 导出），统一 `.modal-root` + `.is-open` 过渡。
 
-### 2. 动画预览模块
-- 使用 `bodymovin.loadAnimation()` 渲染动画
-- 播放/暂停控制
-- 进度条拖拽
-- 帧数显示 (current / total)
-- 背景切换（透明棋盘格/纯色）
+## 核心模块
 
-### 3. 渐变编辑模块
+### 1. 文件操作
+- 导入：`#lottie-file`（点击或拖拽到 `#drop-zone`），`handleLottieFile()`
+- 导出：`#export-btn` → `compressJson(currentJsonData)`，文件名沿用导入名
+- 同步渐变：`#gradient-file` → `extractGradientsFromJson()` / `applyGradientByName()`
 
-#### 数据结构
-Lottie 渐变数据存储在图层属性中：
+### 2. 动画预览
+- `bodymovin.loadAnimation()`，容器 `#lottie-animation`（内部 svg 强制 100% 填充）
+- 背景：`#bg-alpha-btn` 切换 `.alpha-checkered` 棋盘格；`#bg-color-picker` 选纯色
+- 播放：`#play-pause-btn`、`#animation-progress`（拖拽时暂停、结束后恢复原播放状态）、`#time-display`
+
+### 3. 渐变数据结构
+
 ```javascript
 {
-  "ty": "gf",  // gf = 渐变填充, gs = 渐变描边
+  "ty": "gf",           // gf = 渐变填充, gs = 渐变描边
   "nm": "渐变名称",
   "g": {
-    "p": 2,    // 色标数量
-    "k": {     // 渐变数据
-      "k": [   // 实际颜色值数组
-        0,      // 第一个色标位置 (0-1)
-        0.2, 0.5, 0.8,  // 第一个色标 RGB (0-1)
-        1,      // 第二个色标位置
-        0.9, 0.3, 0.1,  // 第二个色标 RGB
-        // ... 可选透明度数据
-      ]
-    }
+    "p": 2,             // 色标数量
+    "k": { "k": [       // 实际数据
+      0, 0.2, 0.5, 0.8, // 位置, R, G, B
+      1, 0.9, 0.3, 0.1
+      // 若含 alpha：追加 p 组 [位置, alpha]
+    ]}
   }
 }
 ```
 
-#### GradientPreviewEditor 类
-核心编辑器类，位于 `js/main.js` 中：
-- 支持 RGB 和 Alpha 通道编辑
-- 动态添加/删除色标
-- 实时预览渐变效果
-- 防抖更新（100ms）
+### 4. GradientPreviewEditor（`js/main.js`）
 
-#### 颜色格式转换
+右栏全部 DOM 与交互由这个类生成，**颜色色标与透明度色标相互独立**：
+
 ```javascript
-// Lottie 格式 (0-1) -> Hex 格式
-function color_lottie_to_hex(lottie) { }
-
-// Hex 格式 -> Lottie 格式
-function color_hex_to_lottie(hex) { }
+constructor(parent, lottieArr, colorCount, on_change)
+render()                      // 预览条 + 颜色区 + 透明度区整体重建
+_buildColorRow(color)         // 颜色行：色块 / HEX / 位置 / 删除
+_buildAlphaRow(stop)          // 透明度行：位置 / 不透明度 / 删除
+_refreshColorRail()           // 颜色轨圆点（可拖动、←/→ 微调）
+_refreshAlphaRail()           // 透明度轨圆点（黑色 → 透明）
+to_css() / to_lottie()        // 合并预览 CSS / Lottie 平铺数组
 ```
 
-### 4. 渐变列表模块
-- 自动扫描 JSON 中所有渐变（`ty === 'gf' || ty === 'gs'`）
-- 按名称去重显示
-- 搜索过滤功能
-- 点击定位到 Monaco Editor 对应位置
-- **自动选择第一个渐变**
+- Lottie 的 `g.k` 是「p 组颜色色标 (offset,r,g,b) + 若干组透明度色标 (offset,alpha)」，两段数量可以不同。解析见 `parseGradientArray()`，合并预览见 `gradient_css_from_stops()` / `samplePiecewise()`。
+- 最少保留 2 个色标，越界时用 `showToast(t('minStopsWarning'))` 提示。
+- 行与按钮带稳定钩子供测试使用：`data-row="color|alpha"`、`data-action="add-color-stop|add-alpha-stop|delete-color-stop|delete-alpha-stop|toggle-alpha"`。
 
-### 5. Monaco Editor 集成
-- JSON 语法高亮和验证
-- 自动格式化
-- 实时同步动画预览
-- 防抖更新（500ms）
+### 5. 渐变列表
 
-### 6. 帮助弹窗模块
-- 点击右上角「帮助」按钮触发
-- 毛玻璃背景效果
-- 动画过渡效果（scale + opacity）
-- ESC 键关闭支持
-- 点击遮罩层关闭
+- `getGradientList()` 用 `forEachGradient()` 按**出现顺序给每个渐变分配 index**；同名渐变不合并，显示为 `Name #1` / `Name #2`。
+- 选中态保存 `{ index, displayName, type }`，编辑时按 index 精确回写（`applyEditToSelected()`），因此同名渐变可分别修改。
+- 列表项左侧 `.g-swatch` 用 `gradient_swatch_css()` 渲染真实渐变；关键帧渐变用斜纹占位并显示「关键帧」徽标。
+- 搜索过滤：`item.style.display = '' | 'none'`（不要写成 `'block'`，会破坏 flex 布局）。
+
+### 5.1 关键帧渐变
+
+`unwrapGradientK()` 会把 `g.k.a === 1` 或数组元素为对象的渐变标记为关键帧；这类渐变只展示提示（`[data-editor-notice="keyframed"]`），不改写、不参与同步。
+
+### 6. i18n
+- 文案字典在 `js/main.js` 顶部（`zh` / `en`），静态节点用 `data-i18n` / `data-i18n-placeholder`，JS 动态文案用 `t(key)`。
+- 新增文案必须同时补 `zh` 与 `en`；动态生成的表头 / 按钮在 `refreshLanguage()` 里更新。
 
 ## 主题与样式
 
-### 颜色方案
-- 主色调：蓝色渐变（#3b82f6 -> #2563eb）
-- 背景色：slate-50（浅灰）
-- 卡片背景：白色 + 阴影
+### 设计 token（`css/style.css`）
 
-### 响应式设计
-项目支持响应式字体缩放（位于 `css/style.css`）：
+shadcn 风格，light 在 `:root`，dark 在 `html.dark`：
+
 ```css
-/* 基础设置（笔记本/小屏幕） */
-html { font-size: 14px; }
-
-/* 大屏幕笔记本 / 外接显示器 */
-@media (min-width: 1440px) { html { font-size: 15px; } }
-
-/* 1080p 显示器 */
-@media (min-width: 1920px) { html { font-size: 16px; } }
-
-/* 4K 显示器 */
-@media (min-width: 2400px) { html { font-size: 20px; } }
+--background / --foreground / --card / --popover
+--muted / --muted-foreground / --secondary / --accent
+--primary / --primary-foreground / --destructive
+--border / --input / --ring / --surface / --surface-2
+--radius: 10px（派生 sm 6 / md 8 / lg 10 / xl 14）
+--shadow-xs / sm / md / lg
+--font-sans / --font-mono
 ```
 
-### CSS 类命名规范
-```
-.btn-primary      # 主按钮（渐变蓝色背景）
-.btn-secondary    # 次级按钮（浅灰背景）
-.btn-export       # 导出按钮（白色背景带边框）
-.card             # 卡片容器（悬浮效果）
-.glass            # 毛玻璃效果（header）
-.animate-fade-in  # 淡入动画
-.alpha-checkered  # 透明棋盘格背景
-.gradient-item    # 渐变列表项（hover 效果）
-.selected         # 选中状态（左侧蓝色边框）
-.drop-zone        # 拖拽区域（drag-over 状态）
-.content-max-w    # 内容区域最大宽度（响应式）
-.lottie-1x1       # Lottie 容器 1:1 固定比例
-```
+- 面板之间用 1px 描边分隔，不用悬浮卡片；中间画布是视觉主角。
+- 深浅主题由 `<html class="dark">` 驱动；`index.html` 头部内联脚本在首帧前读取 `localStorage['lottie-theme']`，避免闪白。
+- 切换入口：`#theme-btn`（`js/main.js` 末尾的「主题切换」块）。
 
-## 关键函数说明
-
-### 文件处理（js/main.js）
-```javascript
-loadAnimation(jsonData)              // 加载并播放动画
-compressJson(obj, precision = 3)     // 压缩导出 JSON（精度控制）
-updateGradientInJson(newGradientData) // 更新 JSON 中的渐变数据
+### 关键类名
+```
+.btn / .btn-primary / .btn-outline / .btn-ghost / .btn-icon
+.input / .select-wrap / .badge / .seg / .switch
+.panel / .panel-head / .empty / .empty--fill
+.gradient-item / .selected / .g-swatch / .gradient-name
+.canvas-frame / .alpha-checkered / .lottie-1x1 / .drag-over
+.rail / .rail--alpha / .rail-track / .rail-stop
+.stop-row--color / .stop-row--alpha / .stops-head--color / .stops-head--alpha
+.toast / #toast-container / .editor-notice / .badge--warn
+.modal-root / .is-open / .modal-overlay / .modal-content
 ```
 
-### 渐变操作（js/main.js）
-```javascript
-findAdobeGradientNames(jsonData)          // 查找所有渐变
-updateGradientInJsonData(...)             // 递归更新指定渐变数据
-extractGradientsFromJson(jsonData)        // 提取渐变用于同步
-applyGradientToAnimation(...)             // 应用渐变到动画
-```
-
-### GradientPreviewEditor 类方法
-```javascript
-constructor(parent, lottie, color_count, on_change, dynamic_count)
-add_color(offset, hex, alpha, dynamic_count)  // 添加色标
-update(lottie, color_count)                   // 更新编辑器
- Debounced_change()                            // 防抖更新（100ms）
-to_css()                                      // 转 CSS 渐变
- to_lottie()                                   // 转 Lottie 格式
-```
-
-### 帮助弹窗
-```javascript
-// DOMContentLoaded 中初始化
-openModal()    // 打开弹窗（带动画）
-closeModal()   // 关闭弹窗（带动画）
-```
-
-## 部署说明
-
-### GitHub Pages 部署
-本项目配置为 GitHub Pages 静态站点：
-
-1. 将代码推送到 GitHub 仓库
-2. 在 Settings > Pages 中启用 GitHub Pages
-3. 选择 main 分支作为源
-
-### 自定义域名
-- `CNAME` 文件内容为 `www.lottie.uno`
-- 需要在域名 DNS 配置中添加 CNAME 记录指向 GitHub Pages 域名
+### 响应式
+- ≥1281px：272 / flex / 344 三栏
+- ≤1080px：收窄两侧
+- ≤760px：纵向堆叠，画布限宽，顶栏只留图标
 
 ## 开发指南
 
-### 本地开发
-由于项目无构建步骤，直接打开 `index.html` 即可预览：
-
 ```bash
-# 使用 Python 简易服务器（推荐，支持模块加载）
-python -m http.server 8000
+# 本地预览（无需构建）
+npm run serve          # python3 -m http.server 8000
+open http://localhost:8000
 
-# 或使用 Node.js serve
-npx serve .
+# 冒烟测试（需要系统 Chrome；依赖已本地化，离线可跑）
+npm test               # 等价于 cd tests && npm test
 ```
 
-然后访问 `http://localhost:8000`
-
-### 代码规范
-
-#### JavaScript
-- 使用 ES6+ 语法（类、箭头函数、const/let）
-- 事件监听使用 `addEventListener`
-- 防抖处理频繁触发的事件（输入、拖拽）
-
-#### CSS
-- Tailwind CSS 工具类为主
-- 自定义样式放在 `css/style.css` 中
-- 使用 `lucide.createIcons()` 初始化图标
-
-### 文件组织
-- **index.html**: 只包含 HTML 结构，通过 `<link>` 和 `<script>` 引入外部资源
-- **css/style.css**: 所有自定义样式，包括响应式设计和组件样式
-- **js/main.js**: 所有 JavaScript 逻辑，按功能模块组织
+### 规范
+- JavaScript：ES6+，事件用 `addEventListener`；频繁触发的交互做防抖（编辑 100ms、JSON 500ms）。
+- CSS：新样式写进 `css/style.css`，用 token 而不是硬编码颜色；不要在 HTML 里写内联颜色。
+- 图标：`lucide.createIcons()` 初始化；动态插入的图标需再次调用。已知 `lucide@1.21.0` 没有 `github` 图标，仓库/帮助里的 GitHub 图标使用内联 SVG。
+- **不要**给 JS 会写成 `display:block` 的元素加 flex/grid（搜索过滤已改为 `''`）。
 
 ### 注意事项
-1. **编码问题**: 读取文件时处理 BOM 头 (`\ufeff`)
-2. **防抖优化**: 渐变编辑使用 100ms 防抖，JSON 编辑使用 500ms 防抖
-3. **循环引用**: 遍历 JSON 时注意处理嵌套结构
-4. **空数据处理**: 处理无效/空渐变数据时提供默认值
-5. **图标初始化**: 动态添加的内容需要调用 `lucide.createIcons()`
-6. **程序化更新**: 使用 `isProgrammaticUpdate` 标志避免循环更新
+1. **编码**：读取文件要处理 BOM（`\ufeff`）。
+2. **单一数据源**：`currentJsonData` 是唯一真相；传给 bodymovin 前会深拷贝，避免渲染过程改坏数据。
+3. **改色保留播放状态**：`loadAnimation(data, true)` 会恢复播放进度与暂停状态（preserveState）。
+4. **同名渐变**：按 index 精确定位，编辑一个不影响另一个；「同步渐变」按 `nm` 匹配，会同时写入所有同名渐变（符合该功能语义）。
+5. **关键帧渐变**：只识别、不编辑、不参与同步。
+6. **DOM 契约**：`#drop-zone`、`#editor`、`#lottie-file` 缺一个会让初始化静默中断，改结构先跑 `npm test`。
+7. **vendor 依赖**：lucide / lottie / gif.js 走本地 `js/vendor/`，离线可用。
+
+## 测试
+
+`tests/smoke.mjs` 用 puppeteer-core + 系统 Chrome，`file://` 直接打开页面，覆盖 14 条用例（加载 / 导入 / 选中 / 改色 / 增删色标 / 搜索 / 播放 / 导出 / 响应式 / 同名渐变 / 色标分离 / 播放状态保持 / 关键帧）。选择器集中在文件顶部 `SELECTORS`，改版只需微调那里。详见 `tests/README.md`、基线报告 `tests/BASELINE.md`。
+
+## 部署
+
+### GitHub Pages
+推送到 `main` 后自动更新（Settings > Pages，源为 `main`）。
+
+### 自建服务器
+`deploy.sh` 通过 rsync over SSH 同步 `index.html css js svg` 到 nginx 目录，脚本含线上验收。
 
 ## 浏览器兼容性
 
-- Chrome/Edge 80+
-- Firefox 75+
-- Safari 13+
-
-需要支持：
-- ES6 Modules
-- CSS Custom Properties
-- Web Animations API
-- File API
-- CSS Grid & Flexbox
+Chrome/Edge 100+、Firefox 110+、Safari 15.4+（使用 `:has()`、`color-mix()` 等现代 CSS；不支持 `:has()` 的旧浏览器会退化为普通实线画布边框，功能不受影响）。
 
 ## 相关链接
 
@@ -263,4 +209,3 @@ npx serve .
 - [GitHub 仓库](https://github.com/ArvinYin1/lottiegradient)
 - [Lottie 官方文档](https://airbnb.io/lottie/)
 - [Bodymovin 插件](https://github.com/airbnb/lottie-web)
-- [Tailwind CSS](https://tailwindcss.com/)
