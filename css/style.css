@@ -109,6 +109,18 @@ html {
     padding-right: env(safe-area-inset-right);
 }
 
+/* ===== 桌面双列布局：锁定为单屏应用式布局 =====
+   高度自上而下分配（视口 → main → 卡片 → 预览容器），
+   页面不产生滚动，渐变列表/编辑器在面板内部滚动；
+   1:1 预览容器由 max-height + aspect-ratio 自动缩放适配。
+   窗口过矮时由 min-height 兜底，此时允许页面滚动。 */
+@media (min-width: 1024px) {
+    .app-wrapper {
+        height: 100vh;
+        min-height: 600px;
+    }
+}
+
 header {
     padding-top: env(safe-area-inset-top);
 }
@@ -133,8 +145,11 @@ input[type=color]:focus-visible {
 
 /* ===== 可随字体缩放的布局尺寸 ===== */
 
-/* 内容区域最大宽度（替代固定 1600px） */
+/* 内容区域最大宽度（替代固定 1600px）
+   width: 100% 必不可少：main 是 flex 子项且左右 margin 为 auto，
+   缺少显式宽度时会收缩到内容宽度导致整页变窄 */
 .content-max-w {
+    width: 100%;
     max-width: 110rem;
     margin-left: auto;
     margin-right: auto;
@@ -148,7 +163,8 @@ input[type=color]:focus-visible {
 .gradient-list-content { flex: 1; min-height: 0; }
 .editor-content { flex: 1; min-height: 0; }
 
-/* Lottie 动画容器 - 固定 1:1 宽高比，在 flex 容器中自适应 */
+/* Lottie 动画容器 - 固定 1:1 宽高比，在 flex 容器中自适应
+   窄屏（堆叠布局）：宽度驱动，宽度撑满、高度按比例 */
 .lottie-1x1 {
     aspect-ratio: 1 / 1;
     width: 100%;
@@ -157,6 +173,15 @@ input[type=color]:focus-visible {
     max-height: 100%;
     min-width: 0;
     min-height: 0;
+}
+
+/* 桌面锁高布局：高度驱动，高度撑满、宽度按比例，
+   保证正方形且始终完整落在一屏内 */
+@media (min-width: 1024px) {
+    .lottie-1x1 {
+        width: auto;
+        height: 100%;
+    }
 }
 
 /* 防止 flex 容器被动画内容撑大 */
@@ -321,3 +346,45 @@ input[type=number]::-webkit-inner-spin-button {
     border-color: #3b82f6;
     background: rgba(59,130,246,0.05);
 }
+
+/* 空状态下点击预览区可打开文件选择 */
+.drop-zone.empty {
+    cursor: pointer;
+}
+
+/* ===== Toast 提示 ===== */
+#toast-container {
+    position: fixed;
+    top: calc(env(safe-area-inset-top) + 16px);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 200;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    pointer-events: none;
+}
+
+.toast {
+    max-width: min(90vw, 480px);
+    padding: 10px 16px;
+    border-radius: 10px;
+    font-size: 0.875rem;
+    line-height: 1.4;
+    color: #fff;
+    background: #334155;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+    opacity: 0;
+    transform: translateY(-8px);
+    transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.toast-show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.toast-success { background: #059669; }
+
+.toast-error { background: #dc2626; }

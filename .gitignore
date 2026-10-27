@@ -5,3 +5,14 @@ node_modules/
 
 # 部署脚本含服务器地址与密钥路径，不提交到公开仓库
 deploy.sh
+
+# 设计与验证产物（本地）
+.design/
+.preview.html
+
+# 测试产物
+tests/node_modules/
+tests/artifacts/
+tests/.chrome-profile/
+tests/.npm-cache/
+tests/.baseline-src/

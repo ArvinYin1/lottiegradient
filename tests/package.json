@@ -1,0 +1,13 @@
+{
+  "name": "lottiegradient-smoke-tests",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Real-browser smoke tests for the Lottie Gradient Editor (static site, no build step)",
+  "type": "module",
+  "scripts": {
+    "test": "node smoke.mjs"
+  },
+  "dependencies": {
+    "puppeteer-core": "^24.10.0"
+  }
+}

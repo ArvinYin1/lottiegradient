@@ -40,23 +40,31 @@ const i18n = {
         subtitle: '渐变色编辑器',
         enableAlpha: '启用透明度',
         addStop: '添加色标',
+        addAlphaStop: '添加透明度色标',
+        colorStops: '颜色色标',
+        alphaStopsLabel: '透明度色标',
         position: '位置',
         alpha: '透明度',
         noGradientsFound: 'JSON 文件中未找到渐变',
         noJsonUploaded: '上传 JSON 文件以查看渐变',
         selectToEdit: '点击左侧渐变开始编辑',
         gradientEditor: '渐变编辑器',
+        unnamedGradient: '未命名渐变',
+        keyframedBadge: '关键帧',
+        animatedGradientNotice: '该渐变包含关键帧动画，暂不支持可视化编辑；本工具不会修改它',
+        minStopsWarning: '至少需要保留 2 个色标',
+        invalidFileType: '仅支持 .json 文件',
         alertNoContent: '没有可导出的内容',
         alertNoAnimation: '请先导入动画 JSON 文件',
         alertNoGradient: '未在文件中找到渐变数据',
         alertInvalidJson: '无效的 JSON 文件',
-        alertJsonError: '编辑器中的 JSON 无效',
         syncSuccess: '成功同步 {count} 个渐变',
         syncFailed: '同步渐变失败',
         exportFailed: '导出失败',
         exportFrame: '导出帧',
         exportGif: '导出 GIF',
         exportGifDesc: '将 Lottie 动画导出为 GIF 格式',
+        exportGifDone: 'GIF 已导出',
         fps: '帧率 (FPS)',
         scale: '缩放比例',
         startFrame: '起始帧',
@@ -111,23 +119,31 @@ const i18n = {
         subtitle: 'Gradient Editor',
         enableAlpha: 'Enable Alpha',
         addStop: 'Add Color Stop',
+        addAlphaStop: 'Add Alpha Stop',
+        colorStops: 'Color Stops',
+        alphaStopsLabel: 'Alpha Stops',
         position: 'Position',
         alpha: 'Alpha',
         noGradientsFound: 'No gradients found in JSON file',
         noJsonUploaded: 'Upload JSON file to view gradients',
         selectToEdit: 'Click a gradient on the left to start editing',
         gradientEditor: 'Gradient Editor',
+        unnamedGradient: 'Unnamed Gradient',
+        keyframedBadge: 'animated',
+        animatedGradientNotice: 'This gradient is keyframe-animated and cannot be edited visually yet; it will be left untouched',
+        minStopsWarning: 'At least 2 stops are required',
+        invalidFileType: 'Only .json files are supported',
         alertNoContent: 'No content to export',
         alertNoAnimation: 'Please import animation JSON file first',
         alertNoGradient: 'No gradient data found in file',
         alertInvalidJson: 'Invalid JSON file',
-        alertJsonError: 'Invalid JSON in editor',
         syncSuccess: 'Successfully synced {count} gradients',
         syncFailed: 'Failed to sync gradients',
         exportFailed: 'Export failed',
         exportFrame: 'Export Frame',
         exportGif: 'Export GIF',
         exportGifDesc: 'Export Lottie animation as GIF',
+        exportGifDone: 'GIF exported',
         fps: 'FPS',
         scale: 'Scale',
         startFrame: 'Start Frame',
@@ -159,102 +175,64 @@ function t(key, params = {}) {
 function updateLanguage(lang) {
     currentLang = lang;
     localStorage.setItem('lottie-lang', lang);
-    
-    // 更新 lang 属性
     document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
-    
-    // 更新语言按钮文本
+
     const langText = document.getElementById('lang-text');
     if (langText) {
         langText.textContent = lang === 'zh' ? 'EN' : '中文';
     }
-    
-    // 更新所有带 data-i18n 的元素
+
     document.querySelectorAll('[data-i18n]').forEach(el => {
         const key = el.getAttribute('data-i18n');
-        if (i18n[lang][key]) {
-            // 保留内部 HTML 标签
-            if (el.innerHTML.includes('<')) {
-                const temp = document.createElement('div');
-                temp.innerHTML = i18n[lang][key];
-                // 只替换文本节点，保留子元素
-                const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
-                const textNodes = [];
-                while (walker.nextNode()) {
-                    textNodes.push(walker.currentNode);
-                }
-                // 简单替换整个内容
-                el.innerHTML = i18n[lang][key];
-            } else {
-                el.textContent = i18n[lang][key];
-            }
-        }
+        const val = i18n[lang][key];
+        if (!val) return;
+        if (val.includes('<')) el.innerHTML = val;
+        else el.textContent = val;
     });
-    
-    // 更新 placeholder
+
     document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
         const key = el.getAttribute('data-i18n-placeholder');
         if (i18n[lang][key]) {
             el.placeholder = i18n[lang][key];
         }
     });
-    
-    // 更新副标题
-    const subtitleEl = document.querySelector('header p.text-xs');
-    if (subtitleEl && subtitleEl.getAttribute('data-i18n') === 'subtitle') {
-        subtitleEl.textContent = i18n[lang].subtitle;
-    }
-    
-    // 更新空状态消息
-    const gradientNamesList = document.getElementById('gradient-names-list');
-    if (gradientNamesList) {
-        const emptyState = gradientNamesList.querySelector('.text-center.py-8');
-        if (emptyState && emptyState.querySelector('[data-lucide="sparkles"]')) {
-            const p = emptyState.querySelector('p');
-            if (p) p.textContent = i18n[lang].noJsonUploaded;
-        }
-    }
-    
-    // 更新编辑器空状态
-    const editor = document.getElementById('editor');
-    if (editor) {
-        const emptyState = editor.querySelector('.text-center.py-8');
-        if (emptyState && emptyState.querySelector('[data-lucide="mouse-pointer-click"]')) {
-            const p = emptyState.querySelector('p');
-            if (p) p.textContent = i18n[lang].selectToEdit;
-        }
-    }
-    
-    // 更新帮助按钮弹窗中的副标题
-    const modalSubtitle = document.querySelector('#help-modal p.text-xs.text-slate-500');
-    if (modalSubtitle && modalSubtitle.textContent.includes('Lottie Gradient Editor')) {
-        // 保持版本号，只更新工具名
-    }
-    
-    // 刷新渐变编辑器语言
-    if (gradientEditorInstance) {
-        gradientEditorInstance.refreshLanguage();
+
+    refreshDynamicTexts();
+}
+
+// 更新由 JS 动态生成的文案（工具提示、列表、编辑器）
+function refreshDynamicTexts() {
+    const frameBtn = document.getElementById('export-frame-btn');
+    if (frameBtn) frameBtn.title = t('exportFrame');
+    const gifBtn = document.getElementById('export-gif-btn');
+    if (gifBtn) gifBtn.title = t('exportGif');
+
+    if (!currentJsonData) {
+        renderListEmptyState();
+        renderEditorEmptyState();
+    } else {
+        updateGradientNamesList();
+        renderEditorForSelection();
     }
 }
 
 function toggleLanguage() {
-    const newLang = currentLang === 'zh' ? 'en' : 'zh';
-    updateLanguage(newLang);
+    updateLanguage(currentLang === 'zh' ? 'en' : 'zh');
 }
 
-// ========== 初始化 ==========
-document.addEventListener('DOMContentLoaded', () => {
-    updateLanguage(currentLang);
-    lucide.createIcons();
-});
+// ========== 通用工具 ==========
 
 function truncate_float(num) { return Math.round(num * 1000) / 1000; }
 
-function color_lottie_to_hex(lottie) {
-    let r = Math.round(lottie[0] * 255).toString(16).padStart(2, '0');
-    let g = Math.round(lottie[1] * 255).toString(16).padStart(2, '0');
-    let b = Math.round(lottie[2] * 255).toString(16).padStart(2, '0');
-    return `#${r}${g}${b}`;
+function clamp01(v) {
+    v = Number(v);
+    if (!isFinite(v)) return 0;
+    return Math.min(1, Math.max(0, v));
+}
+
+function color_lottie_to_hex(rgb) {
+    const c = v => Math.round(clamp01(v) * 255).toString(16).padStart(2, '0');
+    return `#${c(rgb[0])}${c(rgb[1])}${c(rgb[2])}`;
 }
 
 function color_hex_to_lottie(hex) {
@@ -264,139 +242,322 @@ function color_hex_to_lottie(hex) {
     return [r, g, b];
 }
 
+// 通过 replacer 控制数字精度，不会误伤字符串里的数字
 function compressJson(obj, precision = 3) {
-    let jsonStr = JSON.stringify(obj, null, 0);
-    const regex = new RegExp(`\\b\\d+\\.\\d{${precision + 1},}\\b`, 'g');
-    jsonStr = jsonStr.replace(regex, (match) => parseFloat(match).toFixed(precision));
-    return jsonStr;
+    const factor = Math.pow(10, precision);
+    return JSON.stringify(obj, (key, value) =>
+        typeof value === 'number' && isFinite(value) ? Math.round(value * factor) / factor : value
+    );
 }
 
-class GradientPreviewEditor {
-    constructor(parent, lottie, color_count, on_change, dynamic_count = false) {
-        this.on_change = on_change;
-        let rgbStopCount;
-        this.with_alpha = false;
-        
-        // Handle empty or invalid lottie data
-        if (!lottie || lottie.length === 0) {
-            lottie = [0, 0.231, 0.51, 0.965, 1, 0.976, 0.451, 0.086]; // Default gradient: Blue to Orange
-            color_count = 2;
-        }
-        
-        if (lottie.length === color_count * 6) {
-            this.with_alpha = true;
-            rgbStopCount = color_count;
-        } else if (lottie.length === color_count * 4) {
-            this.with_alpha = false;
-            rgbStopCount = color_count;
+function downloadBlob(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+// 非阻塞的提示（替代 alert）
+function showToast(message, type = 'info') {
+    let container = document.getElementById('toast-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'toast-container';
+        document.body.appendChild(container);
+    }
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.textContent = message;
+    container.appendChild(toast);
+    void toast.offsetHeight; // 强制 reflow，保证过渡动画触发（不依赖 rAF，后台标签页也可靠）
+    toast.classList.add('toast-show');
+    setTimeout(() => {
+        toast.classList.remove('toast-show');
+        setTimeout(() => toast.remove(), 300);
+    }, 3500);
+}
+
+// ========== 渐变数据模型 ==========
+// Lottie 渐变 k 数组 = 颜色色标 (offset,r,g,b) × p 个，之后是透明度色标 (offset,alpha) 对，
+// 透明度色标数量可以与颜色色标不同，两者相互独立。
+
+// 解包 g.k，返回静态数组或标记为关键帧动画
+function unwrapGradientK(g) {
+    if (!g || !g.k) return { arr: null, keyframed: false };
+    let raw = g.k;
+    if (typeof raw === 'object' && !Array.isArray(raw) && 'k' in raw) {
+        if (raw.a === 1) return { arr: null, keyframed: true };
+        raw = raw.k;
+    }
+    if (Array.isArray(raw) && raw.length > 0 && typeof raw[0] === 'object') {
+        return { arr: null, keyframed: true };
+    }
+    if (!Array.isArray(raw)) return { arr: null, keyframed: false };
+    return { arr: raw, keyframed: false };
+}
+
+function setGradientK(g, arr, colorCount) {
+    if (g.k && typeof g.k === 'object' && !Array.isArray(g.k) && 'k' in g.k) {
+        g.k.k = arr;
+    } else {
+        g.k = arr;
+    }
+    g.p = colorCount;
+}
+
+// 深度遍历，按出现顺序为每个渐变分配稳定索引（同名渐变互不干扰的关键）
+function forEachGradient(root, cb) {
+    let index = 0;
+    (function walk(node) {
+        if (!node || typeof node !== 'object') return;
+        if ((node.ty === 'gf' || node.ty === 'gs') && node.g) cb(node, index++);
+        if (Array.isArray(node)) {
+            for (const item of node) walk(item);
         } else {
-            if (lottie.length % 6 === 0) {
-                this.with_alpha = true;
-                color_count = lottie.length / 6;
-                rgbStopCount = color_count;
-            } else if (lottie.length % 4 === 0) {
-                this.with_alpha = false;
-                color_count = lottie.length / 4;
-                rgbStopCount = color_count;
-            } else {
-                this.with_alpha = false;
-                color_count = Math.floor(lottie.length / 4);
-                rgbStopCount = color_count;
-            }
+            for (const key of Object.keys(node)) walk(node[key]);
         }
-        let self = this;
-        this.colors = [];
+    })(root);
+}
+
+function getGradientList(jsonData) {
+    const list = [];
+    forEachGradient(jsonData, (node, index) => {
+        const { keyframed } = unwrapGradientK(node.g);
+        list.push({ index, node, name: node.nm || t('unnamedGradient'), keyframed });
+    });
+    // 同名渐变追加序号后缀，方便区分
+    const counts = {};
+    list.forEach(g => { counts[g.name] = (counts[g.name] || 0) + 1; });
+    const seen = {};
+    list.forEach(g => {
+        seen[g.name] = (seen[g.name] || 0) + 1;
+        g.displayName = counts[g.name] > 1 ? `${g.name} #${seen[g.name]}` : g.name;
+    });
+    return list;
+}
+
+// 把平铺数组解析为独立的颜色色标与透明度色标
+function parseGradientArray(arr, declaredCount) {
+    let colorCount;
+    if (Number.isInteger(declaredCount) && declaredCount > 0 && arr.length >= declaredCount * 4) {
+        colorCount = declaredCount;
+    } else if (arr.length % 6 === 0) {
+        colorCount = arr.length / 6;
+    } else {
+        colorCount = Math.floor(arr.length / 4);
+    }
+    const colors = [];
+    for (let i = 0; i < colorCount; i++) {
+        colors.push({
+            offset: clamp01(arr[i * 4]),
+            color: color_lottie_to_hex(arr.slice(i * 4 + 1, i * 4 + 4))
+        });
+    }
+    const alphaStops = [];
+    for (let i = colorCount * 4; i + 1 < arr.length; i += 2) {
+        alphaStops.push({ offset: clamp01(arr[i]), alpha: clamp01(arr[i + 1]) });
+    }
+    return { colors, alphaStops };
+}
+
+// 分段线性插值采样（用于合并颜色/透明度的 CSS 预览）
+function samplePiecewise(stops, offset, get) {
+    if (stops.length === 0) return null;
+    if (offset <= stops[0].offset) return get(stops[0]);
+    const last = stops[stops.length - 1];
+    if (offset >= last.offset) return get(last);
+    for (let i = 0; i < stops.length - 1; i++) {
+        const a = stops[i], b = stops[i + 1];
+        if (offset >= a.offset && offset <= b.offset) {
+            const span = b.offset - a.offset;
+            const tt = span === 0 ? 0 : (offset - a.offset) / span;
+            const va = get(a), vb = get(b);
+            if (Array.isArray(va)) return va.map((v, j) => v + (vb[j] - v) * tt);
+            return va + (vb - va) * tt;
+        }
+    }
+    return get(last);
+}
+
+function hexToRgbArr(hex) {
+    return [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)];
+}
+
+// ========== 渐变编辑器 ==========
+
+class GradientPreviewEditor {
+    constructor(parent, lottieArr, colorCount, on_change) {
+        this.parent = parent;
+        this.on_change = on_change;
         this.debounceTimer = null;
+        if (!Array.isArray(lottieArr) || lottieArr.length === 0) {
+            lottieArr = [0, 0.231, 0.51, 0.965, 1, 0.976, 0.451, 0.086]; // 默认：蓝到橙
+            colorCount = 2;
+        }
+        const parsed = parseGradientArray(lottieArr, colorCount);
+        this.colors = parsed.colors;
+        this.alphaStops = parsed.alphaStops;
+        this.with_alpha = this.alphaStops.length > 0;
+        this.render();
+    }
 
-        // Clear parent element (remove any placeholder content)
-        parent.innerHTML = '';
-
+    render() {
+        const self = this;
+        this.parent.innerHTML = '';
         const container = document.createElement('div');
         container.className = 'space-y-4';
-        parent.appendChild(container);
+        this.parent.appendChild(container);
 
+        // 渐变预览条
         const previewWrapper = document.createElement('div');
         previewWrapper.className = 'alpha-checkered rounded-lg p-1';
-        container.appendChild(previewWrapper);
-
         this.preview = document.createElement('div');
         this.preview.className = 'gradient-preview-bar';
         this.preview.style.background = this.to_css();
         previewWrapper.appendChild(this.preview);
+        container.appendChild(previewWrapper);
 
-        const alphaToggleWrapper = document.createElement('div');
-        alphaToggleWrapper.className = 'flex justify-end';
-        const alphaToggle = document.createElement('button');
-        alphaToggle.type = 'button';
-        alphaToggle.textContent = t('enableAlpha');
-        alphaToggleWrapper.appendChild(alphaToggle);
-        container.appendChild(alphaToggleWrapper);
-
-        function updateAlphaToggleStyle() {
-            if (self.with_alpha) {
-                alphaToggle.className = 'px-3 py-1.5 rounded-full text-xs font-medium border transition-colors shrink-0 bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100';
-            } else {
-                alphaToggle.className = 'px-3 py-1.5 rounded-full text-xs font-medium border transition-colors shrink-0 bg-white text-slate-500 border-slate-200 hover:bg-slate-50';
-            }
-        }
-        updateAlphaToggleStyle();
-
-        this.check_alpha = alphaToggle;
-        alphaToggle.addEventListener('click', () => {
-            self.with_alpha = !self.with_alpha;
-            updateAlphaToggleStyle();
-            for (let color of self.colors) {
-                color.alpha_input.disabled = !self.with_alpha;
-                if (color.alpha_slider) color.alpha_slider.disabled = !self.with_alpha;
-                color.alpha_label.classList.toggle('opacity-50', !self.with_alpha);
-            }
-            self._on_change();
-        });
-
+        // 颜色色标区
+        const colorSection = document.createElement('div');
+        colorSection.className = 'space-y-2';
+        const colorHeader = document.createElement('p');
+        colorHeader.className = 'text-xs font-medium text-slate-500';
+        colorHeader.textContent = t('colorStops');
+        colorSection.appendChild(colorHeader);
         this.colorsContainer = document.createElement('div');
         this.colorsContainer.className = 'space-y-2';
-        container.appendChild(this.colorsContainer);
+        colorSection.appendChild(this.colorsContainer);
+        this.colors.forEach(c => this.colorsContainer.appendChild(this._buildColorRow(c)));
 
-        if (lottie && lottie.length > 0) {
-            for (let i = 0; i < color_count; i++) {
-                const offset = lottie[i * 4];
-                const rgb = lottie.slice(i * 4 + 1, i * 4 + 4);
-                let alpha = 1;
-                if (this.with_alpha) {
-                    const alphaOffsetIndex = color_count * 4 + i * 2;
-                    alpha = lottie[alphaOffsetIndex + 1];
+        const addColorBtn = document.createElement('button');
+        addColorBtn.type = 'button';
+        addColorBtn.className = 'w-full py-2 rounded-lg border-2 border-dashed border-slate-300 text-slate-500 hover:border-blue-500 hover:text-blue-500 transition-colors flex items-center justify-center gap-2 text-sm';
+        addColorBtn.innerHTML = `<i data-lucide="plus" class="w-4 h-4"></i> ${t('addStop')}`;
+        addColorBtn.addEventListener('click', () => {
+            const color = { offset: 1, color: '#000000' };
+            self.colors.push(color);
+            self.colorsContainer.appendChild(self._buildColorRow(color));
+            self._on_change();
+            lucide.createIcons();
+        });
+        colorSection.appendChild(addColorBtn);
+        container.appendChild(colorSection);
+
+        // 透明度色标区（与颜色色标相互独立）
+        const alphaSection = document.createElement('div');
+        alphaSection.className = 'space-y-2';
+        const alphaHeader = document.createElement('div');
+        alphaHeader.className = 'flex items-center justify-between';
+        const alphaLabel = document.createElement('p');
+        alphaLabel.className = 'text-xs font-medium text-slate-500';
+        alphaLabel.textContent = t('alphaStopsLabel');
+        this.alphaToggle = document.createElement('button');
+        this.alphaToggle.type = 'button';
+        this.alphaToggle.textContent = t('enableAlpha');
+        alphaHeader.appendChild(alphaLabel);
+        alphaHeader.appendChild(this.alphaToggle);
+        alphaSection.appendChild(alphaHeader);
+
+        this.alphaRowsWrapper = document.createElement('div');
+        this.alphaRowsWrapper.className = 'space-y-2';
+        alphaSection.appendChild(this.alphaRowsWrapper);
+        container.appendChild(alphaSection);
+
+        this._updateAlphaToggleStyle();
+        this._renderAlphaRows();
+
+        this.alphaToggle.addEventListener('click', () => {
+            self.with_alpha = !self.with_alpha;
+            if (self.with_alpha && self.alphaStops.length === 0) {
+                // 首次开启：按颜色色标位置生成全不透明的透明度色标
+                self.alphaStops = self.colors.map(c => ({ offset: c.offset, alpha: 1 }));
+                if (self.alphaStops.length < 2) {
+                    self.alphaStops = [{ offset: 0, alpha: 1 }, { offset: 1, alpha: 1 }];
                 }
-                this.add_color(offset, color_lottie_to_hex(rgb), alpha, dynamic_count);
             }
-        }
+            self._updateAlphaToggleStyle();
+            self._renderAlphaRows();
+            self._on_change();
+            lucide.createIcons();
+        });
 
-        if (dynamic_count) {
-            const addBtn = document.createElement('button');
-            addBtn.className = 'w-full py-2 rounded-lg border-2 border-dashed border-slate-300 text-slate-500 hover:border-blue-500 hover:text-blue-500 transition-colors flex items-center justify-center gap-2';
-            addBtn.innerHTML = `<i data-lucide="plus" class="w-4 h-4"></i> ${t('addStop')}`;
-            addBtn.addEventListener('click', () => {
-                self.add_color(1, '#000000', 1, true);
-                self._on_change();
-                lucide.createIcons();
-            });
-            container.appendChild(addBtn);
-        }
         lucide.createIcons();
     }
 
-    add_color(offset, hex, alpha, dynamic_count) {
-        let self = this;
-        let color = { offset: offset, color: hex, alpha: alpha };
-        this.colors.push(color);
+    _updateAlphaToggleStyle() {
+        if (this.with_alpha) {
+            this.alphaToggle.className = 'px-3 py-1.5 rounded-full text-xs font-medium border transition-colors shrink-0 bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100';
+        } else {
+            this.alphaToggle.className = 'px-3 py-1.5 rounded-full text-xs font-medium border transition-colors shrink-0 bg-white text-slate-500 border-slate-200 hover:bg-slate-50';
+        }
+    }
 
-        const colorRow = document.createElement('div');
-        colorRow.className = 'bg-slate-50 rounded-xl p-2 flex items-center gap-3';
-        this.colorsContainer.appendChild(colorRow);
+    _renderAlphaRows() {
+        const self = this;
+        this.alphaRowsWrapper.innerHTML = '';
+        if (!this.with_alpha) return;
+        this.alphaStops.forEach(a => this.alphaRowsWrapper.appendChild(this._buildAlphaRow(a)));
+        const addAlphaBtn = document.createElement('button');
+        addAlphaBtn.type = 'button';
+        addAlphaBtn.className = 'w-full py-2 rounded-lg border-2 border-dashed border-slate-300 text-slate-500 hover:border-blue-500 hover:text-blue-500 transition-colors flex items-center justify-center gap-2 text-sm';
+        addAlphaBtn.innerHTML = `<i data-lucide="plus" class="w-4 h-4"></i> ${t('addAlphaStop')}`;
+        addAlphaBtn.addEventListener('click', () => {
+            const stop = { offset: 1, alpha: 1 };
+            self.alphaStops.push(stop);
+            addAlphaBtn.before(self._buildAlphaRow(stop));
+            self._on_change();
+            lucide.createIcons();
+        });
+        this.alphaRowsWrapper.appendChild(addAlphaBtn);
+    }
 
-        // 左侧：颜色选择器 + 删除按钮
+    // 位置控制组（滑杆 + 数字输入），颜色行与透明度行共用
+    _buildSliderGroup(labelText, initialValue, onUpdate) {
+        const group = document.createElement('div');
+        group.className = 'flex items-center gap-2 flex-1 min-w-[180px]';
+        const label = document.createElement('span');
+        label.className = 'text-xs text-slate-500 shrink-0';
+        label.textContent = labelText;
+        group.appendChild(label);
+
+        const slider = document.createElement('input');
+        slider.type = 'range';
+        slider.min = 0; slider.max = 100; slider.step = 1;
+        slider.value = initialValue;
+        slider.className = 'flex-1 min-w-[60px]';
+        group.appendChild(slider);
+
+        const num = document.createElement('input');
+        num.type = 'number';
+        num.min = 0; num.max = 100;
+        num.value = initialValue;
+        num.className = 'w-12 px-1 py-1 rounded-md bg-white border border-slate-200 text-xs text-center';
+        group.appendChild(num);
+        group.appendChild(document.createTextNode('%'));
+
+        const update = (value) => {
+            let v = Number(value);
+            if (isNaN(v) || v < 0) v = 0;
+            if (v > 100) v = 100;
+            slider.value = v;
+            num.value = v;
+            onUpdate(v / 100);
+        };
+        slider.addEventListener('input', () => update(slider.value));
+        num.addEventListener('input', () => update(num.value));
+        return group;
+    }
+
+    _buildColorRow(color) {
+        const self = this;
+        const row = document.createElement('div');
+        row.className = 'bg-slate-50 rounded-xl p-2 flex flex-wrap items-center gap-x-3 gap-y-2';
+
         const leftGroup = document.createElement('div');
         leftGroup.className = 'flex items-center gap-1 shrink-0';
-        colorRow.appendChild(leftGroup);
+        row.appendChild(leftGroup);
 
         const colorPickerWrapper = document.createElement('div');
         colorPickerWrapper.className = 'w-7 h-7 rounded-lg border border-slate-300 overflow-hidden flex-shrink-0';
@@ -407,81 +568,28 @@ class GradientPreviewEditor {
         colorPickerWrapper.appendChild(colorPicker);
         leftGroup.appendChild(colorPickerWrapper);
 
-        if (dynamic_count) {
-            const deleteBtn = document.createElement('button');
-            deleteBtn.className = 'p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50';
-            deleteBtn.innerHTML = '<i data-lucide="trash-2" class="w-3.5 h-3.5"></i>';
-            deleteBtn.addEventListener('click', () => {
-                colorRow.remove();
-                self.colors.splice(self.colors.indexOf(color), 1);
-                self._on_change();
-            });
-            leftGroup.appendChild(deleteBtn);
-        }
+        const deleteBtn = document.createElement('button');
+        deleteBtn.type = 'button';
+        deleteBtn.className = 'p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50';
+        deleteBtn.innerHTML = '<i data-lucide="trash-2" class="w-3.5 h-3.5"></i>';
+        deleteBtn.addEventListener('click', () => {
+            if (self.colors.length <= 2) { showToast(t('minStopsWarning'), 'info'); return; }
+            row.remove();
+            self.colors.splice(self.colors.indexOf(color), 1);
+            self._on_change();
+        });
+        leftGroup.appendChild(deleteBtn);
 
-        // 中间：HEX 输入
         const hexInput = document.createElement('input');
         hexInput.type = 'text';
         hexInput.value = color.color.slice(1);
         hexInput.className = 'w-16 px-2 py-1.5 rounded-lg bg-white border border-slate-200 text-xs font-mono uppercase text-center shrink-0';
-        colorRow.appendChild(hexInput);
+        row.appendChild(hexInput);
 
-        // 右侧：位置和透明度控制
-        const rightGroup = document.createElement('div');
-        rightGroup.className = 'flex-1 flex items-center gap-3';
-        colorRow.appendChild(rightGroup);
-
-        // 位置控制
-        const posContainer = document.createElement('div');
-        posContainer.className = 'flex-1 flex items-center gap-2';
-        posContainer.innerHTML = `<span class="text-xs text-slate-500 shrink-0">${t('position')}</span>`;
-        rightGroup.appendChild(posContainer);
-
-        const posSlider = document.createElement('input');
-        posSlider.type = 'range';
-        posSlider.min = 0;
-        posSlider.max = 100;
-        posSlider.step = 1;
-        posSlider.value = Math.round(color.offset * 100);
-        posSlider.className = 'flex-1 min-w-[60px]';
-        posContainer.appendChild(posSlider);
-
-        const posInput = document.createElement('input');
-        posInput.type = 'number';
-        posInput.min = 0;
-        posInput.max = 100;
-        posInput.value = Math.round(color.offset * 100);
-        posInput.className = 'w-12 px-1 py-1 rounded-md bg-white border border-slate-200 text-xs text-center';
-        posContainer.appendChild(posInput);
-
-        posContainer.appendChild(document.createTextNode('%'));
-
-        // 透明度控制
-        const alphaContainer = document.createElement('div');
-        alphaContainer.className = 'flex-1 flex items-center gap-2';
-        alphaContainer.innerHTML = `<span class="alpha-label text-xs text-slate-500 shrink-0">${t('alpha')}</span>`;
-        rightGroup.appendChild(alphaContainer);
-
-        const alphaSlider = document.createElement('input');
-        alphaSlider.type = 'range';
-        alphaSlider.min = 0;
-        alphaSlider.max = 100;
-        alphaSlider.step = 1;
-        alphaSlider.value = Math.round(color.alpha * 100);
-        alphaSlider.disabled = !this.with_alpha;
-        alphaSlider.className = 'flex-1 min-w-[60px]';
-        alphaContainer.appendChild(alphaSlider);
-
-        const alphaInput = document.createElement('input');
-        alphaInput.type = 'number';
-        alphaInput.min = 0;
-        alphaInput.max = 100;
-        alphaInput.value = Math.round(color.alpha * 100);
-        alphaInput.disabled = !this.with_alpha;
-        alphaInput.className = 'w-12 px-1 py-1 rounded-md bg-white border border-slate-200 text-xs text-center disabled:opacity-50';
-        alphaContainer.appendChild(alphaInput);
-
-        alphaContainer.appendChild(document.createTextNode('%'));
+        row.appendChild(this._buildSliderGroup(t('position'), Math.round(color.offset * 100), (v) => {
+            color.offset = v;
+            self._debounced_change();
+        }));
 
         colorPicker.addEventListener('input', () => {
             color.color = colorPicker.value;
@@ -490,8 +598,7 @@ class GradientPreviewEditor {
         });
 
         hexInput.addEventListener('input', () => {
-            const hexRegex = /^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/;
-            const match = hexInput.value.match(hexRegex);
+            const match = hexInput.value.match(/^#?([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/);
             if (match) {
                 let hexValue = '#' + match[1];
                 if (hexValue.length === 4) {
@@ -499,41 +606,40 @@ class GradientPreviewEditor {
                 }
                 color.color = hexValue;
                 colorPicker.value = hexValue;
-                hexInput.value = hexValue.slice(1);
                 self._debounced_change();
             }
         });
 
-        function updatePos(value) {
-            let v = Number(value);
-            if (isNaN(v) || v < 0) v = 0;
-            if (v > 100) v = 100;
-            color.offset = v / 100;
-            posSlider.value = v;
-            posInput.value = v;
+        return row;
+    }
+
+    _buildAlphaRow(stop) {
+        const self = this;
+        const row = document.createElement('div');
+        row.className = 'bg-slate-50 rounded-xl p-2 flex flex-wrap items-center gap-x-3 gap-y-2';
+
+        row.appendChild(this._buildSliderGroup(t('position'), Math.round(stop.offset * 100), (v) => {
+            stop.offset = v;
             self._debounced_change();
-        }
-
-        posSlider.addEventListener('input', () => updatePos(posSlider.value));
-        posInput.addEventListener('input', () => updatePos(posInput.value));
-
-        function updateAlpha(value) {
-            let v = Number(value);
-            if (isNaN(v) || v < 0) v = 0;
-            if (v > 100) v = 100;
-            color.alpha = v / 100;
-            alphaSlider.value = v;
-            alphaInput.value = v;
+        }));
+        row.appendChild(this._buildSliderGroup(t('alpha'), Math.round(stop.alpha * 100), (v) => {
+            stop.alpha = v;
             self._debounced_change();
-        }
+        }));
 
-        alphaSlider.addEventListener('input', () => updateAlpha(alphaSlider.value));
-        alphaInput.addEventListener('input', () => updateAlpha(alphaInput.value));
+        const deleteBtn = document.createElement('button');
+        deleteBtn.type = 'button';
+        deleteBtn.className = 'p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 shrink-0';
+        deleteBtn.innerHTML = '<i data-lucide="trash-2" class="w-3.5 h-3.5"></i>';
+        deleteBtn.addEventListener('click', () => {
+            if (self.alphaStops.length <= 2) { showToast(t('minStopsWarning'), 'info'); return; }
+            row.remove();
+            self.alphaStops.splice(self.alphaStops.indexOf(stop), 1);
+            self._on_change();
+        });
+        row.appendChild(deleteBtn);
 
-        color.alpha_input = alphaInput;
-        color.alpha_slider = alphaSlider;
-        color.alpha_label = alphaContainer.querySelector('.alpha-label');
-        lucide.createIcons();
+        return row;
     }
 
     _debounced_change() {
@@ -547,573 +653,444 @@ class GradientPreviewEditor {
     }
 
     to_css() {
-        let stops = this.colors.map(c => {
-            let r = parseInt(c.color.slice(1, 3), 16);
-            let g = parseInt(c.color.slice(3, 5), 16);
-            let b = parseInt(c.color.slice(5, 7), 16);
-            return `rgba(${r}, ${g}, ${b}, ${c.alpha}) ${Math.round(c.offset * 100)}%`;
+        const colors = [...this.colors].sort((a, b) => a.offset - b.offset);
+        if (colors.length === 0) return 'transparent';
+        const alphas = this.with_alpha && this.alphaStops.length > 0
+            ? [...this.alphaStops].sort((a, b) => a.offset - b.offset)
+            : null;
+        const offsets = [...new Set([
+            ...colors.map(c => c.offset),
+            ...(alphas ? alphas.map(a => a.offset) : [])
+        ])].sort((a, b) => a - b);
+        const stops = offsets.map(o => {
+            const rgb = samplePiecewise(colors, o, c => hexToRgbArr(c.color));
+            const alpha = alphas ? samplePiecewise(alphas, o, a => a.alpha) : 1;
+            const [r, g, b] = rgb.map(Math.round);
+            return `rgba(${r}, ${g}, ${b}, ${truncate_float(alpha)}) ${Math.round(o * 100)}%`;
         });
         return `linear-gradient(90deg, ${stops.join(', ')})`;
     }
 
+    // 返回 { k: 平铺数组, p: 颜色色标数 }；透明度色标独立保留
     to_lottie() {
-        let result = [];
-        for (let color of this.colors) {
-            result.push(truncate_float(color.offset));
-            result.push(...color_hex_to_lottie(color.color));
+        const colors = [...this.colors].sort((a, b) => a.offset - b.offset);
+        const result = [];
+        for (const c of colors) {
+            result.push(truncate_float(c.offset), ...color_hex_to_lottie(c.color));
         }
-        if (this.with_alpha) {
-            for (let color of this.colors) {
-                result.push(truncate_float(color.offset));
-                result.push(truncate_float(color.alpha));
+        if (this.with_alpha && this.alphaStops.length > 0) {
+            const alphas = [...this.alphaStops].sort((a, b) => a.offset - b.offset);
+            for (const a of alphas) {
+                result.push(truncate_float(a.offset), truncate_float(a.alpha));
             }
         }
-        return result;
-    }
-
-    update(lottie, color_count) {
-        // Clear existing colors and UI
-        this.colorsContainer.innerHTML = '';
-        this.colors = [];
-        
-        // If no gradient data is provided, just clear the editor
-        if (!lottie || lottie.length === 0) {
-            this.preview.style.background = 'transparent';
-            return;
-        }
-        
-        // Determine if gradient has alpha based on array length
-        if (lottie.length === color_count * 6) {
-            this.with_alpha = true;
-            this.check_alpha.checked = true;
-        } else if (lottie.length === color_count * 4) {
-            this.with_alpha = false;
-            this.check_alpha.checked = false;
-        }
-        
-        for (let i = 0; i < color_count; i++) {
-            const offset = lottie[i * 4];
-            const rgb = lottie.slice(i * 4 + 1, i * 4 + 4);
-            let alpha = 1;
-            if (this.with_alpha) {
-                const alphaOffsetIndex = color_count * 4 + i * 2;
-                alpha = lottie[alphaOffsetIndex + 1];
-            }
-            this.add_color(offset, color_lottie_to_hex(rgb), alpha, true);
-        }
-        this.preview.style.background = this.to_css();
-        lucide.createIcons();
-    }
-
-    static stand_alone(parent, on_change) {
-        return new GradientPreviewEditor(parent, [0, 0.231, 0.51, 0.965, 1, 0.976, 0.451, 0.086], 2, on_change, true);
-    }
-
-    refreshLanguage() {
-        // 更新"启用透明度"按钮文本
-        if (this.check_alpha) {
-            this.check_alpha.textContent = t('enableAlpha');
-        }
-        
-        // 更新"添加色标"按钮文本
-        const addBtn = this.colorsContainer?.parentElement?.querySelector('button:last-child');
-        if (addBtn && addBtn.innerHTML.includes('plus')) {
-            addBtn.innerHTML = `<i data-lucide="plus" class="w-4 h-4"></i> ${t('addStop')}`;
-            lucide.createIcons();
-        }
-        
-        // 更新每个颜色行的"位置"和"透明度"标签
-        const colorRows = this.colorsContainer?.querySelectorAll(':scope > div');
-        if (colorRows) {
-            colorRows.forEach(row => {
-                const labels = row.querySelectorAll('.text-xs.text-slate-500.shrink-0');
-                labels.forEach((label, index) => {
-                    if (index === 0) {
-                        label.textContent = t('position');
-                    } else if (index === 1) {
-                        label.textContent = t('alpha');
-                    }
-                });
-            });
-        }
+        return { k: result, p: colors.length };
     }
 }
+
+// ========== 全局状态 ==========
 
 let animation = null;
-let monacoEditor = null;
+let currentJsonData = null;   // 唯一数据源；传给 bodymovin 前会深拷贝
+let currentFileName = '';
+let selectedGradient = null;  // { index, displayName }
 let gradientEditorInstance = null;
-let selectedGradientInfo = null;
-let isProgrammaticUpdate = false;
+let isScrubbing = false;
 
-document.addEventListener('DOMContentLoaded', function() {
-    // 语言切换按钮
-    const langBtn = document.getElementById('lang-btn');
-    if (langBtn) {
-        langBtn.addEventListener('click', toggleLanguage);
-    }
-    
-    const dropZone = document.getElementById('drop-zone');
+const playIcon = '<i data-lucide="play" class="w-5 h-5"></i>';
+const pauseIcon = '<i data-lucide="pause" class="w-5 h-5"></i>';
 
-    ['dragenter','dragover','dragleave','drop'].forEach(e => {
-        dropZone.addEventListener(e, (ev) => { ev.preventDefault(); ev.stopPropagation(); }, false);
-        document.body.addEventListener(e, (ev) => { ev.preventDefault(); ev.stopPropagation(); }, false);
-    });
+// ========== 动画加载与播放 ==========
 
-    ['dragenter','dragover'].forEach(e => dropZone.addEventListener(e, () => dropZone.classList.add('drag-over'), false));
-    ['dragleave','drop'].forEach(e => dropZone.addEventListener(e, () => dropZone.classList.remove('drag-over'), false));
-
-    dropZone.addEventListener('drop', (e) => {
-        const files = e.dataTransfer.files;
-        if (files.length > 0 && files[0].name.endsWith('.json')) {
-            document.getElementById('lottie-file').files = files;
-            document.getElementById('lottie-file').dispatchEvent(new Event('change'));
-        }
-    }, false);
-
-    gradientEditorInstance = GradientPreviewEditor.stand_alone(document.getElementById('editor'), (lottie) => {
-        if (selectedGradientInfo) updateGradientInJson(lottie);
-    });
-
-    initializeLottiePlayer();
-});
-
-function updateGradientInJson(newGradientData) {
-    if (!monacoEditor) return;
-    try {
-        const jsonContent = monacoEditor.getValue();
-        const jsonData = JSON.parse(jsonContent);
-        updateGradientInJsonData(jsonData, selectedGradientInfo, newGradientData, gradientEditorInstance.colors.length);
-        const updatedJsonContent = JSON.stringify(jsonData, null, 2);
-        if (updatedJsonContent !== jsonContent) {
-            isProgrammaticUpdate = true;
-            monacoEditor.setValue(updatedJsonContent);
-            // Update animation directly without calling updateAnimationFromEditor
-            const newJsonData = JSON.parse(updatedJsonContent);
-            if (animation) {
-                animation.destroy();
-                const animationContainer = document.getElementById('lottie-animation');
-                const progressBar = document.getElementById('animation-progress');
-                animation = bodymovin.loadAnimation({
-                    container: animationContainer,
-                    renderer: 'svg',
-                    loop: true,
-                    autoplay: true,
-                    animationData: newJsonData
-                });
-                // Re-bind event listeners for the new animation
-                animation.addEventListener('enterFrame', () => {
-                    const isDragging = false; // Local state
-                    if (!isDragging && animation && progressBar) {
-                        progressBar.value = (animation.currentFrame / animation.totalFrames) * 100;
-                        const timeDisplay = document.getElementById('time-display');
-                        if (timeDisplay) {
-                            const current = Math.round(animation.currentFrame);
-                            const total = Math.round(animation.totalFrames);
-                            timeDisplay.textContent = `${current} / ${total}`;
-                        }
-                    }
-                });
-            }
-        }
-    } catch (error) { console.error('Error updating gradient:', error); }
+function updateTimeDisplay() {
+    const timeDisplay = document.getElementById('time-display');
+    if (!animation || !timeDisplay) return;
+    const current = Math.round(animation.currentFrame);
+    const total = Math.round(animation.totalFrames);
+    timeDisplay.textContent = `${current} / ${total}`;
 }
 
-function updateGradientInJsonData(jsonData, gradientInfo, newGradientData, colorCount) {
-    let updated = false;
-    if (typeof jsonData === 'object' && jsonData !== null) {
-        if ((jsonData.ty === 'gf' || jsonData.ty === 'gs') && jsonData.nm === gradientInfo.name) {
-            if (jsonData.g) {
-                if (jsonData.g.k && typeof jsonData.g.k === 'object' && 'k' in jsonData.g.k) {
-                    jsonData.g.k.k = newGradientData;
-                    if (jsonData.g.p !== undefined) jsonData.g.p = colorCount;
-                } else {
-                    jsonData.g.k = newGradientData;
-                    if (jsonData.g.p !== undefined) jsonData.g.p = colorCount;
-                }
-                updated = true;
+function loadAnimation(jsonData, preserveState = false) {
+    const container = document.getElementById('lottie-animation');
+    const playPauseBtn = document.getElementById('play-pause-btn');
+    const progressBar = document.getElementById('animation-progress');
+    const dropZone = document.getElementById('drop-zone');
+    let resumeFrame = 0;
+    let wasPaused = false;
+    if (preserveState && animation) {
+        resumeFrame = animation.currentFrame;
+        wasPaused = animation.isPaused;
+    }
+    try {
+        if (animation) { animation.destroy(); animation = null; }
+        container.innerHTML = '';
+        if (dropZone) dropZone.classList.remove('empty');
+        animation = bodymovin.loadAnimation({
+            container,
+            renderer: 'svg',
+            loop: true,
+            autoplay: true,
+            // 深拷贝：bodymovin 会修改传入的数据，保证 currentJsonData 始终干净
+            animationData: JSON.parse(JSON.stringify(jsonData))
+        });
+        animation.addEventListener('enterFrame', () => {
+            if (!isScrubbing && animation && progressBar) {
+                progressBar.value = (animation.currentFrame / animation.totalFrames) * 100;
+                updateTimeDisplay();
             }
-        }
-        if (!Array.isArray(jsonData)) {
-            for (const key in jsonData) {
-                if (jsonData.hasOwnProperty(key) && typeof jsonData[key] === 'object' && jsonData[key] !== null) {
-                    if (updateGradientInJsonData(jsonData[key], gradientInfo, newGradientData, colorCount)) updated = true;
-                }
+        });
+        if (preserveState) {
+            if (wasPaused) {
+                animation.goToAndStop(resumeFrame, true);
+                if (playPauseBtn) playPauseBtn.innerHTML = playIcon;
+            } else {
+                animation.goToAndPlay(resumeFrame, true);
+                if (playPauseBtn) playPauseBtn.innerHTML = pauseIcon;
             }
         } else {
-            for (const item of jsonData) {
-                if (updateGradientInJsonData(item, gradientInfo, newGradientData, colorCount)) updated = true;
-            }
+            if (playPauseBtn) playPauseBtn.innerHTML = pauseIcon;
+            if (progressBar) progressBar.value = 0;
         }
+        updateTimeDisplay();
+        lucide.createIcons();
+    } catch (error) {
+        console.error('Error loading animation:', error);
+        showToast(t('alertInvalidJson') + ': ' + error.message, 'error');
     }
-    return updated;
 }
 
-function initializeLottiePlayer() {
-    let debounceTimer = null;
+// ========== 渐变列表与编辑器渲染 ==========
+
+function renderListEmptyState() {
+    const listEl = document.getElementById('gradient-names-list');
+    if (!listEl) return;
+    listEl.innerHTML = `<div class="text-center py-8 text-slate-400"><i data-lucide="sparkles" class="w-10 h-10 mx-auto mb-2 opacity-50"></i><p class="text-sm">${t('noJsonUploaded')}</p></div>`;
+    lucide.createIcons();
+}
+
+function renderEditorEmptyState() {
+    const titleEl = document.getElementById('editor-title');
+    const editorEl = document.getElementById('editor');
+    gradientEditorInstance = null;
+    if (titleEl) {
+        titleEl.innerHTML = '<i data-lucide="sliders" class="w-4 h-4 text-green-500"></i>';
+        titleEl.appendChild(document.createTextNode(t('noGradientSelected')));
+    }
+    if (editorEl) {
+        editorEl.innerHTML = `<div class="text-center py-8 text-slate-400"><i data-lucide="mouse-pointer-click" class="w-10 h-10 mx-auto mb-2 opacity-50"></i><p class="text-sm">${t('clickGradientToEdit')}</p></div>`;
+    }
+    lucide.createIcons();
+}
+
+function updateGradientNamesList() {
+    const listEl = document.getElementById('gradient-names-list');
+    const countEl = document.getElementById('gradient-count');
+    const searchEl = document.getElementById('gradient-search');
+    if (!listEl) return;
+    if (searchEl) searchEl.value = '';
+
+    if (!currentJsonData) {
+        renderListEmptyState();
+        if (countEl) countEl.textContent = '0';
+        selectedGradient = null;
+        renderEditorEmptyState();
+        return;
+    }
+
+    const gradients = getGradientList(currentJsonData);
+    if (countEl) countEl.textContent = String(gradients.length);
+
+    if (gradients.length === 0) {
+        listEl.innerHTML = `<div class="text-center py-8 text-slate-400"><p class="text-sm">${t('noGradientsFound')}</p></div>`;
+        selectedGradient = null;
+        renderEditorEmptyState();
+        return;
+    }
+
+    listEl.innerHTML = '';
+    let selectionStillValid = false;
+    gradients.forEach(g => {
+        const item = document.createElement('div');
+        item.className = 'gradient-item rounded-lg p-3 cursor-pointer';
+        item.tabIndex = 0;
+        item.setAttribute('role', 'button');
+
+        const inner = document.createElement('div');
+        inner.className = 'flex items-center gap-3';
+        const num = document.createElement('span');
+        num.className = 'text-xs font-mono text-slate-400 w-6 shrink-0';
+        num.textContent = String(g.index + 1);
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'gradient-name flex-1 text-sm font-medium text-slate-700 truncate';
+        nameSpan.textContent = g.displayName;
+        nameSpan.title = g.displayName;
+        inner.appendChild(num);
+        inner.appendChild(nameSpan);
+        if (g.keyframed) {
+            const badge = document.createElement('span');
+            badge.className = 'text-[10px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-600 shrink-0';
+            badge.textContent = t('keyframedBadge');
+            inner.appendChild(badge);
+        }
+        const chevron = document.createElement('i');
+        chevron.setAttribute('data-lucide', 'chevron-right');
+        chevron.className = 'w-4 h-4 text-slate-400 shrink-0';
+        inner.appendChild(chevron);
+        item.appendChild(inner);
+
+        if (selectedGradient && selectedGradient.index === g.index) {
+            item.classList.add('selected');
+            selectionStillValid = true;
+        }
+
+        const select = () => {
+            selectedGradient = { index: g.index, displayName: g.displayName };
+            listEl.querySelectorAll('.gradient-item').forEach(el => el.classList.remove('selected'));
+            item.classList.add('selected');
+            renderEditorForSelection();
+        };
+        item.addEventListener('click', select);
+        item.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(); }
+        });
+        listEl.appendChild(item);
+    });
+
+    if (!selectionStillValid) {
+        selectedGradient = null;
+        const first = listEl.querySelector('.gradient-item');
+        if (first) first.click();
+    }
+    lucide.createIcons();
+}
+
+function renderEditorForSelection() {
+    const editorEl = document.getElementById('editor');
+    const titleEl = document.getElementById('editor-title');
+    if (!editorEl || !titleEl) return;
+    gradientEditorInstance = null;
+
+    if (!currentJsonData || !selectedGradient) {
+        renderEditorEmptyState();
+        return;
+    }
+    let target = null;
+    forEachGradient(currentJsonData, (node, idx) => {
+        if (idx === selectedGradient.index) target = node;
+    });
+    if (!target) {
+        selectedGradient = null;
+        renderEditorEmptyState();
+        return;
+    }
+
+    titleEl.innerHTML = '<i data-lucide="sliders" class="w-4 h-4 text-green-500"></i>';
+    titleEl.appendChild(document.createTextNode(selectedGradient.displayName));
+
+    const { arr, keyframed } = unwrapGradientK(target.g);
+    if (keyframed) {
+        editorEl.innerHTML = `<div class="text-center py-8 px-4 text-slate-400"><i data-lucide="film" class="w-10 h-10 mx-auto mb-2 opacity-50"></i><p class="text-sm">${t('animatedGradientNotice')}</p></div>`;
+        lucide.createIcons();
+        return;
+    }
+
+    gradientEditorInstance = new GradientPreviewEditor(editorEl, arr, target.g.p, (result) => {
+        applyEditToSelected(result);
+    });
+    lucide.createIcons();
+}
+
+// 仅更新选中的那一个渐变（按索引定位，同名渐变互不影响）
+function applyEditToSelected(result) {
+    if (!currentJsonData || !selectedGradient) return;
+    forEachGradient(currentJsonData, (node, idx) => {
+        if (idx === selectedGradient.index) setGradientK(node.g, result.k, result.p);
+    });
+    loadAnimation(currentJsonData, true);
+}
+
+// ========== 文件导入 ==========
+
+function handleLottieFile(file) {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            let content = e.target.result;
+            if (content.charCodeAt(0) === 0xFEFF) content = content.slice(1);
+            const jsonData = JSON.parse(content);
+            currentJsonData = jsonData;
+            currentFileName = file.name.replace(/\.json$/i, '');
+            const fileInfo = document.getElementById('file-info');
+            const filename = document.getElementById('filename');
+            if (fileInfo) fileInfo.classList.remove('hidden');
+            if (filename) filename.textContent = file.name;
+            selectedGradient = null;
+            loadAnimation(currentJsonData);
+            updateGradientNamesList();
+            lucide.createIcons();
+        } catch (error) {
+            console.error('JSON parse error:', error);
+            showToast(t('alertInvalidJson') + ': ' + error.message, 'error');
+        }
+    };
+    reader.readAsText(file);
+}
+
+// ========== 渐变同步（按名称匹配，作用于所有同名渐变）==========
+
+function extractGradientsFromJson(jsonData) {
+    if (jsonData.gradients && Array.isArray(jsonData.gradients)) return jsonData.gradients;
+    const gradients = [];
+    const seen = new Set();
+    forEachGradient(jsonData, (node) => {
+        if (!node.nm || seen.has(node.nm)) return;
+        const { arr, keyframed } = unwrapGradientK(node.g);
+        if (keyframed || !arr || arr.length === 0) return;
+        seen.add(node.nm);
+        const p = Number.isInteger(node.g.p) && node.g.p > 0
+            ? node.g.p
+            : (arr.length % 6 === 0 ? arr.length / 6 : Math.floor(arr.length / 4));
+        gradients.push({ name: node.nm, data: arr, colorCount: p });
+    });
+    return gradients;
+}
+
+function applyGradientByName(jsonData, gradient) {
+    let applied = 0;
+    forEachGradient(jsonData, (node) => {
+        if (node.nm === gradient.name) {
+            const { keyframed } = unwrapGradientK(node.g);
+            if (keyframed) return;
+            setGradientK(node.g, gradient.data, gradient.colorCount);
+            applied++;
+        }
+    });
+    return applied;
+}
+
+// ========== GIF 导出：gif.js 加载（本地 vendor，无外部依赖）==========
+
+let gifJsPromise = null;
+function preloadGifJs() {
+    if (window.GIF) return Promise.resolve();
+    if (gifJsPromise) return gifJsPromise;
+    gifJsPromise = new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = 'js/vendor/gif.js';
+        script.onload = () => resolve();
+        script.onerror = () => {
+            gifJsPromise = null;
+            reject(new Error('Failed to load gif.js'));
+        };
+        document.head.appendChild(script);
+    });
+    return gifJsPromise;
+}
+
+// ========== 初始化 ==========
+
+document.addEventListener('DOMContentLoaded', function () {
+    updateLanguage(currentLang);
+    lucide.createIcons();
+
+    const langBtn = document.getElementById('lang-btn');
+    if (langBtn) langBtn.addEventListener('click', toggleLanguage);
+
     const fileInput = document.getElementById('lottie-file');
-    const fileInfo = document.getElementById('file-info');
-    const filename = document.getElementById('filename');
+    const dropZone = document.getElementById('drop-zone');
     const animationContainer = document.getElementById('lottie-animation');
     const playPauseBtn = document.getElementById('play-pause-btn');
     const progressBar = document.getElementById('animation-progress');
-    const timeDisplay = document.getElementById('time-display');
     const bgColorPicker = document.getElementById('bg-color-picker');
     const bgAlphaBtn = document.getElementById('bg-alpha-btn');
-    const editorTitle = document.getElementById('editor-title');
-    const playIcon = '<i data-lucide="play" class="w-5 h-5"></i>';
-    const pauseIcon = '<i data-lucide="pause" class="w-5 h-5"></i>';
-    let isDragging = false;
 
-    function initMonacoEditor() {
-        if (monacoEditor || document.getElementById('monaco-editor-script')) return;
+    // ----- 拖拽导入 -----
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(e => {
+        dropZone.addEventListener(e, (ev) => { ev.preventDefault(); ev.stopPropagation(); }, false);
+        document.body.addEventListener(e, (ev) => { ev.preventDefault(); ev.stopPropagation(); }, false);
+    });
+    ['dragenter', 'dragover'].forEach(e => dropZone.addEventListener(e, () => dropZone.classList.add('drag-over'), false));
+    ['dragleave', 'drop'].forEach(e => dropZone.addEventListener(e, () => dropZone.classList.remove('drag-over'), false));
 
-        const link = document.createElement('link');
-        link.rel = 'stylesheet';
-        link.href = 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.41.0/min/vs/editor/editor.main.css';
-        document.head.appendChild(link);
+    dropZone.addEventListener('drop', (e) => {
+        const files = e.dataTransfer.files;
+        if (!files.length) return;
+        const file = files[0];
+        if (!/\.json$/i.test(file.name)) {
+            showToast(t('invalidFileType'), 'error');
+            return;
+        }
+        handleLottieFile(file);
+    }, false);
 
-        const script = document.createElement('script');
-        script.id = 'monaco-editor-script';
-        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.41.0/min/vs/loader.js';
-        script.onload = function() {
-            require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.41.0/min/vs' } });
-            require(['vs/editor/editor.main'], function() {
-                const container = document.getElementById('monaco-editor-container');
-                container.style.display = 'block';
-                container.style.width = '100%';
-                container.style.height = '400px';
-                monacoEditor = monaco.editor.create(container, {
-                    value: '', language: 'json', theme: document.body.classList.contains('dark') ? 'vs-dark' : 'vs',
-                    automaticLayout: true, minimap: { enabled: true }, scrollBeyondLastLine: false, wordWrap: 'on',
-                    formatOnPaste: true, formatOnType: true, tabSize: 2
-                });
-                monaco.languages.json.jsonDefaults.setDiagnosticsOptions({ validate: true, schemas: [] });
-                window.addEventListener('resize', () => monacoEditor.layout());
-                monacoEditor.onDidChangeModelContent(() => {
-                    if (debounceTimer) clearTimeout(debounceTimer);
-                    debounceTimer = setTimeout(() => {
-                        if (!isProgrammaticUpdate) updateAnimationFromEditor();
-                        updateGradientNamesList();
-                        isProgrammaticUpdate = false;
-                    }, 500);
-                });
-            });
-        };
-        document.head.appendChild(script);
-    }
-    setTimeout(initMonacoEditor, 2000);
+    // 空状态下点击预览区也可打开文件选择
+    dropZone.classList.add('empty');
+    dropZone.addEventListener('click', () => {
+        if (!animation) fileInput.click();
+    });
 
+    fileInput.addEventListener('change', (event) => {
+        const file = event.target.files[0];
+        if (file) handleLottieFile(file);
+        // 重置 value，保证重新选择同名文件也能触发 change
+        fileInput.value = '';
+    });
+
+    // ----- 搜索过滤 -----
     const gradientSearch = document.getElementById('gradient-search');
     if (gradientSearch) {
-        gradientSearch.addEventListener('input', function() {
+        gradientSearch.addEventListener('input', function () {
             const searchTerm = gradientSearch.value.toLowerCase().trim();
-            const gradientItems = document.querySelectorAll('.gradient-item');
-            let visibleItems = 0;
-            gradientItems.forEach(item => {
-                const gradientName = item.querySelector('.gradient-name').textContent.toLowerCase();
-                item.style.display = gradientName.includes(searchTerm) ? 'block' : 'none';
-                if (gradientName.includes(searchTerm)) visibleItems++;
+            document.querySelectorAll('.gradient-item').forEach(item => {
+                const name = item.querySelector('.gradient-name').textContent.toLowerCase();
+                item.style.display = name.includes(searchTerm) ? 'block' : 'none';
             });
         });
     }
 
-    function loadAnimation(jsonData) {
-        try {
-            if (animation) { animation.destroy(); animation = null; }
-            if (playPauseBtn) playPauseBtn.innerHTML = pauseIcon;
-            if (progressBar) progressBar.value = 0;
-            // Clear the container to remove placeholder content immediately
-            animationContainer.innerHTML = '';
-            animation = bodymovin.loadAnimation({
-                container: animationContainer, renderer: 'svg', loop: true, autoplay: true, animationData: jsonData
-            });
-            animation.addEventListener('enterFrame', () => {
-                if (!isDragging && animation && progressBar) {
-                    progressBar.value = (animation.currentFrame / animation.totalFrames) * 100;
-                    updateTimeDisplay();
-                }
-            });
-            lucide.createIcons();
-        } catch (error) {
-            console.error('Error loading animation:', error);
-            alert('Error loading animation: ' + error.message);
-        }
-    }
-
-    function updateTimeDisplay() {
-        if (!animation) return;
-        const current = Math.round(animation.currentFrame);
-        const total = Math.round(animation.totalFrames);
-        timeDisplay.textContent = `${current} / ${total}`;
-    }
-
-    function updateJsonEditor(jsonData) {
-        const jsonString = JSON.stringify(jsonData, null, 2);
-        if (monacoEditor) monacoEditor.setValue(jsonString);
-        document.getElementById('json-editor').value = jsonString;
-    }
-
-    function getJsonContent() {
-        if (monacoEditor) return monacoEditor.getValue();
-        return document.getElementById('json-editor').value;
-    }
-
-    function findAdobeGradientNames(jsonData) {
-        const gradients = [];
-        const foundNames = new Set();
-        function traverse(obj, parent = null) {
-            if (obj === null || typeof obj !== 'object') return;
-            if ((obj.ty === 'gf' || obj.ty === 'gs') && obj.nm) {
-                const name = obj.nm;
-                if (!foundNames.has(name)) {
-                    foundNames.add(name);
-                    gradients.push({ name: name, gradientData: obj.g || {}, parent: parent });
-                }
-            }
-            if (obj.shapes && Array.isArray(obj.shapes)) obj.shapes.forEach(s => traverse(s, obj));
-            if (Array.isArray(obj)) obj.forEach(item => traverse(item, obj));
-            else if (typeof obj === 'object') Object.values(obj).forEach(v => traverse(v, obj));
-        }
-        traverse(jsonData);
-        return gradients;
-    }
-
-    function updateGradientNamesList() {
-        const gradientNamesList = document.getElementById('gradient-names-list');
-        const gradientSearch = document.getElementById('gradient-search');
-        const gradientCount = document.getElementById('gradient-count');
-        if (gradientSearch) gradientSearch.value = '';
-
-        try {
-            let jsonData = null;
-            if (animation && animation.animationData) {
-                jsonData = animation.animationData;
-            } else {
-                const jsonText = getJsonContent();
-                if (jsonText.trim()) jsonData = JSON.parse(jsonText);
-            }
-
-            if (!jsonData) {
-                gradientNamesList.innerHTML = `<div class="text-center py-8 text-slate-400"><i data-lucide="sparkles" class="w-10 h-10 mx-auto mb-2 opacity-50"></i><p class="text-sm">${t('noJsonUploaded')}</p></div>`;
-                if (gradientCount) gradientCount.textContent = '0';
-                lucide.createIcons();
-                return;
-            }
-
-            const gradients = findAdobeGradientNames(jsonData);
-            if (gradientCount) gradientCount.textContent = gradients.length;
-
-            if (gradients.length === 0) {
-                gradientNamesList.innerHTML = `<div class="text-center py-8 text-slate-400"><p>${t('noGradientsFound')}</p></div>`;
-                clearSelectedGradient();
-            } else {
-                gradientNamesList.innerHTML = '';
-                gradients.forEach((gradient, index) => {
-                    const gradientItem = document.createElement('div');
-                    gradientItem.className = 'gradient-item rounded-lg p-3 cursor-pointer';
-                    if (selectedGradientInfo && selectedGradientInfo.name === gradient.name) {
-                        gradientItem.classList.add('selected');
-                    }
-                    gradientItem.innerHTML = `<div class="flex items-center gap-3"><span class="text-xs font-mono text-slate-400 w-6">${index + 1}</span><span class="gradient-name flex-1 text-sm font-medium text-slate-700 truncate" title="${gradient.name}">${gradient.name}</span><i data-lucide="chevron-right" class="w-4 h-4 text-slate-400"></i></div>`;
-
-                    gradientItem.addEventListener('click', () => {
-                        selectedGradientInfo = { name: gradient.name, gradientData: gradient.gradientData };
-                        if (editorTitle) editorTitle.innerHTML = `<i data-lucide="sliders" class="w-4 h-4 text-green-500"></i>${gradient.name}`;
-                        document.querySelectorAll('.gradient-item').forEach(i => i.classList.remove('selected'));
-                        gradientItem.classList.add('selected');
-
-                        if (gradientEditorInstance && gradient.gradientData && gradient.gradientData.k) {
-                            let gradientK = gradient.gradientData.k;
-                            // Handle nested k structure
-                            if (typeof gradientK === 'object' && gradientK !== null && gradientK.k) {
-                                gradientK = gradientK.k;
-                            }
-                            // Ensure gradientK is an array
-                            if (Array.isArray(gradientK) && gradientK.length > 0) {
-                                const colorCount = gradient.gradientData.p || Math.floor(gradientK.length / 4);
-                                gradientEditorInstance.update(gradientK, colorCount);
-                            }
-                        }
-
-                        if (monacoEditor) {
-                            const content = monacoEditor.getValue();
-                            const searchText = `"nm":"${gradient.name}"`;
-                            const idx = content.indexOf(searchText);
-                            if (idx !== -1) {
-                                const lines = content.substring(0, idx).split('\n');
-                                const line = lines.length;
-                                const column = lines[lines.length - 1].length + 1;
-                                monacoEditor.setPosition({ lineNumber: line, column: column });
-                                monacoEditor.revealPositionInCenter({ lineNumber: line, column: column });
-                                monacoEditor.focus();
-                            }
-                        }
-                        lucide.createIcons();
-                    });
-                    gradientNamesList.appendChild(gradientItem);
-                });
-                
-                // Auto-select first gradient if none is selected
-                if (!selectedGradientInfo && gradients.length > 0) {
-                    const firstGradientItem = gradientNamesList.querySelector('.gradient-item');
-                    if (firstGradientItem) {
-                        firstGradientItem.click();
-                    }
-                }
-            }
-            lucide.createIcons();
-        } catch (error) {
-            console.error('updateGradientNamesList error:', error.message);
-            gradientNamesList.innerHTML = `<div class="text-center py-8 text-slate-400"><p>${t('noGradientsFound')}</p></div>`;
-            clearSelectedGradient();
-        }
-    }
-
-    function clearSelectedGradient() {
-        selectedGradientInfo = null;
-        const editorTitle = document.getElementById('editor-title');
-        const editor = document.getElementById('editor');
-        if (editorTitle) editorTitle.innerHTML = `<i data-lucide="sliders" class="w-4 h-4 text-green-500"></i>${t('noGradientSelected')}`;
-        if (editor) {
-            editor.innerHTML = `<div class="text-center py-8 text-slate-400"><i data-lucide="mouse-pointer-click" class="w-10 h-10 mx-auto mb-2 opacity-50"></i><p class="text-sm">${t('clickGradientToEdit')}</p></div>`;
-        }
-        lucide.createIcons();
-    }
-
-    function updateAnimationFromEditor() {
-        const jsonText = getJsonContent();
-        if (!jsonText.trim()) { alert(t('alertNoAnimation')); return; }
-        try {
-            const jsonData = JSON.parse(jsonText);
-            loadAnimation(jsonData);
-            updateGradientNamesList();
-        } catch (error) {
-            console.error('JSON parse error:', error);
-            alert(t('alertJsonError') + ': ' + error.message);
-        }
-    }
-
-    fileInput.addEventListener('change', (event) => {
-        const file = event.target.files[0];
-        if (file) {
-            fileInfo.classList.remove('hidden');
-            filename.textContent = file.name;
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                try {
-                    let fileContent = e.target.result;
-                    if (fileContent.startsWith('\ufeff')) fileContent = fileContent.slice(1);
-                    const jsonData = JSON.parse(fileContent);
-                    updateJsonEditor(jsonData);
-                    loadAnimation(jsonData);
-                    updateGradientNamesList();
-                } catch (error) {
-                    console.error('JSON parse error:', error);
-                    alert(t('alertInvalidJson') + ': ' + error.message);
-                    fileInfo.classList.add('hidden');
-                }
-            };
-            reader.readAsText(file);
-        }
-    });
-
+    // ----- 导出 JSON -----
     document.getElementById('export-btn').addEventListener('click', () => {
-        const jsonText = getJsonContent();
-        if (!jsonText.trim()) { alert(t('alertNoContent')); return; }
+        if (!currentJsonData) { showToast(t('alertNoContent'), 'error'); return; }
         try {
-            const jsonData = JSON.parse(jsonText);
-            const compressed = compressJson(jsonData);
+            const compressed = compressJson(currentJsonData);
             const blob = new Blob([compressed], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'lottie_animation.json';
-            a.click();
-            URL.revokeObjectURL(url);
+            downloadBlob(blob, `${currentFileName || 'lottie_animation'}.json`);
         } catch (error) {
-            alert(t('exportFailed') + ': ' + error.message);
+            showToast(t('exportFailed') + ': ' + error.message, 'error');
         }
     });
 
+    // ----- 同步渐变 -----
     const gradientFileInput = document.getElementById('gradient-file');
     gradientFileInput.addEventListener('change', (event) => {
         const file = event.target.files[0];
+        gradientFileInput.value = '';
         if (!file) return;
+        if (!currentJsonData) { showToast(t('alertNoAnimation'), 'error'); return; }
         const reader = new FileReader();
         reader.onload = (e) => {
             try {
                 let fileContent = e.target.result;
-                if (fileContent.startsWith('\ufeff')) fileContent = fileContent.slice(1);
+                if (fileContent.charCodeAt(0) === 0xFEFF) fileContent = fileContent.slice(1);
                 const jsonData = JSON.parse(fileContent);
                 const gradients = extractGradientsFromJson(jsonData);
-                if (gradients.length === 0) { alert(t('alertNoGradient')); return; }
+                if (gradients.length === 0) { showToast(t('alertNoGradient'), 'error'); return; }
 
-                const currentJsonText = getJsonContent();
-                if (!currentJsonText.trim()) { alert(t('alertNoAnimation')); return; }
-                const currentJsonData = JSON.parse(currentJsonText);
+                gradients.forEach(gradient => applyGradientByName(currentJsonData, gradient));
 
-                gradients.forEach(gradient => {
-                    applyGradientToAnimation(currentJsonData, gradient.name, gradient.data, gradient.colorCount);
-                });
-
-                const updatedJsonContent = JSON.stringify(currentJsonData, null, 2);
-                if (monacoEditor) monacoEditor.setValue(updatedJsonContent);
-                document.getElementById('json-editor').value = updatedJsonContent;
-                updateAnimationFromEditor();
-                alert(t('syncSuccess', { count: gradients.length }));
+                loadAnimation(currentJsonData, true);
+                updateGradientNamesList();
+                renderEditorForSelection();
+                showToast(t('syncSuccess', { count: gradients.length }), 'success');
             } catch (error) {
                 console.error('Error syncing gradients:', error);
-                alert(t('syncFailed') + ': ' + error.message);
+                showToast(t('syncFailed') + ': ' + error.message, 'error');
             }
         };
         reader.readAsText(file);
     });
 
-    function extractGradientsFromJson(jsonData) {
-        if (jsonData.gradients && Array.isArray(jsonData.gradients)) return jsonData.gradients;
-        const gradients = [];
-        const foundNames = new Set();
-        function traverse(obj) {
-            if (obj === null || typeof obj !== 'object') return;
-            if ((obj.ty === 'gf' || obj.ty === 'gs') && obj.nm && obj.g) {
-                const name = obj.nm;
-                if (!foundNames.has(name)) {
-                    foundNames.add(name);
-                    let gradientData = obj.g;
-                    let gradientK = gradientData.k;
-                    if (typeof gradientK === 'object' && gradientK !== null && gradientK.k) gradientK = gradientK.k;
-                    gradients.push({ name: name, data: gradientK, colorCount: gradientData.p || Math.floor(gradientK.length / 4) });
-                }
-            }
-            if (Array.isArray(obj)) obj.forEach(traverse);
-            else if (typeof obj === 'object') Object.values(obj).forEach(traverse);
-        }
-        traverse(jsonData);
-        return gradients;
-    }
-
-    function applyGradientToAnimation(jsonData, gradientName, gradientData, colorCount) {
-        function traverse(obj) {
-            if (obj === null || typeof obj !== 'object') return false;
-            if ((obj.ty === 'gf' || obj.ty === 'gs') && obj.nm === gradientName) {
-                if (obj.g) {
-                    if (obj.g.k && typeof obj.g.k === 'object' && 'k' in obj.g.k) {
-                        obj.g.k.k = gradientData;
-                        if (obj.g.p !== undefined) obj.g.p = colorCount;
-                    } else {
-                        obj.g.k = gradientData;
-                        if (obj.g.p !== undefined) obj.g.p = colorCount;
-                    }
-                    return true;
-                }
-            }
-            if (Array.isArray(obj)) return obj.some(traverse);
-            if (typeof obj === 'object') return Object.values(obj).some(traverse);
-            return false;
-        }
-        return traverse(jsonData);
-    }
-
+    // ----- 播放控制 -----
     playPauseBtn.addEventListener('click', () => {
         if (!animation) return;
         if (animation.isPaused) { animation.play(); playPauseBtn.innerHTML = pauseIcon; }
@@ -1121,25 +1098,38 @@ function initializeLottiePlayer() {
         lucide.createIcons();
     });
 
+    let wasPlayingBeforeScrub = false;
     progressBar.addEventListener('input', () => {
-        isDragging = true;
-        if (animation) {
-            const frame = (progressBar.value / 100) * animation.totalFrames;
-            animation.goToAndStop(frame, true);
-            updateTimeDisplay();
+        if (!animation) return;
+        if (!isScrubbing) {
+            isScrubbing = true;
+            wasPlayingBeforeScrub = !animation.isPaused;
         }
+        const frame = (progressBar.value / 100) * animation.totalFrames;
+        animation.goToAndStop(frame, true);
+        updateTimeDisplay();
     });
     progressBar.addEventListener('change', () => {
-        isDragging = false;
+        if (animation && isScrubbing) {
+            // 拖拽结束后恢复拖拽前的播放状态
+            if (wasPlayingBeforeScrub) {
+                animation.play();
+                playPauseBtn.innerHTML = pauseIcon;
+            } else {
+                playPauseBtn.innerHTML = playIcon;
+            }
+            lucide.createIcons();
+        }
+        isScrubbing = false;
     });
 
+    // ----- 背景切换 -----
     bgColorPicker.addEventListener('input', () => {
         animationContainer.style.backgroundColor = bgColorPicker.value;
         animationContainer.classList.remove('alpha-checkered');
         bgAlphaBtn.classList.remove('bg-blue-100', 'text-blue-600');
         bgAlphaBtn.classList.add('text-slate-400');
     });
-
     bgAlphaBtn.addEventListener('click', () => {
         animationContainer.style.backgroundColor = '';
         animationContainer.classList.add('alpha-checkered');
@@ -1147,12 +1137,12 @@ function initializeLottiePlayer() {
         bgAlphaBtn.classList.remove('text-slate-400');
     });
 
+    // ----- 导出当前帧 PNG -----
     const exportFrameBtn = document.getElementById('export-frame-btn');
     if (exportFrameBtn) {
-        exportFrameBtn.title = t('exportFrame');
         exportFrameBtn.addEventListener('click', () => {
             const svg = animationContainer.querySelector('svg');
-            if (!svg) { alert(t('alertNoAnimation')); return; }
+            if (!svg) { showToast(t('alertNoAnimation'), 'error'); return; }
 
             const wasPlaying = animation && !animation.isPaused;
             const currentFrame = animation ? Math.round(animation.currentFrame) : 0;
@@ -1198,8 +1188,7 @@ function initializeLottiePlayer() {
                     }
                 }
             } else {
-                const bgColor = animationContainer.style.backgroundColor || '#ffffff';
-                ctx.fillStyle = bgColor;
+                ctx.fillStyle = animationContainer.style.backgroundColor || '#ffffff';
                 ctx.fillRect(0, 0, svgWidth, svgHeight);
             }
 
@@ -1209,26 +1198,21 @@ function initializeLottiePlayer() {
             img.onload = () => {
                 ctx.drawImage(img, 0, 0, svgWidth, svgHeight);
                 canvas.toBlob(blob => {
-                    const downloadUrl = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = downloadUrl;
-                    a.download = `lottie_frame_${currentFrame}.png`;
-                    a.click();
-                    URL.revokeObjectURL(downloadUrl);
+                    downloadBlob(blob, `${currentFileName || 'lottie'}_frame_${currentFrame}.png`);
                     URL.revokeObjectURL(url);
                     if (wasPlaying && animation) animation.play();
                 }, 'image/png');
             };
             img.onerror = () => {
                 URL.revokeObjectURL(url);
-                alert(t('exportFailed'));
+                showToast(t('exportFailed'), 'error');
                 if (wasPlaying && animation) animation.play();
             };
             img.src = url;
         });
     }
 
-    // ========== GIF 导出 ==========
+    // ----- GIF 导出 -----
     const exportGifBtn = document.getElementById('export-gif-btn');
     const gifModal = document.getElementById('gif-modal');
     const gifModalOverlay = document.getElementById('gif-modal-overlay');
@@ -1251,9 +1235,8 @@ function initializeLottiePlayer() {
     let currentGif = null;
 
     if (exportGifBtn) {
-        exportGifBtn.title = t('exportGif');
         exportGifBtn.addEventListener('click', () => {
-            if (!animation) { alert(t('noAnimationForGif')); return; }
+            if (!animation) { showToast(t('noAnimationForGif'), 'error'); return; }
             openGifModal();
         });
     }
@@ -1263,6 +1246,7 @@ function initializeLottiePlayer() {
         const totalFrames = Math.round(animation.totalFrames);
         gifStart.max = totalFrames;
         gifEnd.max = totalFrames;
+        gifStart.value = 0;
         gifEnd.value = totalFrames;
         gifStartVal.textContent = gifStart.value;
         gifEndVal.textContent = gifEnd.value;
@@ -1300,6 +1284,12 @@ function initializeLottiePlayer() {
         gifExportAbort = false;
     }
 
+    // 取消/关闭：导出进行中先中止导出
+    function cancelGifExport() {
+        if (currentGif) { gifExportAbort = true; }
+        else { closeGifModal(); }
+    }
+
     if (gifStart) {
         gifStart.addEventListener('input', () => {
             const val = parseInt(gifStart.value);
@@ -1319,21 +1309,13 @@ function initializeLottiePlayer() {
     if (gifQuality) {
         gifQuality.addEventListener('input', () => { gifQualityVal.textContent = gifQuality.value; });
     }
-
-    if (closeGifModalBtn) closeGifModalBtn.addEventListener('click', closeGifModal);
-    if (cancelGifBtn) {
-        cancelGifBtn.addEventListener('click', () => {
-            if (currentGif) { gifExportAbort = true; }
-            else { closeGifModal(); }
-        });
-    }
-    if (gifModalOverlay) {
-        gifModalOverlay.addEventListener('click', closeGifModal);
-    }
+    if (closeGifModalBtn) closeGifModalBtn.addEventListener('click', cancelGifExport);
+    if (cancelGifBtn) cancelGifBtn.addEventListener('click', cancelGifExport);
+    if (gifModalOverlay) gifModalOverlay.addEventListener('click', cancelGifExport);
 
     if (startGifBtn) {
         startGifBtn.addEventListener('click', async () => {
-            if (!animation) { alert(t('noAnimationForGif')); return; }
+            if (!animation) { showToast(t('noAnimationForGif'), 'error'); return; }
             const fps = parseInt(gifFps.value) || 20;
             const scale = parseFloat(gifScale.value) || 1;
             const startFrame = parseInt(gifStart.value) || 0;
@@ -1348,11 +1330,13 @@ function initializeLottiePlayer() {
             gifExportAbort = false;
 
             try {
-                await exportGif(fps, scale, startFrame, endFrame, quality);
+                const finished = await exportGif(fps, scale, startFrame, endFrame, quality);
+                if (finished) showToast(t('exportGifDone'), 'success');
             } catch (error) {
                 console.error('GIF export error:', error);
-                if (!gifExportAbort) alert(t('exportGifFailed') + ': ' + error.message);
+                if (!gifExportAbort) showToast(t('exportGifFailed') + ': ' + error.message, 'error');
             } finally {
+                currentGif = null;
                 resetGifModal();
                 closeGifModal();
             }
@@ -1360,9 +1344,7 @@ function initializeLottiePlayer() {
     }
 
     async function exportGif(fps, scale, startFrame, endFrame, quality) {
-        if (!window.GIF) {
-            await preloadGifJs();
-        }
+        await preloadGifJs();
         let svg = animationContainer.querySelector('svg');
         if (!svg) throw new Error('No SVG found');
 
@@ -1401,27 +1383,19 @@ function initializeLottiePlayer() {
 
         const animFrameRate = animation.frameRate || 30;
         const frameStep = Math.max(1, Math.round(animFrameRate / fps));
+        // 帧延迟按实际步长计算，保证 GIF 播放速度与原动画一致
+        const frameDelay = Math.round((frameStep / animFrameRate) * 1000);
         const framesToRender = [];
         for (let f = startFrame; f <= endFrame; f += frameStep) {
             framesToRender.push(f);
         }
 
-        let workerUrl = null;
-        try {
-            const response = await fetch('https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.worker.js');
-            const code = await response.text();
-            const blob = new Blob([code], { type: 'application/javascript' });
-            workerUrl = URL.createObjectURL(blob);
-        } catch (e) {
-            console.warn('Failed to load gif.worker.js, will use main thread');
-        }
-
         const gif = new GIF({
-            workers: workerUrl ? 2 : 0,
+            workers: 2,
             quality: quality,
             width: exportWidth,
             height: exportHeight,
-            workerScript: workerUrl || undefined
+            workerScript: 'js/vendor/gif.worker.js'
         });
         currentGif = gif;
 
@@ -1468,26 +1442,23 @@ function initializeLottiePlayer() {
                     URL.revokeObjectURL(url);
                     resolve();
                 };
-                img.onerror = () => { URL.revokeObjectURL(url); reject(); };
+                img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Frame render failed')); };
                 img.src = url;
             });
 
-            gif.addFrame(canvas, { delay: Math.round(1000 / fps), copy: true });
+            gif.addFrame(canvas, { delay: frameDelay, copy: true });
 
             const progress = Math.round(((i + 1) / framesToRender.length) * 100);
             gifProgressBar.style.width = progress + '%';
             gifProgressText.textContent = progress + '%';
         }
 
+        let finished = false;
         if (!gifExportAbort) {
             await new Promise((resolve, reject) => {
                 gif.on('finished', (blob) => {
-                    const downloadUrl = URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = downloadUrl;
-                    a.download = 'lottie_animation.gif';
-                    a.click();
-                    URL.revokeObjectURL(downloadUrl);
+                    downloadBlob(blob, `${currentFileName || 'lottie_animation'}.gif`);
+                    finished = true;
                     resolve();
                 });
                 gif.on('error', reject);
@@ -1495,14 +1466,102 @@ function initializeLottiePlayer() {
             });
         }
 
-        if (workerUrl) URL.revokeObjectURL(workerUrl);
         currentGif = null;
         if (wasPlaying && animation) animation.play();
+        return finished;
     }
-}
+
+    // ----- 帮助弹窗 -----
+    const helpModal = document.getElementById('help-modal');
+    const helpBtn = document.getElementById('help-btn');
+    const closeModalBtn = document.getElementById('close-modal');
+    const modalOverlay = document.getElementById('modal-overlay');
+    const closeModalBtnBottom = document.getElementById('close-modal-btn');
+
+    function openHelpModal() {
+        helpModal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+        requestAnimationFrame(() => {
+            modalOverlay.classList.remove('opacity-0');
+            const modalContent = helpModal.querySelector('.modal-content');
+            if (modalContent) {
+                modalContent.classList.remove('scale-95', 'opacity-0');
+                modalContent.classList.add('scale-100', 'opacity-100');
+            }
+        });
+        lucide.createIcons();
+    }
+
+    function closeHelpModal() {
+        modalOverlay.classList.add('opacity-0');
+        const modalContent = helpModal.querySelector('.modal-content');
+        if (modalContent) {
+            modalContent.classList.remove('scale-100', 'opacity-100');
+            modalContent.classList.add('scale-95', 'opacity-0');
+        }
+        setTimeout(() => {
+            helpModal.classList.add('hidden');
+            document.body.style.overflow = '';
+        }, 200);
+    }
+
+    if (helpBtn && helpModal) {
+        helpBtn.addEventListener('click', openHelpModal);
+        if (closeModalBtn) closeModalBtn.addEventListener('click', closeHelpModal);
+        if (closeModalBtnBottom) closeModalBtnBottom.addEventListener('click', closeHelpModal);
+        modalOverlay.addEventListener('click', (e) => {
+            if (e.target === modalOverlay) closeHelpModal();
+        });
+    }
+
+    // ESC 关闭弹窗（GIF 弹窗导出中则先中止导出）
+    document.addEventListener('keydown', (e) => {
+        if (e.key !== 'Escape') return;
+        if (gifModal && !gifModal.classList.contains('hidden')) {
+            cancelGifExport();
+        } else if (helpModal && !helpModal.classList.contains('hidden')) {
+            closeHelpModal();
+        }
+    });
+
+    // 右侧列高度无需 JS 同步：锁高布局下网格行高确定，
+    // CSS 拉伸 + h-full 已保证左右列等高
+
+    // ----- 预览容器保持正方形 -----
+    // 桌面锁高布局下 CSS 无法同时受宽、高约束并保持比例，
+    // 取可用区域的 min(宽, 高) 作为边长
+    const lottieBox = document.getElementById('lottie-animation');
+    if (lottieBox && dropZone) {
+        function fitPreviewBox() {
+            if (window.matchMedia('(min-width: 1024px)').matches) {
+                const cs = getComputedStyle(dropZone);
+                const contentW = dropZone.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+                const contentH = dropZone.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+                const side = Math.floor(Math.min(contentW, contentH));
+                if (side > 0) {
+                    lottieBox.style.width = side + 'px';
+                    lottieBox.style.height = side + 'px';
+                }
+            } else {
+                lottieBox.style.width = '';
+                lottieBox.style.height = '';
+            }
+        }
+        new ResizeObserver(fitPreviewBox).observe(dropZone);
+        window.addEventListener('resize', fitPreviewBox);
+        fitPreviewBox();
+    }
+
+    // ----- gif.js 空闲预加载 -----
+    if (typeof requestIdleCallback !== 'undefined') {
+        requestIdleCallback(() => preloadGifJs().catch(() => {}), { timeout: 5000 });
+    } else {
+        setTimeout(() => preloadGifJs().catch(() => {}), 3000);
+    }
+});
 
 // 响应式缩放 - 综合视口宽度 + 高分屏放大
-(function() {
+(function () {
     function updateResponsiveScale() {
         const innerW = window.innerWidth;
         const screenW = window.screen.width;
@@ -1533,94 +1592,3 @@ function initializeLottiePlayer() {
     updateResponsiveScale();
     window.addEventListener('resize', updateResponsiveScale);
 })();
-
-// 右侧列高度与预览卡片同步
-(function() {
-    const previewCard = document.getElementById('preview-card');
-    const rightColumn = document.getElementById('right-column');
-    if (!previewCard || !rightColumn) return;
-
-    function syncHeight() {
-        rightColumn.style.height = previewCard.offsetHeight + 'px';
-    }
-
-    new ResizeObserver(syncHeight).observe(previewCard);
-    syncHeight();
-})();
-
-// 帮助弹窗控制
-document.addEventListener('DOMContentLoaded', function() {
-    const helpModal = document.getElementById('help-modal');
-    const helpBtn = document.getElementById('help-btn');
-    const closeModalBtn = document.getElementById('close-modal');
-    const modalOverlay = document.getElementById('modal-overlay');
-    const closeModalBtnBottom = document.getElementById('close-modal-btn');
-
-    if (!helpModal || !helpBtn) return;
-
-    function openModal() {
-        helpModal.classList.remove('hidden');
-        document.body.style.overflow = 'hidden';
-        requestAnimationFrame(() => {
-            modalOverlay.classList.remove('opacity-0');
-            const modalContent = modalOverlay.nextElementSibling.querySelector('.modal-content');
-            if (modalContent) {
-                modalContent.classList.remove('scale-95', 'opacity-0');
-                modalContent.classList.add('scale-100', 'opacity-100');
-            }
-        });
-    }
-
-    function closeModal() {
-        modalOverlay.classList.add('opacity-0');
-        const modalContent = modalOverlay.nextElementSibling.querySelector('.modal-content');
-        if (modalContent) {
-            modalContent.classList.remove('scale-100', 'opacity-100');
-            modalContent.classList.add('scale-95', 'opacity-0');
-        }
-        setTimeout(() => {
-            helpModal.classList.add('hidden');
-            document.body.style.overflow = '';
-        }, 200);
-    }
-
-    helpBtn.addEventListener('click', openModal);
-    if (closeModalBtn) closeModalBtn.addEventListener('click', closeModal);
-    if (closeModalBtnBottom) closeModalBtnBottom.addEventListener('click', closeModal);
-    
-    modalOverlay.addEventListener('click', (e) => {
-        if (e.target === modalOverlay) closeModal();
-    });
-
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && !helpModal.classList.contains('hidden')) {
-            closeModal();
-        }
-    });
-
-    // 弹窗内图标在打开弹窗时初始化
-    helpBtn.addEventListener('click', function() {
-        setTimeout(function() {
-            lucide.createIcons();
-        }, 10);
-    });
-
-    // ========== gif.js 预加载 ==========
-    let gifJsPromise = null;
-    function preloadGifJs() {
-        if (window.GIF || gifJsPromise) return gifJsPromise;
-        gifJsPromise = new Promise((resolve, reject) => {
-            const script = document.createElement('script');
-            script.src = 'https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.js';
-            script.onload = () => resolve();
-            script.onerror = () => reject(new Error('Failed to load gif.js'));
-            document.head.appendChild(script);
-        });
-        return gifJsPromise;
-    }
-    if (typeof requestIdleCallback !== 'undefined') {
-        requestIdleCallback(() => preloadGifJs(), { timeout: 5000 });
-    } else {
-        setTimeout(preloadGifJs, 3000);
-    }
-});
