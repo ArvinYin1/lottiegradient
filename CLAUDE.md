@@ -46,7 +46,7 @@ lottiegradient/
 │   └── vendor/         # 自托管依赖：lucide / lottie / gif.js + pyodide / py-aep
 ├── tests/
 │   ├── smoke.mjs       # 编辑器冒烟测试（14 条用例，file://）
-│   ├── backfill.mjs    # 回填页测试（25 条用例，自带静态服务器）
+│   ├── backfill.mjs    # 回填页测试（26 条用例，自带静态服务器）
 │   ├── fixtures/       # 测试用 Lottie JSON + sample.aep
 │   └── README.md       # 跑测说明 / 改版适配
 ├── svg/                # 本地 SVG 图标备用资源（运行时实际用 js/vendor/lucide）
@@ -136,6 +136,7 @@ to_css() / to_lottie()        // 合并预览 CSS / Lottie 平铺数组
 - **原理**：AE 脚本 API 读不到渐变（`ADBE Vector Grad Colors` 是 `NO_VALUE`），Bodymovin 自己也是把 `.aep` 当文本搜索。这里改用 **Pyodide 在浏览器里跑 py-aep**，直接解析 `.aep` 里的渐变 XML，拿到色标（offset / 中点 / RGB）与透明度色标。
 - **懒加载**：`js/vendor/pyodide/`（约 13 MB）与 `js/vendor/pyaep-libs.zip`（约 2.8 MB）只在用户点「解析并比对」时才加载；编辑器首屏零新增请求。
 - **加载态**：`#bf-loading` 遮罩（spinner + 阶段文案 + 进度条 + 已用时）。py-aep 依赖包带真实下载百分比（`fetchWithProgress`），Pyodide 内部加载无法测量，走不确定进度 + 计时。
+- **兼容 nginx 的 MIME**：线上 nginx 的 `mime.types` 不含 `mjs`（会按 `octet-stream` 返回，浏览器拒绝当模块加载），且 `.wasm` 也不是 `application/wasm`（Pyodide 的 `instantiateStreaming` 会抛错且不降级，界面直接卡死）。因此：ESM 入口用 `pyodide.esm.js` / `pyodide.asm.esm.js`；wasm 由前端自行预取后，用 MIME 正确的 `Response` 通过临时 fetch 桥交给 Pyodide。加载有 120s 超时看门狗。
 - **关键规则**：Bodymovin 会把 AE 的「中点」展开成额外色标（N → 2N−1），颜色与透明度各自独立展开；所有 alpha 为 1 时不写透明度段。补丁生成照抄了这套规则（`js/vendor/pyaep/extract.py` 的 `expand_stops()`），因此回填值与 Bodymovin 导出值逐位一致。
 - **匹配**：先按「合成 / 图层 / 组 / 渐变名」完整路径精确匹配；失败则退回「同名 + 出现顺序」，并在类型列标注「按名匹配」。关键帧渐变只提示不回填；JSON 缺失/多出的渐变只统计不增删。
 - **i18n**：回填页有自己的字典（`js/backfill.js` 顶部），与编辑器共用 `localStorage['lottie-lang']` 和 `localStorage['lottie-theme']`，两个页面语言/主题同步。
@@ -213,7 +214,7 @@ npm test               # 等价于 cd tests && npm test
 | 文件 | 覆盖 | 条数 | 运行方式 |
 |---|---|---|---|
 | `tests/smoke.mjs` | 编辑器：加载 / 导入 / 选中 / 改色 / 增删色标 / 搜索 / 播放 / 导出 / 响应式 / 同名渐变 / 色标分离 / 播放状态保持 / 关键帧 | 14 | `file://` 直接打开 |
-| `tests/backfill.mjs` | 回填页：入口 / 加载态 / 解析 / 一致 / 失配 / 回填 / 主题 / 说明弹窗 / 中英切换 | 25 | 自带静态服务器（Pyodide 需要 http） |
+| `tests/backfill.mjs` | 回填页：入口 / 加载态 / nginx MIME 兼容 / 解析 / 一致 / 失配 / 回填 / 主题 / 说明弹窗 / 中英切换 | 26 | 自带静态服务器（Pyodide 需要 http） |
 
 ```bash
 cd tests && npm test            # 编辑器

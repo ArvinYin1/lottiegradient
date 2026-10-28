@@ -70,12 +70,13 @@ const SELECTORS = {
 const MIME = {
     '.html': 'text/html; charset=utf-8',
     '.js': 'text/javascript; charset=utf-8',
-    '.mjs': 'text/javascript; charset=utf-8',
+    // 故意与线上 nginx 保持一致：mime.types 里没有 mjs，wasm 也不在默认表里
+    '.mjs': 'application/octet-stream',
     '.css': 'text/css; charset=utf-8',
     '.json': 'application/json; charset=utf-8',
     '.py': 'text/plain; charset=utf-8',
     '.zip': 'application/zip',
-    '.wasm': 'application/wasm',
+    '.wasm': 'application/octet-stream',
     '.aep': 'application/octet-stream',
     '.svg': 'image/svg+xml',
     '.png': 'image/png',
@@ -146,6 +147,8 @@ const browser = await puppeteer.launch({
 const page = await browser.newPage();
 await page.setViewport({ width: 1280, height: 940 });
 page.on('pageerror', (error) => console.log('[page exception]', error.message));
+const requestedUrls = [];
+page.on('request', (request) => requestedUrls.push(request.url()));
 
 try {
     /* ---------- 0. 主站入口 ---------- */
@@ -160,6 +163,7 @@ try {
     /* ---------- 1. 页面加载 ---------- */
     await page.goto(`${BASE}/backfill.html`, { waitUntil: 'networkidle0' });
     check('回填页加载', await page.$eval('.brand-name', (el) => el.textContent.includes('Lottie')));
+    requestedUrls.length = 0;   // 只统计本次页面产生的请求
     check('两个文件选择区', (await page.$$('.bf-drop')).length === 2);
 
     async function upload(jsonFixture) {
@@ -237,6 +241,9 @@ try {
         (selector) => !document.querySelector(selector).classList.contains('is-visible'),
         SELECTORS.loadingMask
     ));
+    const mjsRequests = requestedUrls.filter((url) => url.endsWith('.mjs'));
+    check('不依赖 .mjs（兼容 nginx 未配置 mjs MIME）', mjsRequests.length === 0,
+        mjsRequests.length ? mjsRequests.join(', ') : '0 个 .mjs 请求');
     out = await page.evaluate(() => ({
         count: document.querySelectorAll('#report-body tr').length,
         rows: [...document.querySelectorAll('#report-body tr')].map((tr) => ({

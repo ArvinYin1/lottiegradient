@@ -36,6 +36,7 @@ const i18n = {
         loadingUnpack: '解包 py-aep 依赖',
         loadingParse: '解析工程文件',
         loadingElapsed: '{s} 秒',
+        runtimeTimeout: '运行时加载超时，请刷新重试',
         statusFailed: '解析失败：{msg}',
         onlyPending: '只看待修正',
         showAll: '显示全部',
@@ -98,6 +99,7 @@ const i18n = {
         loadingUnpack: 'Unpacking py-aep',
         loadingParse: 'Parsing project',
         loadingElapsed: '{s}s',
+        runtimeTimeout: 'Runtime loading timed out; please reload',
         statusFailed: 'Failed: {msg}',
         onlyPending: 'Only pending',
         showAll: 'Show all',
@@ -255,6 +257,63 @@ function hideLoading() {
         clearInterval(loadingTicker);
         loadingTicker = null;
     }
+}
+
+const WASM_URL = new URL('vendor/pyodide/pyodide.asm.wasm', import.meta.url).href;
+const RUNTIME_TIMEOUT_MS = 120000;
+
+/**
+ * 线上 nginx 没有把 .wasm 映射成 application/wasm，Pyodide 的
+ * instantiateStreaming 会因 MIME 不符抛错且不降级（Promise 永不 settle，界面卡住）。
+ * 这里先自己把 wasm 取下来（顺便拿到真实下载进度），再用一个 MIME 正确的
+ * Response 交给 Pyodide，绕开服务器 MIME 配置。
+ */
+function prefetchWasmWithProgress(onProgress) {
+    return (async () => {
+        const response = await fetch(WASM_URL);
+        const total = Number(response.headers.get('content-length') || 0);
+        if (!response.body || !total) {
+            onProgress(null);
+            return new Uint8Array(await response.arrayBuffer());
+        }
+        const reader = response.body.getReader();
+        const chunks = [];
+        let received = 0;
+        for (;;) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            chunks.push(value);
+            received += value.length;
+            onProgress(received / total);
+        }
+        const merged = new Uint8Array(received);
+        let offset = 0;
+        for (const chunk of chunks) {
+            merged.set(chunk, offset);
+            offset += chunk.length;
+        }
+        return merged;
+    })();
+}
+
+/** 让 Pyodide 拿到「MIME 正确」的 wasm 响应；用完即还原 window.fetch */
+function installWasmFetchBridge(getBytes) {
+    const originalFetch = window.fetch.bind(window);
+    window.fetch = async (input, init) => {
+        // Pyodide 传进来的是 URL 对象（fetch(new URL(...))），要按 href 比较
+        const url = input instanceof Request
+            ? input.url
+            : (typeof input === 'string' ? input : String(input && input.href ? input.href : input));
+        if (url === WASM_URL || url.endsWith('/pyodide.asm.wasm')) {
+            const bytes = await getBytes();
+            return new Response(bytes, {
+                status: 200,
+                headers: { 'Content-Type': 'application/wasm', 'Content-Length': String(bytes.length) },
+            });
+        }
+        return originalFetch(input, init);
+    };
+    return () => { window.fetch = originalFetch; };
 }
 
 /** 带下载进度的 fetch（能拿到 Content-Length 时给出百分比） */
@@ -585,9 +644,30 @@ function updateApplyButton() {
 async function ensurePyodide() {
     if (state.py) return state.py;
     setStatus('statusPyLoading');
-    showLoading('loadingPy');
-    const { loadPyodide } = await import(`${PYODIDE_URL}pyodide.mjs`);
-    const py = await loadPyodide({ indexURL: PYODIDE_URL });
+    showLoading('loadingPy', {});
+    // 用 .js 而不是 .mjs：nginx 的 mime.types 不含 mjs，会按 octet-stream 返回，
+    // 浏览器会拒绝把非 JS MIME 的文件当模块加载（Failed to fetch dynamically imported module）。
+    const { loadPyodide } = await import(`${PYODIDE_URL}pyodide.esm.js`);
+
+    let wasmBytes = null;
+    const wasmPromise = prefetchWasmWithProgress((ratio) => {
+        if (ratio !== null) setLoadingProgress(ratio);
+        else setLoadingProgress(null);
+    }).then((bytes) => { wasmBytes = bytes; return bytes; });
+    const restoreFetch = installWasmFetchBridge(() => wasmPromise);
+
+    let py;
+    try {
+        py = await Promise.race([
+            loadPyodide({ indexURL: PYODIDE_URL }),
+            new Promise((_, reject) => setTimeout(
+                () => reject(new Error(t('runtimeTimeout'))), RUNTIME_TIMEOUT_MS
+            )),
+        ]);
+    } finally {
+        restoreFetch();
+    }
+    void wasmBytes;
 
     setStatus('statusUnpacking');
     showLoading('loadingUnpack');

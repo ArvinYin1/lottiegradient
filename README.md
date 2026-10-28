@@ -166,6 +166,12 @@ python3 -m http.server 8080
 - **GitHub Pages**：推送到 `main` 分支后自动更新，备用地址 https://arvinyin1.github.io/lottiegradient/
 - **自建服务器**：通过仓库根目录的 `deploy.sh` 用 rsync over SSH 同步到 nginx 站点目录（HTTPS 由 Let's Encrypt 自动续期）
 
+> **nginx MIME 建议**（回填页已在前端兜底，配了可启用 wasm 流式编译并省一次内存拷贝）：
+> ```nginx
+> types { application/wasm wasm; }
+> gzip on; gzip_types application/wasm application/javascript;
+> ```
+
 ### 手动部署
 
 在任意已检出仓库、安装 rsync 并持有部署密钥的机器上运行：
@@ -191,6 +197,12 @@ SSH_KEY=/path/to/key ./deploy.sh --dry-run  # 只预览，不改动服务器
 ---
 
 This is a pure static site, hosted on both GitHub Pages and a self-managed nginx server.
+
+> **Recommended nginx MIME** (the backfill page works without it, but this enables streaming wasm compilation and gzip):
+> ```nginx
+> types { application/wasm wasm; }
+> gzip on; gzip_types application/wasm application/javascript;
+> ```
 
 ### Manual deployment
 
