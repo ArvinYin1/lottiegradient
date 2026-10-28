@@ -138,6 +138,7 @@ const { server, port } = await startServer();
 const BASE = `http://127.0.0.1:${port}`;
 // 测试只跑同源路径（?local=1），避免依赖外网 CDN；CDN 路径由线上 E2E 覆盖
 const PAGE_URL = `${BASE}/backfill.html?local=1`;
+const PAGE_URL_AUTO = `${BASE}/backfill.html`;   // 走 CDN 探测 + 回退逻辑
 
 const browser = await puppeteer.launch({
     executablePath: CHROME_PATH,
@@ -333,7 +334,22 @@ try {
     await new Promise((r) => setTimeout(r, 200));
     check('切回中文', (await page.$eval('.bf-table thead th:nth-child(2)', (el) => el.textContent.trim())) === '渐变');
 
-    /* ---------- 8. 截图 ---------- */
+    /* ---------- 8. CDN 不可用时回退同源 ---------- */
+    await page.setRequestInterception(true);
+    const blockCdn = (request) => {
+        if (request.url().includes('arvinyin1.github.io')) request.abort();
+        else request.continue();
+    };
+    page.on('request', blockCdn);
+    await page.goto(PAGE_URL_AUTO, { waitUntil: 'networkidle0' });
+    await upload(FIXTURE_LOST);
+    out = await parse();
+    check('CDN 被阻断时回退同源并能完成解析', out.rows[0]?.status === '待修正',
+        `${out.rows[0]?.status} | ${out.summary}`);
+    page.off('request', blockCdn);
+    await page.setRequestInterception(false);
+
+    /* ---------- 9. 截图 ---------- */
     await page.goto(PAGE_URL, { waitUntil: 'networkidle0' });
     await upload(FIXTURE_LOST);
     await parse();

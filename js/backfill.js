@@ -46,6 +46,7 @@ const i18n = {
         loadingUnpack: '解包 py-aep 依赖',
         loadingParse: '解析工程文件',
         loadingElapsed: '{s} 秒',
+        loadingMB: '{got} MB / {total} MB',
         runtimeTimeout: '运行时加载超时，请刷新重试',
         statusFailed: '解析失败：{msg}',
         onlyPending: '只看待修正',
@@ -109,6 +110,7 @@ const i18n = {
         loadingUnpack: 'Unpacking py-aep',
         loadingParse: 'Parsing project',
         loadingElapsed: '{s}s',
+        loadingMB: '{got} MB / {total} MB',
         runtimeTimeout: 'Runtime loading timed out; please reload',
         statusFailed: 'Failed: {msg}',
         onlyPending: 'Only pending',
@@ -228,20 +230,39 @@ function toast(message, type = 'info') {
 let loadingTicker = null;
 let loadingStartedAt = 0;
 let loadingPhase = { key: 'loadingPy', params: {} };
+let loadingBytes = null;
+
+function renderLoadingPhase() {
+    const el = $('loading-phase');
+    if (!el) return;
+    const parts = [t(loadingPhase.key, loadingPhase.params)];
+    if (loadingBytes && loadingBytes.total > 0) {
+        parts.push(t('loadingMB', {
+            got: (loadingBytes.got / 1048576).toFixed(1),
+            total: (loadingBytes.total / 1048576).toFixed(1),
+        }));
+    }
+    const seconds = ((performance.now() - loadingStartedAt) / 1000).toFixed(0);
+    parts.push(t('loadingElapsed', { s: seconds }));
+    el.textContent = parts.join(' · ');
+}
 
 function showLoading(key, params = {}) {
     loadingPhase = { key, params };
+    loadingBytes = null;
     loadingStartedAt = performance.now();
     const mask = $('bf-loading');
     mask.classList.add('is-visible');
     mask.setAttribute('aria-busy', 'true');
-    $('loading-phase').textContent = t(key, params);
+    renderLoadingPhase();
     setLoadingProgress(null);
     if (loadingTicker) clearInterval(loadingTicker);
-    loadingTicker = setInterval(() => {
-        const seconds = ((performance.now() - loadingStartedAt) / 1000).toFixed(1);
-        $('loading-phase').textContent = `${t(loadingPhase.key, loadingPhase.params)} · ${t('loadingElapsed', { s: seconds })}`;
-    }, 200);
+    loadingTicker = setInterval(renderLoadingPhase, 250);
+}
+
+function setLoadingBytes(got, total) {
+    loadingBytes = { got: got || 0, total: total || 0 };
+    renderLoadingPhase();
 }
 
 function setLoadingProgress(ratio) {
@@ -267,28 +288,35 @@ function hideLoading() {
         clearInterval(loadingTicker);
         loadingTicker = null;
     }
+    loadingBytes = null;
 }
 
-const RUNTIME_TIMEOUT_MS = 120000;
+const RUNTIME_TIMEOUT_MS = 90000;
+const ASSET_TIMEOUT_MS = 30000;
+// 运行时三个必需文件：一起预取，进度才真实（之前只统计 wasm，进度条跑完了还在下别的）
+const RUNTIME_ASSETS = [
+    { key: 'asm', path: 'pyodide/pyodide.asm.esm.js' },
+    { key: 'wasm', path: 'pyodide/pyodide.asm.wasm' },
+    { key: 'stdlib', path: 'pyodide/python_stdlib.zip' },
+];
 let activeVendorBase = LOCAL_VENDOR;
 
-/**
- * 线上 nginx 没有把 .wasm 映射成 application/wasm，Pyodide 的
- * instantiateStreaming 会因 MIME 不符抛错且不降级（Promise 永不 settle，界面卡住）。
- * 这里先自己把 wasm 取下来（顺便拿到真实下载进度），再用一个 MIME 正确的
- * Response 交给 Pyodide，绕开服务器 MIME 配置。
- */
-function wasmUrl() {
-    return new URL('pyodide/pyodide.asm.wasm', activeVendorBase).href;
+function assetUrl(base, path) {
+    return new URL(path, base).href;
 }
 
-function prefetchWasmWithProgress(onProgress) {
-    return (async () => {
-        const response = await fetch(wasmUrl());
+/** 下载单个资源，带字节进度与 30s 超时（避免网络卡住时无限等） */
+async function downloadAsset(url, onBytes) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), ASSET_TIMEOUT_MS);
+    try {
+        const response = await fetch(url, { signal: controller.signal });
+        if (!response.ok) throw new Error(`HTTP ${response.status} for ${url}`);
         const total = Number(response.headers.get('content-length') || 0);
-        if (!response.body || !total) {
-            onProgress(null);
-            return new Uint8Array(await response.arrayBuffer());
+        if (!response.body) {
+            const buffer = new Uint8Array(await response.arrayBuffer());
+            onBytes(buffer.length, total || buffer.length);
+            return buffer;
         }
         const reader = response.body.getReader();
         const chunks = [];
@@ -298,7 +326,7 @@ function prefetchWasmWithProgress(onProgress) {
             if (done) break;
             chunks.push(value);
             received += value.length;
-            onProgress(received / total);
+            onBytes(received, total);
         }
         const merged = new Uint8Array(received);
         let offset = 0;
@@ -307,23 +335,63 @@ function prefetchWasmWithProgress(onProgress) {
             offset += chunk.length;
         }
         return merged;
-    })();
+    } finally {
+        clearTimeout(timer);
+    }
 }
 
-/** 让 Pyodide 拿到「MIME 正确」的 wasm 响应；用完即还原 window.fetch */
-function installWasmFetchBridge(getBytes) {
+/** 依次预取运行时资源，进度按总字节计算 */
+async function prefetchRuntime(base, onProgress) {
+    const totals = {};
+    const received = {};
+    const report = () => {
+        const keys = Object.keys(totals);
+        const got = keys.reduce((sum, key) => sum + (received[key] || 0), 0);
+        const known = keys.every((key) => totals[key] > 0);
+        const all = keys.reduce((sum, key) => sum + (totals[key] || 0), 0);
+        onProgress(known && all > 0 ? Math.min(1, got / all) : null, got, all);
+    };
+    const buffers = {};
+    for (const asset of RUNTIME_ASSETS) {
+        totals[asset.key] = 0;
+        received[asset.key] = 0;
+        buffers[asset.key] = await downloadAsset(assetUrl(base, asset.path), (got, total) => {
+            received[asset.key] = got;
+            if (total) totals[asset.key] = total;
+            report();
+        });
+        received[asset.key] = buffers[asset.key].length;
+        if (!totals[asset.key]) totals[asset.key] = buffers[asset.key].length;
+        report();
+    }
+    return buffers;
+}
+
+/**
+ * 用预取到的字节构造 MIME 正确的响应交给 Pyodide：
+ * - wasm：nginx 常返回 octet-stream，会让 instantiateStreaming 抛错且不降级（卡死）
+ * - stdlib：已经在我们手里，直接给，避免 Pyodide 再去网络上等
+ */
+function installRuntimeFetchBridge(buffers) {
     const originalFetch = window.fetch.bind(window);
+    const served = [
+        { suffix: '/pyodide.asm.wasm', bytes: buffers.wasm, type: 'application/wasm' },
+        { suffix: '/python_stdlib.zip', bytes: buffers.stdlib, type: 'application/zip' },
+    ];
     window.fetch = async (input, init) => {
-        // Pyodide 传进来的是 URL 对象（fetch(new URL(...))），要按 href 比较
         const url = input instanceof Request
             ? input.url
             : (typeof input === 'string' ? input : String(input && input.href ? input.href : input));
-        if (url === wasmUrl() || url.endsWith('/pyodide.asm.wasm')) {
-            const bytes = await getBytes();
-            return new Response(bytes, {
-                status: 200,
-                headers: { 'Content-Type': 'application/wasm', 'Content-Length': String(bytes.length) },
-            });
+        for (const item of served) {
+            if (url.endsWith(item.suffix) && item.bytes) {
+                return new Response(item.bytes, {
+                    status: 200,
+                    headers: {
+                        'Content-Type': item.type,
+                        'Content-Length': String(item.bytes.length),
+                    },
+                });
+            }
         }
         return originalFetch(input, init);
     };
@@ -675,19 +743,29 @@ async function probeVendor(base, timeoutMs = 2500) {
 
 async function pickVendorBase() {
     if (FORCE_LOCAL) return LOCAL_VENDOR;
-    if (await probeVendor(CDN_VENDOR)) return CDN_VENDOR;
+    const remembered = localStorage.getItem('backfill-vendor');
+    const order = remembered === 'local'
+        ? [LOCAL_VENDOR, CDN_VENDOR]
+        : [CDN_VENDOR, LOCAL_VENDOR];
+    for (const base of order) {
+        if (await probeVendor(base)) return base;
+    }
     return LOCAL_VENDOR;
 }
 
 async function loadRuntimeFrom(base) {
     activeVendorBase = base;
+    const buffers = await prefetchRuntime(base, (ratio, got, total) => {
+        setLoadingProgress(ratio);
+        setLoadingBytes(got, total);
+    });
+
     const pyodideDir = new URL('pyodide/', base).href;
     // 用 .js 而不是 .mjs：nginx 的 mime.types 不含 mjs，会按 octet-stream 返回，
     // 浏览器会拒绝把非 JS MIME 的文件当模块加载（Failed to fetch dynamically imported module）。
     const { loadPyodide } = await import(`${pyodideDir}pyodide.esm.js`);
 
-    const wasmPromise = prefetchWasmWithProgress((ratio) => setLoadingProgress(ratio));
-    const restoreFetch = installWasmFetchBridge(() => wasmPromise);
+    const restoreFetch = installRuntimeFetchBridge(buffers);
     try {
         return await Promise.race([
             loadPyodide({ indexURL: pyodideDir }),
@@ -709,6 +787,7 @@ async function ensurePyodide() {
     let py;
     try {
         py = await loadRuntimeFrom(base);
+        localStorage.setItem('backfill-vendor', base === CDN_VENDOR ? 'cdn' : 'local');
     } catch (error) {
         if (base === LOCAL_VENDOR) throw error;
         console.warn('CDN runtime failed, falling back to same-origin', error);
