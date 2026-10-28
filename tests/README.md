@@ -94,6 +94,25 @@ tests/
 
 **降级是显式记录的**：用例详情里带 `[降级]`，控制台末尾汇总「因基线 DOM 缺稳定钩子而降级的断言」，`artifacts/last-run.json` 里有 `degradations` 与 `hookProbe`（每个钩子是否就位）。改版后钩子就位时会自动走 hook 路径，不再产生降级记录；若某条用例仍降级，说明对应钩子还没接上。
 
+## 回填页测试（`backfill.mjs`，25 条）
+
+`backfill.html` 用 Pyodide 在浏览器里跑 Python 解析 `.aep`，需要 http(s) 加载 wasm / zip，
+所以这套测试**自带一个静态文件服务器**（随机端口），不走 `file://`。
+
+```bash
+cd tests && npm run test:backfill     # 只跑回填页
+cd tests && npm run test:all          # 编辑器 + 回填页
+```
+
+素材：`fixtures/sample.aep`（AE 2026 存的小工程）+ `fixtures/gradient-match.json`（与工程一致）
++ `fixtures/gradient-lost.json`（渐变被写成白→黑的坏文件）。
+
+覆盖：编辑器顶栏入口 → 页面加载 → 加载遮罩（出现/阶段文案/消失）→ 一致场景（状态/禁用/摘要）→ 失配场景（待修正/默认勾选）
+→ 深色主题 → 回填（状态变化/计数/导出可用/`g.k` 逐值等于 AE 真值/`g.p` 同步）
+→ 说明弹窗开关 → 中英切换。
+
+断言依赖页面暴露的 `window.__backfillState`（回填后的 JSON 与行状态），比读 DOM 更可靠。
+
 ## 输出与产物
 
 - 控制台：`PASS/FAIL` 表 + 每条用例的实际观察（渐变名、帧数、行数变化、下载文件大小……）。

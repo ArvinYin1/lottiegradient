@@ -4,9 +4,10 @@
   "description": "> 一个用于修复和编辑 Lottie 动画渐变色的在线工具  \r > An online tool for fixing and editing gradient colors in Lottie animations",
   "main": "index.js",
   "scripts": {
-    "build:css": "tailwindcss -i tailwind-input.css -o css/tailwind.min.css --minify",
-    "watch:css": "tailwindcss -i tailwind-input.css -o css/tailwind.min.css --watch",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "serve": "python3 -m http.server 8000",
+    "test": "node tests/smoke.mjs",
+    "test:backfill": "node tests/backfill.mjs",
+    "test:all": "node tests/smoke.mjs && node tests/backfill.mjs"
   },
   "repository": {
     "type": "git",

@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="从 After Effects 工程读取真实渐变数据，回填到 Lottie JSON 中。">
+    <title>渐变回填 · Lottie Gradient</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script>
+        // 与主站一致：首帧前确定主题，避免闪白
+        (function () {
+            try {
+                var saved = localStorage.getItem('lottie-theme');
+                var dark = saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+                if (dark) document.documentElement.classList.add('dark');
+            } catch (e) {}
+        })();
+    </script>
+</head>
+<body>
+    <header class="topbar">
+        <div class="brand">
+            <div class="brand-mark"><i data-lucide="palette"></i></div>
+            <span class="brand-name">Lottie Gradient</span>
+            <span class="brand-sub" data-i18n="backfill">渐变回填</span>
+        </div>
+        <div class="topbar-divider"></div>
+        <div class="topbar-spacer"></div>
+        <button id="help-btn" class="btn btn-icon" data-i18n-tip="help" aria-label="Help"><i data-lucide="help-circle"></i></button>
+        <button id="lang-btn" class="btn btn-ghost" aria-label="Switch Language">
+            <i data-lucide="languages"></i><span id="lang-text">EN</span>
+        </button>
+        <button id="theme-btn" class="btn btn-icon" data-i18n-tip="theme" aria-label="Theme"><i data-lucide="moon"></i></button>
+        <a class="btn btn-ghost" href="index.html">
+            <i data-lucide="arrow-left"></i><span data-i18n="backToEditor">编辑器</span>
+        </a>
+    </header>
+
+    <main class="bf-main">
+        <div class="bf-grid">
+            <label class="bf-drop" id="drop-json" for="json-file">
+                <div class="bf-drop-head"><i data-lucide="file-json"></i><span data-i18n="jsonTitle">Lottie JSON</span></div>
+                <div class="bf-file" id="json-name"><i data-lucide="upload"></i><span data-i18n="pickFile">选择文件</span></div>
+                <input type="file" id="json-file" class="hidden" accept=".json,application/json">
+            </label>
+
+            <label class="bf-drop" id="drop-aep" for="aep-file">
+                <div class="bf-drop-head"><i data-lucide="folder-open"></i><span data-i18n="aepTitle">AE 工程</span></div>
+                <div class="bf-file" id="aep-name"><i data-lucide="upload"></i><span data-i18n="pickFile">选择文件</span></div>
+                <input type="file" id="aep-file" class="hidden" accept=".aep,.aepx">
+            </label>
+        </div>
+
+        <div class="bf-bar">
+            <button id="parse-btn" class="btn btn-primary" disabled>
+                <i data-lucide="play"></i><span data-i18n="parse">解析并比对</span>
+            </button>
+            <span class="bf-status" id="status-text" data-i18n="statusPick">选择两个文件</span>
+        </div>
+
+        <div class="bf-summary" id="summary"></div>
+
+        <section class="bf-panel">
+            <div class="bf-panel-head">
+                <span class="bf-panel-title" data-i18n="reportTitle">比对报告</span>
+                <span class="badge badge--outline" id="row-count">0</span>
+                <div class="spacer"></div>
+                <button id="toggle-identical" class="btn btn-ghost" data-i18n="onlyPending">只看待修正</button>
+                <button id="apply-btn" class="btn btn-primary" disabled>
+                    <i data-lucide="wand-2"></i><span data-i18n="apply">应用勾选项</span>
+                </button>
+                <button id="download-btn" class="btn btn-outline" disabled>
+                    <i data-lucide="download"></i><span data-i18n="exportJson">导出 JSON</span>
+                </button>
+            </div>
+            <div class="bf-table-wrap">
+                <table class="bf-table">
+                    <colgroup>
+                        <col style="width:36px">
+                        <col>
+                        <col style="width:104px">
+                        <col style="width:168px">
+                        <col style="width:168px">
+                        <col style="width:112px">
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th></th>
+                            <th data-i18n="thGradient">渐变</th>
+                            <th data-i18n="thType">类型</th>
+                            <th data-i18n="thAE">AE 真值</th>
+                            <th data-i18n="thJSON">当前 JSON</th>
+                            <th data-i18n="thStatus">状态</th>
+                        </tr>
+                    </thead>
+                    <tbody id="report-body">
+                        <tr><td colspan="6" class="bf-empty" data-i18n="emptyNoData">还没有数据</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="bf-panel-foot" id="panel-foot"><span class="bf-status" id="apply-status"></span></div>
+        </section>
+    </main>
+
+    <div id="help-modal" class="modal-root hidden">
+        <div class="modal-overlay" data-close></div>
+        <div class="modal-content wide" role="dialog" aria-modal="true">
+            <div class="dialog-head">
+                <div class="dialog-icon"><i data-lucide="help-circle"></i></div>
+                <div>
+                    <div class="dialog-title" data-i18n="helpTitle">关于渐变回填</div>
+                    <div class="dialog-desc" data-i18n="helpDesc">从 .aep 读取真实色标</div>
+                </div>
+                <button class="dialog-close" data-close aria-label="Close"><i data-lucide="x"></i></button>
+            </div>
+            <div class="dialog-body bf-dialog-body">
+                <div class="dialog-section">
+                    <h3 data-i18n="help1Title">它做什么</h3>
+                    <p data-i18n="help1Body"></p>
+                </div>
+                <div class="dialog-section">
+                    <h3 data-i18n="help2Title">匹配规则</h3>
+                    <p data-i18n="help2Body"></p>
+                </div>
+                <div class="dialog-section">
+                    <h3 data-i18n="help3Title">不会处理的情况</h3>
+                    <p data-i18n="help3Body"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="bf-loading" class="bf-loading" aria-live="polite" aria-busy="true">
+        <div class="bf-loading-card">
+            <div class="bf-spinner"></div>
+            <div class="bf-loading-title" data-i18n="loadingTitle">正在准备运行环境</div>
+            <div class="bf-loading-phase" id="loading-phase"></div>
+            <div class="bf-progress"><div class="bf-progress-bar" id="loading-bar"></div></div>
+            <div class="bf-loading-hint" data-i18n="loadingHint">首次加载约 15 MB，之后会走浏览器缓存</div>
+        </div>
+    </div>
+
+    <div id="toast-container"></div>
+
+    <script src="js/vendor/lucide.min.js"></script>
+    <script type="module" src="js/backfill.js"></script>
+</body>
+</html>

@@ -10,9 +10,14 @@ deploy.sh
 .design/
 .preview.html
 
+# AE 工具里的第三方文件备份与本地测试工程（不入库）
+ae/backups/
+ae/project/
+
 # 测试产物
 tests/node_modules/
 tests/artifacts/
 tests/.chrome-profile/
+tests/.chrome-profile-backfill/
 tests/.npm-cache/
 tests/.baseline-src/

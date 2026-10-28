@@ -5,7 +5,9 @@
   "description": "Real-browser smoke tests for the Lottie Gradient Editor (static site, no build step)",
   "type": "module",
   "scripts": {
-    "test": "node smoke.mjs"
+    "test": "node smoke.mjs",
+    "test:backfill": "node backfill.mjs",
+    "test:all": "node smoke.mjs && node backfill.mjs"
   },
   "dependencies": {
     "puppeteer-core": "^24.10.0"

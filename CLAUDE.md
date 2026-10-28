@@ -26,6 +26,7 @@
 | Lottie Web (bodymovin) | Lottie 动画渲染 | `js/vendor/lottie.min.js`（自托管） |
 | gif.js | GIF 导出（含 worker） | `js/vendor/gif.js`（自托管） |
 | Lucide Icons | 图标库 | `js/vendor/lucide.min.js`（自托管） |
+| Pyodide + py-aep | 浏览器内解析 `.aep`，读取真实渐变色标 | `js/vendor/pyodide/`、`js/vendor/pyaep-libs.zip`（自托管，按需加载） |
 
 > 历史说明：UI 重写后已去掉 Tailwind CDN / 构建链（`tailwind.config.js`、`tailwind-input.css`、`css/tailwind.min.css` 均已删除）。样式全部收敛到 `css/style.css` 的设计系统，便于切主题与做深浅色。
 
@@ -33,15 +34,18 @@
 
 ```
 lottiegradient/
-├── index.html          # 页面结构（顶栏 + 三栏工作台 + 两个弹窗）
+├── index.html          # 编辑器（顶栏 + 三栏工作台 + 两个弹窗）
+├── backfill.html       # 渐变回填页（.aep + JSON → 比对 → 回填）
 ├── css/
-│   └── style.css       # 设计系统：tokens / 组件 / 响应式 / 深色主题
+│   └── style.css       # 设计系统：tokens / 组件 / 响应式 / 深色主题 / 回填页
 ├── js/
-│   ├── main.js         # 全部逻辑：i18n、渐变编辑器、导入导出、GIF 导出
-│   └── vendor/         # 自托管依赖：lucide / lottie / gif.js + gif.worker
+│   ├── main.js         # 编辑器逻辑：i18n、渐变编辑器、导入导出、GIF 导出
+│   ├── backfill.js     # 回填页逻辑：Pyodide 启动、路径匹配、比对与回填
+│   └── vendor/         # 自托管依赖：lucide / lottie / gif.js + pyodide / py-aep
 ├── tests/
-│   ├── smoke.mjs       # puppeteer-core 真实浏览器冒烟测试（14 条用例）
-│   ├── fixtures/       # 测试用 Lottie JSON
+│   ├── smoke.mjs       # 编辑器冒烟测试（14 条用例，file://）
+│   ├── backfill.mjs    # 回填页测试（25 条用例，自带静态服务器）
+│   ├── fixtures/       # 测试用 Lottie JSON + sample.aep
 │   └── README.md       # 跑测说明 / 改版适配
 ├── svg/                # 本地 SVG 图标备用资源（运行时实际用 js/vendor/lucide）
 ├── README.md / AGENTS.md / CLAUDE.md
@@ -123,6 +127,19 @@ to_css() / to_lottie()        // 合并预览 CSS / Lottie 平铺数组
 - 文案字典在 `js/main.js` 顶部（`zh` / `en`），静态节点用 `data-i18n` / `data-i18n-placeholder`，JS 动态文案用 `t(key)`。
 - 新增文案必须同时补 `zh` 与 `en`；动态生成的表头 / 按钮在 `refreshLanguage()` 里更新。
 
+### 7. 渐变回填页（`backfill.html` + `js/backfill.js`）
+
+独立页面，入口是编辑器顶栏的「渐变回填」链接。解决的是「手里还有 AE 工程，想直接拿工程里的真实渐变」的场景：
+
+- **原理**：AE 脚本 API 读不到渐变（`ADBE Vector Grad Colors` 是 `NO_VALUE`），Bodymovin 自己也是把 `.aep` 当文本搜索。这里改用 **Pyodide 在浏览器里跑 py-aep**，直接解析 `.aep` 里的渐变 XML，拿到色标（offset / 中点 / RGB）与透明度色标。
+- **懒加载**：`js/vendor/pyodide/`（约 13 MB）与 `js/vendor/pyaep-libs.zip`（约 2.8 MB）只在用户点「解析并比对」时才加载；编辑器首屏零新增请求。
+- **加载态**：`#bf-loading` 遮罩（spinner + 阶段文案 + 进度条 + 已用时）。py-aep 依赖包带真实下载百分比（`fetchWithProgress`），Pyodide 内部加载无法测量，走不确定进度 + 计时。
+- **关键规则**：Bodymovin 会把 AE 的「中点」展开成额外色标（N → 2N−1），颜色与透明度各自独立展开；所有 alpha 为 1 时不写透明度段。补丁生成照抄了这套规则（`js/vendor/pyaep/extract.py` 的 `expand_stops()`），因此回填值与 Bodymovin 导出值逐位一致。
+- **匹配**：先按「合成 / 图层 / 组 / 渐变名」完整路径精确匹配；失败则退回「同名 + 出现顺序」，并在类型列标注「按名匹配」。关键帧渐变只提示不回填；JSON 缺失/多出的渐变只统计不增删。
+- **i18n**：回填页有自己的字典（`js/backfill.js` 顶部），与编辑器共用 `localStorage['lottie-lang']` 和 `localStorage['lottie-theme']`，两个页面语言/主题同步。
+- **测试钩子**：`window.__backfillState` 暴露内部状态，供 `tests/backfill.mjs` 断言回填后的 `g.k` / `g.p`。
+- **样式**：页面级样式以 `.bf-*` 前缀写在 `css/style.css` 末尾，只允许用 token。
+
 ## 主题与样式
 
 ### 设计 token（`css/style.css`）
@@ -189,7 +206,20 @@ npm test               # 等价于 cd tests && npm test
 
 ## 测试
 
-`tests/smoke.mjs` 用 puppeteer-core + 系统 Chrome，`file://` 直接打开页面，覆盖 14 条用例（加载 / 导入 / 选中 / 改色 / 增删色标 / 搜索 / 播放 / 导出 / 响应式 / 同名渐变 / 色标分离 / 播放状态保持 / 关键帧）。选择器集中在文件顶部 `SELECTORS`，改版只需微调那里。详见 `tests/README.md`、基线报告 `tests/BASELINE.md`。
+两套测试都用 puppeteer-core + 系统 Chrome，选择器集中在文件顶部 `SELECTORS`：
+
+| 文件 | 覆盖 | 条数 | 运行方式 |
+|---|---|---|---|
+| `tests/smoke.mjs` | 编辑器：加载 / 导入 / 选中 / 改色 / 增删色标 / 搜索 / 播放 / 导出 / 响应式 / 同名渐变 / 色标分离 / 播放状态保持 / 关键帧 | 14 | `file://` 直接打开 |
+| `tests/backfill.mjs` | 回填页：入口 / 加载态 / 解析 / 一致 / 失配 / 回填 / 主题 / 说明弹窗 / 中英切换 | 25 | 自带静态服务器（Pyodide 需要 http） |
+
+```bash
+cd tests && npm test            # 编辑器
+cd tests && npm run test:backfill
+cd tests && npm run test:all    # 两套都跑
+```
+
+详见 `tests/README.md`、基线报告 `tests/BASELINE.md`。
 
 ## 部署
 
@@ -197,7 +227,7 @@ npm test               # 等价于 cd tests && npm test
 推送到 `main` 后自动更新（Settings > Pages，源为 `main`）。
 
 ### 自建服务器
-`deploy.sh` 通过 rsync over SSH 同步 `index.html css js svg` 到 nginx 目录，脚本含线上验收。
+`deploy.sh` 通过 rsync over SSH 同步 `index.html backfill.html css js svg` 到 nginx 目录，脚本含线上验收。
 
 ## 浏览器兼容性
 
