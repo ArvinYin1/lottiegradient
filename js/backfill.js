@@ -7,9 +7,19 @@
  * 全部在本机完成，文件不上传。Pyodide 与 Python 依赖均按需加载。
  */
 
-const PYODIDE_URL = new URL('./vendor/pyodide/', import.meta.url).href;
-const LIBS_ZIP = new URL('./vendor/pyaep-libs.zip', import.meta.url).href;
-const EXTRACT_PY = new URL('./vendor/pyaep/extract.py', import.meta.url).href;
+/**
+ * 运行时资源来源。自建 nginx 的带宽有限（实测 ~0.3 MB/s），15 MB 要等 40 多秒；
+ * GitHub Pages 走 CDN（实测 ~2.7 MB/s）且带 Access-Control-Allow-Origin: *，
+ * 所以默认优先从 Pages 取，失败再回落到同源，保证离线/内网也能用。
+ * 加 ?local=1 可强制只用同源（测试用）。
+ */
+const LOCAL_VENDOR = new URL('./vendor/', import.meta.url).href;
+const CDN_VENDOR = 'https://arvinyin1.github.io/lottiegradient/js/vendor/';
+const FORCE_LOCAL = new URLSearchParams(location.search).has('local');
+
+const PYODIDE_URL = new URL('pyodide/', LOCAL_VENDOR).href;
+const LIBS_ZIP = new URL('pyaep-libs.zip', LOCAL_VENDOR).href;
+const EXTRACT_PY = new URL('pyaep/extract.py', LOCAL_VENDOR).href;
 
 /* ============ i18n ============ */
 
@@ -259,8 +269,8 @@ function hideLoading() {
     }
 }
 
-const WASM_URL = new URL('vendor/pyodide/pyodide.asm.wasm', import.meta.url).href;
 const RUNTIME_TIMEOUT_MS = 120000;
+let activeVendorBase = LOCAL_VENDOR;
 
 /**
  * 线上 nginx 没有把 .wasm 映射成 application/wasm，Pyodide 的
@@ -268,9 +278,13 @@ const RUNTIME_TIMEOUT_MS = 120000;
  * 这里先自己把 wasm 取下来（顺便拿到真实下载进度），再用一个 MIME 正确的
  * Response 交给 Pyodide，绕开服务器 MIME 配置。
  */
+function wasmUrl() {
+    return new URL('pyodide/pyodide.asm.wasm', activeVendorBase).href;
+}
+
 function prefetchWasmWithProgress(onProgress) {
     return (async () => {
-        const response = await fetch(WASM_URL);
+        const response = await fetch(wasmUrl());
         const total = Number(response.headers.get('content-length') || 0);
         if (!response.body || !total) {
             onProgress(null);
@@ -304,7 +318,7 @@ function installWasmFetchBridge(getBytes) {
         const url = input instanceof Request
             ? input.url
             : (typeof input === 'string' ? input : String(input && input.href ? input.href : input));
-        if (url === WASM_URL || url.endsWith('/pyodide.asm.wasm')) {
+        if (url === wasmUrl() || url.endsWith('/pyodide.asm.wasm')) {
             const bytes = await getBytes();
             return new Response(bytes, {
                 status: 200,
@@ -319,6 +333,7 @@ function installWasmFetchBridge(getBytes) {
 /** 带下载进度的 fetch（能拿到 Content-Length 时给出百分比） */
 async function fetchWithProgress(url, onProgress, asText = false) {
     const response = await fetch(url);
+    if (!response.ok) throw new Error(`HTTP ${response.status} for ${url}`);
     const total = Number(response.headers.get('content-length') || 0);
     if (!response.body || !total) {
         onProgress(null);
@@ -641,25 +656,41 @@ function updateApplyButton() {
 
 /* ============ Pyodide ============ */
 
-async function ensurePyodide() {
-    if (state.py) return state.py;
-    setStatus('statusPyLoading');
-    showLoading('loadingPy', {});
+/** 快速探测某个来源是否可用（避免回退时被浏览器超时拖住） */
+async function probeVendor(base, timeoutMs = 2500) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+        const response = await fetch(new URL('pyodide/pyodide.esm.js', base).href, {
+            method: 'HEAD',
+            signal: controller.signal,
+        });
+        return response.ok;
+    } catch (error) {
+        return false;
+    } finally {
+        clearTimeout(timer);
+    }
+}
+
+async function pickVendorBase() {
+    if (FORCE_LOCAL) return LOCAL_VENDOR;
+    if (await probeVendor(CDN_VENDOR)) return CDN_VENDOR;
+    return LOCAL_VENDOR;
+}
+
+async function loadRuntimeFrom(base) {
+    activeVendorBase = base;
+    const pyodideDir = new URL('pyodide/', base).href;
     // 用 .js 而不是 .mjs：nginx 的 mime.types 不含 mjs，会按 octet-stream 返回，
     // 浏览器会拒绝把非 JS MIME 的文件当模块加载（Failed to fetch dynamically imported module）。
-    const { loadPyodide } = await import(`${PYODIDE_URL}pyodide.esm.js`);
+    const { loadPyodide } = await import(`${pyodideDir}pyodide.esm.js`);
 
-    let wasmBytes = null;
-    const wasmPromise = prefetchWasmWithProgress((ratio) => {
-        if (ratio !== null) setLoadingProgress(ratio);
-        else setLoadingProgress(null);
-    }).then((bytes) => { wasmBytes = bytes; return bytes; });
+    const wasmPromise = prefetchWasmWithProgress((ratio) => setLoadingProgress(ratio));
     const restoreFetch = installWasmFetchBridge(() => wasmPromise);
-
-    let py;
     try {
-        py = await Promise.race([
-            loadPyodide({ indexURL: PYODIDE_URL }),
+        return await Promise.race([
+            loadPyodide({ indexURL: pyodideDir }),
             new Promise((_, reject) => setTimeout(
                 () => reject(new Error(t('runtimeTimeout'))), RUNTIME_TIMEOUT_MS
             )),
@@ -667,11 +698,37 @@ async function ensurePyodide() {
     } finally {
         restoreFetch();
     }
-    void wasmBytes;
+}
+
+async function ensurePyodide() {
+    if (state.py) return state.py;
+    setStatus('statusPyLoading');
+    showLoading('loadingPy', {});
+
+    const base = await pickVendorBase();
+    let py;
+    try {
+        py = await loadRuntimeFrom(base);
+    } catch (error) {
+        if (base === LOCAL_VENDOR) throw error;
+        console.warn('CDN runtime failed, falling back to same-origin', error);
+        showLoading('loadingPy', {});
+        py = await loadRuntimeFrom(LOCAL_VENDOR);
+    }
 
     setStatus('statusUnpacking');
     showLoading('loadingUnpack');
-    const zipBuf = await fetchWithProgress(LIBS_ZIP, (ratio) => setLoadingProgress(ratio));
+    const zipUrls = [new URL('pyaep-libs.zip', activeVendorBase).href, LIBS_ZIP];
+    let zipBuf = null;
+    for (const url of new Set(zipUrls)) {
+        try {
+            zipBuf = await fetchWithProgress(url, (ratio) => setLoadingProgress(ratio));
+            break;
+        } catch (error) {
+            console.warn('fetch py-aep libs failed:', url, error);
+        }
+    }
+    if (!zipBuf) throw new Error(t('toastFailed', { msg: 'py-aep libs' }));
     await py.unpackArchive(new Uint8Array(zipBuf), 'zip', { extractDir: '/libs' });
     py.runPython("import sys; sys.path.insert(0, '/libs')");
 

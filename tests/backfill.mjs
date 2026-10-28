@@ -136,6 +136,8 @@ fs.rmSync(CHROME_PROFILE, { recursive: true, force: true });
 
 const { server, port } = await startServer();
 const BASE = `http://127.0.0.1:${port}`;
+// 测试只跑同源路径（?local=1），避免依赖外网 CDN；CDN 路径由线上 E2E 覆盖
+const PAGE_URL = `${BASE}/backfill.html?local=1`;
 
 const browser = await puppeteer.launch({
     executablePath: CHROME_PATH,
@@ -161,7 +163,7 @@ try {
         entry ? JSON.stringify(entry) : '未找到');
 
     /* ---------- 1. 页面加载 ---------- */
-    await page.goto(`${BASE}/backfill.html`, { waitUntil: 'networkidle0' });
+    await page.goto(PAGE_URL, { waitUntil: 'networkidle0' });
     check('回填页加载', await page.$eval('.brand-name', (el) => el.textContent.includes('Lottie')));
     requestedUrls.length = 0;   // 只统计本次页面产生的请求
     check('两个文件选择区', (await page.$$('.bf-drop')).length === 2);
@@ -332,7 +334,7 @@ try {
     check('切回中文', (await page.$eval('.bf-table thead th:nth-child(2)', (el) => el.textContent.trim())) === '渐变');
 
     /* ---------- 8. 截图 ---------- */
-    await page.goto(`${BASE}/backfill.html`, { waitUntil: 'networkidle0' });
+    await page.goto(PAGE_URL, { waitUntil: 'networkidle0' });
     await upload(FIXTURE_LOST);
     await parse();
     await page.screenshot({ path: path.join(ARTIFACTS, 'backfill-pending.png') });
