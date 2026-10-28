@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="从 After Effects 工程读取真实渐变数据，回填到 Lottie JSON 中。">
+    <meta name="description" content="从 After Effects 工程读取真实渐变数据，自动修复 Lottie JSON 中的渐变，并对比修复前后效果。">
     <title>渐变回填 · Lottie Gradient</title>
     <link rel="stylesheet" href="css/style.css">
     <script>
@@ -53,53 +53,45 @@
 
         <div class="bf-bar">
             <button id="parse-btn" class="btn btn-primary" disabled>
-                <i data-lucide="play"></i><span data-i18n="parse">解析并比对</span>
+                <i data-lucide="wand-2"></i><span data-i18n="parse">解析并修复</span>
+            </button>
+            <button id="download-btn" class="btn btn-outline" disabled>
+                <i data-lucide="download"></i><span data-i18n="exportJson">导出 JSON</span>
             </button>
             <span class="bf-status" id="status-text" data-i18n="statusPick">选择两个文件</span>
         </div>
 
         <div class="bf-summary" id="summary"></div>
 
-        <section class="bf-panel">
-            <div class="bf-panel-head">
-                <span class="bf-panel-title" data-i18n="reportTitle">比对报告</span>
-                <span class="badge badge--outline" id="row-count">0</span>
-                <div class="spacer"></div>
-                <button id="toggle-identical" class="btn btn-ghost" data-i18n="onlyPending">只看待修正</button>
-                <button id="apply-btn" class="btn btn-primary" disabled>
-                    <i data-lucide="wand-2"></i><span data-i18n="apply">应用勾选项</span>
-                </button>
-                <button id="download-btn" class="btn btn-outline" disabled>
-                    <i data-lucide="download"></i><span data-i18n="exportJson">导出 JSON</span>
-                </button>
-            </div>
-            <div class="bf-table-wrap">
-                <table class="bf-table">
-                    <colgroup>
-                        <col style="width:36px">
-                        <col>
-                        <col style="width:104px">
-                        <col style="width:168px">
-                        <col style="width:168px">
-                        <col style="width:112px">
-                    </colgroup>
-                    <thead>
-                        <tr>
-                            <th></th>
-                            <th data-i18n="thGradient">渐变</th>
-                            <th data-i18n="thType">类型</th>
-                            <th data-i18n="thAE">AE 真值</th>
-                            <th data-i18n="thJSON">当前 JSON</th>
-                            <th data-i18n="thStatus">状态</th>
-                        </tr>
-                    </thead>
-                    <tbody id="report-body">
-                        <tr><td colspan="6" class="bf-empty" data-i18n="emptyNoData">还没有数据</td></tr>
-                    </tbody>
-                </table>
-            </div>
-            <div class="bf-panel-foot" id="panel-foot"><span class="bf-status" id="apply-status"></span></div>
-        </section>
+        <div class="bf-compare">
+            <section class="bf-stage-card">
+                <div class="bf-stage-head">
+                    <span class="bf-stage-label" data-i18n="before">修复前</span>
+                </div>
+                <div class="bf-stage" id="stage-before">
+                    <span class="bf-stage-empty" data-i18n="previewEmpty">解析后在这里对比</span>
+                </div>
+            </section>
+
+            <section class="bf-stage-card">
+                <div class="bf-stage-head">
+                    <span class="bf-stage-label" data-i18n="after">修复后</span>
+                    <span class="spacer"></span>
+                    <span class="badge badge--outline" id="fixed-count" hidden></span>
+                </div>
+                <div class="bf-stage" id="stage-after">
+                    <span class="bf-stage-empty" data-i18n="previewEmpty">解析后在这里对比</span>
+                </div>
+            </section>
+        </div>
+
+        <div class="bf-transport">
+            <button id="play-btn" class="btn btn-icon" data-i18n-tip="play" aria-label="Play" disabled>
+                <i data-lucide="play"></i>
+            </button>
+            <input id="timeline" class="bf-timeline" type="range" min="0" max="1000" value="0" disabled>
+            <span class="bf-time" id="time-display">0 / 0</span>
+        </div>
     </main>
 
     <div id="help-modal" class="modal-root hidden">
@@ -130,19 +122,37 @@
         </div>
     </div>
 
+    <div id="skip-modal" class="modal-root hidden">
+        <div class="modal-overlay" data-close></div>
+        <div class="modal-content wide" role="dialog" aria-modal="true">
+            <div class="dialog-head">
+                <div class="dialog-icon"><i data-lucide="alert-triangle"></i></div>
+                <div>
+                    <div class="dialog-title" data-i18n="skipTitle">未处理的项</div>
+                    <div class="dialog-desc" data-i18n="skipDesc">这些渐变没有回填</div>
+                </div>
+                <button class="dialog-close" data-close aria-label="Close"><i data-lucide="x"></i></button>
+            </div>
+            <div class="dialog-body">
+                <div class="bf-skip-list" id="skip-list"></div>
+            </div>
+        </div>
+    </div>
+
     <div id="bf-loading" class="bf-loading" aria-live="polite" aria-busy="true">
         <div class="bf-loading-card">
             <div class="bf-spinner"></div>
             <div class="bf-loading-title" data-i18n="loadingTitle">正在准备运行环境</div>
             <div class="bf-loading-phase" id="loading-phase"></div>
             <div class="bf-progress"><div class="bf-progress-bar" id="loading-bar"></div></div>
-            <div class="bf-loading-hint" data-i18n="loadingHint">首次加载约 15 MB，之后会走浏览器缓存</div>
+            <div class="bf-loading-hint" data-i18n="loadingHint">首次加载约 15 MB，之后走浏览器缓存</div>
         </div>
     </div>
 
     <div id="toast-container"></div>
 
     <script src="js/vendor/lucide.min.js"></script>
+    <script src="js/vendor/lottie.min.js"></script>
     <script type="module" src="js/backfill.js"></script>
 </body>
 </html>

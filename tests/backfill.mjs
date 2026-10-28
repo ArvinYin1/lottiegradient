@@ -2,16 +2,16 @@
 /**
  * Lottie Gradient Editor - 渐变回填页测试
  *
- * 覆盖 backfill.html：从 .aep 读取真实色标 → 与 JSON 比对 → 勾选回填。
+ * 覆盖 backfill.html：从 .aep 读取真实色标 → 自动修复 JSON → 修复前/后对比预览。
  *
- * 与其他冒烟测试的区别：这页用 Pyodide 在浏览器里跑 Python，需要 http(s) 加载
- * wasm/zip，所以测试自带一个静态文件服务器（随机端口），不用 file://。
+ * 这页用 Pyodide 在浏览器里跑 Python，需要 http(s) 加载 wasm/zip，所以测试自带
+ * 一个静态文件服务器（随机端口），并故意按线上 nginx 的 MIME 返回 .mjs / .wasm，
+ * 以保证「不依赖服务器 MIME 配置」这条一直成立。
  *
  * 运行：
  *   cd tests && npm run test:backfill
  *   CHROME_PATH=/path/to/chrome npm run test:backfill
  *   HEADFUL=1 npm run test:backfill
- *   ARTIFACTS_DIR=artifacts/backfill npm run test:backfill
  *
  * 退出码：0 = 全部 PASS，1 = 有 FAIL
  */
@@ -23,37 +23,32 @@ import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer-core';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const TESTS_DIR = __dirname;
 const REPO_ROOT = path.resolve(__dirname, '..');
 
-const FIXTURE_MATCH = path.join(TESTS_DIR, 'fixtures', 'gradient-match.json');
-const FIXTURE_LOST = path.join(TESTS_DIR, 'fixtures', 'gradient-lost.json');
-const FIXTURE_AEP = path.join(TESTS_DIR, 'fixtures', 'sample.aep');
+const FIXTURE_MATCH = path.join(__dirname, 'fixtures', 'gradient-match.json');
+const FIXTURE_LOST = path.join(__dirname, 'fixtures', 'gradient-lost.json');
+const FIXTURE_AEP = path.join(__dirname, 'fixtures', 'sample.aep');
 
 const ARTIFACTS = process.env.ARTIFACTS_DIR
-    ? path.resolve(TESTS_DIR, process.env.ARTIFACTS_DIR)
-    : path.join(TESTS_DIR, 'artifacts', 'backfill');
-const CHROME_PROFILE = path.join(TESTS_DIR, '.chrome-profile-backfill');
+    ? path.resolve(__dirname, process.env.ARTIFACTS_DIR)
+    : path.join(__dirname, 'artifacts', 'backfill');
+const CHROME_PROFILE = path.join(__dirname, '.chrome-profile-backfill');
 const CHROME_PATH = process.env.CHROME_PATH || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 const HEADLESS = process.env.HEADFUL === '1' ? false : true;
-// 首次要下载/解包 Pyodide，给足时间
 const WAIT_TIMEOUT = Number(process.env.WAIT_TIMEOUT || 60000);
 
-/* ------------------------------------------------------------------ */
-/* 选择器：页面结构变化时只改这里                                      */
-/* ------------------------------------------------------------------ */
 const SELECTORS = {
     jsonInput: '#json-file',
     aepInput: '#aep-file',
     parseButton: '#parse-btn',
-    applyButton: '#apply-btn',
     downloadButton: '#download-btn',
-    toggleIdentical: '#toggle-identical',
     statusText: '#status-text',
     summary: '#summary',
-    reportBody: '#report-body',
-    rowCount: '#row-count',
-    applyStatus: '#apply-status',
+    stageBefore: '#stage-before',
+    stageAfter: '#stage-after',
+    playButton: '#play-btn',
+    timeline: '#timeline',
+    fixedCount: '#fixed-count',
     helpButton: '#help-btn',
     helpModal: '#help-modal',
     themeButton: '#theme-btn',
@@ -61,21 +56,20 @@ const SELECTORS = {
     backfillEntry: 'a[href="backfill.html"]',
     loadingMask: '#bf-loading',
     loadingPhase: '#loading-phase',
-    loadingBar: '#loading-bar',
 };
 
 /* ------------------------------------------------------------------ */
-/* 静态服务器                                                          */
+/* 静态服务器（模拟线上 nginx 的 MIME）                                 */
 /* ------------------------------------------------------------------ */
 const MIME = {
     '.html': 'text/html; charset=utf-8',
     '.js': 'text/javascript; charset=utf-8',
-    // 故意与线上 nginx 保持一致：mime.types 里没有 mjs，wasm 也不在默认表里
-    '.mjs': 'application/octet-stream',
     '.css': 'text/css; charset=utf-8',
     '.json': 'application/json; charset=utf-8',
     '.py': 'text/plain; charset=utf-8',
     '.zip': 'application/zip',
+    // 线上 nginx 的 mime.types 不含 mjs，wasm 也不在默认表里
+    '.mjs': 'application/octet-stream',
     '.wasm': 'application/octet-stream',
     '.aep': 'application/octet-stream',
     '.svg': 'image/svg+xml',
@@ -110,27 +104,20 @@ function startServer() {
 const results = [];
 function check(name, ok, detail = '') {
     results.push({ name, ok });
-    const mark = ok ? 'PASS' : 'FAIL';
-    console.log(`${mark}  ${name}${detail ? `  — ${detail}` : ''}`);
+    console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? `  — ${detail}` : ''}`);
 }
 
-function requireFixtures() {
-    for (const file of [FIXTURE_MATCH, FIXTURE_LOST, FIXTURE_AEP]) {
-        if (!fs.existsSync(file)) {
-            console.error(`缺少测试素材：${file}`);
-            process.exit(1);
-        }
-    }
-    if (!fs.existsSync(CHROME_PATH)) {
-        console.error(`Chrome 不存在: ${CHROME_PATH}\n可用 CHROME_PATH 指定`);
+for (const file of [FIXTURE_MATCH, FIXTURE_LOST, FIXTURE_AEP]) {
+    if (!fs.existsSync(file)) {
+        console.error(`缺少测试素材：${file}`);
         process.exit(1);
     }
 }
+if (!fs.existsSync(CHROME_PATH)) {
+    console.error(`Chrome 不存在: ${CHROME_PATH}\n可用 CHROME_PATH 指定`);
+    process.exit(1);
+}
 
-/* ------------------------------------------------------------------ */
-/* 主流程                                                              */
-/* ------------------------------------------------------------------ */
-requireFixtures();
 fs.mkdirSync(ARTIFACTS, { recursive: true });
 fs.rmSync(CHROME_PROFILE, { recursive: true, force: true });
 
@@ -138,7 +125,7 @@ const { server, port } = await startServer();
 const BASE = `http://127.0.0.1:${port}`;
 // 测试只跑同源路径（?local=1），避免依赖外网 CDN；CDN 路径由线上 E2E 覆盖
 const PAGE_URL = `${BASE}/backfill.html?local=1`;
-const PAGE_URL_AUTO = `${BASE}/backfill.html`;   // 走 CDN 探测 + 回退逻辑
+const PAGE_URL_AUTO = `${BASE}/backfill.html`;
 
 const browser = await puppeteer.launch({
     executablePath: CHROME_PATH,
@@ -148,10 +135,41 @@ const browser = await puppeteer.launch({
 });
 
 const page = await browser.newPage();
-await page.setViewport({ width: 1280, height: 940 });
+await page.setViewport({ width: 1280, height: 1000 });
 page.on('pageerror', (error) => console.log('[page exception]', error.message));
 const requestedUrls = [];
 page.on('request', (request) => requestedUrls.push(request.url()));
+
+async function upload(jsonFixture) {
+    await (await page.$(SELECTORS.jsonInput)).uploadFile(jsonFixture);
+    await (await page.$(SELECTORS.aepInput)).uploadFile(FIXTURE_AEP);
+    await page.waitForFunction(
+        (selector) => !document.querySelector(selector).disabled,
+        { timeout: WAIT_TIMEOUT },
+        SELECTORS.parseButton
+    );
+}
+
+async function waitDone() {
+    await page.waitForFunction(
+        (selector) => !document.querySelector(selector).disabled
+            && /完成|Done|失败|Failed/.test(document.querySelector('#status-text').textContent),
+        { timeout: WAIT_TIMEOUT },
+        SELECTORS.parseButton
+    );
+    return page.evaluate(() => ({
+        status: document.getElementById('status-text').textContent,
+        summary: document.getElementById('summary').textContent.replace(/\s+/g, ' ').trim(),
+        fixedBadge: (() => {
+            const el = document.getElementById('fixed-count');
+            return el && !el.hidden ? el.textContent : null;
+        })(),
+        svgBefore: !!document.querySelector('#stage-before svg'),
+        svgAfter: !!document.querySelector('#stage-after svg'),
+        downloadDisabled: document.getElementById('download-btn').disabled,
+        total: window.__backfillPreview.total,
+    }));
+}
 
 try {
     /* ---------- 0. 主站入口 ---------- */
@@ -166,75 +184,27 @@ try {
     /* ---------- 1. 页面加载 ---------- */
     await page.goto(PAGE_URL, { waitUntil: 'networkidle0' });
     check('回填页加载', await page.$eval('.brand-name', (el) => el.textContent.includes('Lottie')));
-    requestedUrls.length = 0;   // 只统计本次页面产生的请求
     check('两个文件选择区', (await page.$$('.bf-drop')).length === 2);
+    check('默认有修复前/修复后两块画布',
+        (await page.$('#stage-before')) !== null && (await page.$('#stage-after')) !== null);
 
-    async function upload(jsonFixture) {
-        await (await page.$(SELECTORS.jsonInput)).uploadFile(jsonFixture);
-        await (await page.$(SELECTORS.aepInput)).uploadFile(FIXTURE_AEP);
-        await page.waitForFunction(
-            (selector) => !document.querySelector(selector).disabled,
-            { timeout: WAIT_TIMEOUT },
-            SELECTORS.parseButton
-        );
-    }
-
-    async function parse() {
-        await page.click(SELECTORS.parseButton);
-        await page.waitForFunction(
-            (selector) => !document.querySelector(selector).disabled
-                && /完成|Done|失败|Failed/.test(document.querySelector('#status-text').textContent),
-            { timeout: WAIT_TIMEOUT },
-            SELECTORS.parseButton
-        );
-        return page.evaluate(() => ({
-            count: document.querySelectorAll('#report-body tr').length,
-            rows: [...document.querySelectorAll('#report-body tr')].map((tr) => ({
-                name: tr.querySelector('.bf-path .nm')?.textContent || '',
-                status: tr.querySelector('td[data-status] .badge')?.textContent || '',
-                checked: tr.querySelector('.row-check')?.checked ?? null,
-                disabled: tr.querySelector('.row-check')?.disabled ?? null,
-            })),
-            summary: document.querySelector('#summary').textContent.replace(/\s+/g, ' ').trim(),
-        }));
-    }
-
-    /* ---------- 2. JSON 与 AE 一致 ---------- */
-    await upload(FIXTURE_MATCH);
-    let out = await parse();
-    check('一致场景：出表 1 行', out.count === 1, `count=${out.count}`);
-    check('一致场景：状态一致', out.rows[0]?.status === '一致', out.rows[0]?.status);
-    check('一致场景：勾选框禁用', out.rows[0]?.disabled === true);
-    check('一致场景：摘要只显示必要项', /待修正 0/.test(out.summary), out.summary);
-    check('一致场景：导出按钮禁用', await page.$eval(SELECTORS.downloadButton, (el) => el.disabled));
-
-    /* ---------- 3. 渐变丢失（白→黑） ---------- */
-    await page.goto(`${BASE}/backfill.html`, { waitUntil: 'networkidle0' });
+    /* ---------- 2. 渐变丢失 → 自动修复 + 预览 ---------- */
     await upload(FIXTURE_LOST);
-
-    // 加载遮罩：点解析后应立即出现（首次要下载/编译 Pyodide），完成后消失
     await page.click(SELECTORS.parseButton);
+
     const maskShown = await page
         .waitForFunction(
             (selector) => document.querySelector(selector).classList.contains('is-visible'),
             { timeout: 5000 },
             SELECTORS.loadingMask
-        )
-        .then(() => true)
-        .catch(() => false);
+        ).then(() => true).catch(() => false);
     const maskInfo = maskShown
         ? await page.evaluate((selectors) => ({
             visible: document.querySelector(selectors.loadingMask).classList.contains('is-visible'),
             phase: document.querySelector(selectors.loadingPhase).textContent.trim(),
-            hint: document.querySelector('.bf-loading-hint').textContent.trim(),
         }), SELECTORS)
         : null;
     check('解析时出现加载遮罩', maskShown && maskInfo.visible, maskInfo ? maskInfo.phase : '未出现');
-    check('加载遮罩显示阶段与体积提示',
-        !!maskInfo && maskInfo.phase.length > 0 && /MB/.test(maskInfo.hint),
-        maskInfo ? `phase="${maskInfo.phase}" hint="${maskInfo.hint}"` : '');
-    await page.screenshot({ path: path.join(ARTIFACTS, 'backfill-loading.png') });
-
     await page.waitForFunction(
         (selector) => !document.querySelector(selector).disabled,
         { timeout: WAIT_TIMEOUT },
@@ -247,38 +217,15 @@ try {
     const mjsRequests = requestedUrls.filter((url) => url.endsWith('.mjs'));
     check('不依赖 .mjs（兼容 nginx 未配置 mjs MIME）', mjsRequests.length === 0,
         mjsRequests.length ? mjsRequests.join(', ') : '0 个 .mjs 请求');
-    out = await page.evaluate(() => ({
-        count: document.querySelectorAll('#report-body tr').length,
-        rows: [...document.querySelectorAll('#report-body tr')].map((tr) => ({
-            name: tr.querySelector('.bf-path .nm')?.textContent || '',
-            status: tr.querySelector('td[data-status] .badge')?.textContent || '',
-            checked: tr.querySelector('.row-check')?.checked ?? null,
-            disabled: tr.querySelector('.row-check')?.disabled ?? null,
-        })),
-        summary: document.querySelector('#summary').textContent.replace(/\s+/g, ' ').trim(),
-    }));
-    check('坏文件场景：状态待修正', out.rows[0]?.status === '待修正', out.rows[0]?.status);
-    check('坏文件场景：默认勾选', out.rows[0]?.checked === true);
-    check('坏文件场景：摘要待修正 1', /待修正 1/.test(out.summary), out.summary);
 
-    const before = await page.evaluate(() => {
-        const row = window.__backfillState.rows[0];
-        return { ae: row.ae.k, json: row.jsonArr };
-    });
-    check('回填前两侧数值不同', JSON.stringify(before.ae) !== JSON.stringify(before.json));
+    let out = await waitDone();
+    check('自动修复：摘要显示已修复 1 个渐变', /已修复 1 个渐变/.test(out.summary), out.summary);
+    check('自动修复：数量徽标 +1', out.fixedBadge === '+1', String(out.fixedBadge));
+    check('预览：修复前后都渲染出 svg', out.svgBefore && out.svgAfter);
+    check('预览：时间轴拿到总帧数', out.total > 1, `total=${out.total}`);
+    check('导出按钮可用', out.downloadDisabled === false);
 
-    /* ---------- 4. 深色主题 ---------- */
-    await page.click(SELECTORS.themeButton);
-    await new Promise((r) => setTimeout(r, 240));
-    check('深色主题可切换', await page.evaluate(() => document.documentElement.classList.contains('dark')));
-    await page.click(SELECTORS.themeButton);
-    await new Promise((r) => setTimeout(r, 200));
-
-    /* ---------- 5. 回填 ---------- */
-    await page.click(SELECTORS.applyButton);
-    await new Promise((r) => setTimeout(r, 300));
-    const after = await page.evaluate(() => {
-        const row = window.__backfillState.rows[0];
+    const data = await page.evaluate(() => {
         const walk = (node) => {
             if (node && typeof node === 'object') {
                 if (node.ty === 'gf' || node.ty === 'gs') return node.g;
@@ -289,29 +236,49 @@ try {
             }
             return null;
         };
-        const gradientNode = walk(window.__backfillState.jsonData);
-        const raw = gradientNode && gradientNode.k && !Array.isArray(gradientNode.k)
-            ? gradientNode.k.k
-            : gradientNode && gradientNode.k;
+        const current = walk(window.__backfillState.jsonData);
+        const original = walk(window.__backfillState.originalJson);
+        const raw = (g) => (g.k && !Array.isArray(g.k) ? g.k.k : g.k);
         return {
-            status: document.querySelector('#report-body td[data-status] .badge')?.textContent,
-            applyStatus: document.querySelector('#apply-status').textContent,
-            downloadDisabled: document.querySelector('#download-btn').disabled,
-            jsonK: raw,
-            jsonP: gradientNode && gradientNode.p,
-            aeK: row.ae.k,
-            aeP: row.ae.p,
+            currentK: raw(current),
+            currentP: current.p,
+            originalK: raw(original),
+            aeK: window.__backfillState.rows[0].ae.k,
+            aeP: window.__backfillState.rows[0].ae.p,
         };
     });
-    check('回填后状态变一致', after.status === '一致', after.status);
-    check('回填计数提示', /已回填 1 个渐变/.test(after.applyStatus), after.applyStatus);
-    check('导出按钮可用', after.downloadDisabled === false);
-    check('JSON 的 g.k 被替换为 AE 真值',
-        JSON.stringify(after.jsonK.map((v) => Math.round(v * 1000) / 1000)) === JSON.stringify(after.aeK),
-        `json=${JSON.stringify(after.jsonK)}`);
-    check('JSON 的 g.p 同步为展开后色标数', after.jsonP === after.aeP, `p=${after.jsonP} vs ${after.aeP}`);
+    check('JSON 的 g.k 被自动替换为 AE 真值',
+        JSON.stringify(data.currentK.map((v) => Math.round(v * 1000) / 1000)) === JSON.stringify(data.aeK),
+        `current=${JSON.stringify(data.currentK)}`);
+    check('JSON 的 g.p 同步为展开后色标数', data.currentP === data.aeP, `p=${data.currentP} vs ${data.aeP}`);
+    check('「修复前」保留原始数据（未被改写）',
+        JSON.stringify(data.originalK) === JSON.stringify([0, 1, 1, 1, 1, 0, 0, 0]),
+        JSON.stringify(data.originalK));
 
-    /* ---------- 6. 说明弹窗 ---------- */
+    /* ---------- 3. 播放控制 ---------- */
+    const frames = await page.evaluate(async () => {
+        document.getElementById('play-btn').click();       // 暂停
+        const paused = window.__backfillPreview.playing === false;
+        document.getElementById('timeline').value = '500';  // 拖到中间
+        document.getElementById('timeline').dispatchEvent(new Event('input', { bubbles: true }));
+        const mid = window.__backfillPreview.frame;
+        document.getElementById('play-btn').click();       // 继续播放
+        await new Promise((r) => setTimeout(r, 400));
+        return { paused, mid, after: window.__backfillPreview.frame, playing: window.__backfillPreview.playing };
+    });
+    check('播放/暂停可切换', frames.paused === true, JSON.stringify(frames));
+    check('拖动时间轴能定位到中间帧', frames.mid > 0, `frame=${frames.mid}`);
+    check('继续播放后帧数推进', frames.playing && frames.after !== frames.mid,
+        `${frames.mid} → ${frames.after}`);
+
+    /* ---------- 4. 深色主题 ---------- */
+    await page.click(SELECTORS.themeButton);
+    await new Promise((r) => setTimeout(r, 240));
+    check('深色主题可切换', await page.evaluate(() => document.documentElement.classList.contains('dark')));
+    await page.click(SELECTORS.themeButton);
+    await new Promise((r) => setTimeout(r, 200));
+
+    /* ---------- 5. 弹窗 ---------- */
     await page.click(SELECTORS.helpButton);
     await new Promise((r) => setTimeout(r, 260));
     check('说明弹窗可打开', await page.evaluate(() => {
@@ -324,15 +291,23 @@ try {
         () => document.querySelector('#help-modal').classList.contains('hidden')
     ));
 
-    /* ---------- 7. 语言切换 ---------- */
-    const zhHeader = await page.$eval('.bf-table thead th:nth-child(2)', (el) => el.textContent.trim());
+    /* ---------- 6. 语言切换 ---------- */
+    const zhLabel = await page.$eval('#parse-btn span', (el) => el.textContent.trim());
+    await page.click(SELECTORS.langButton);
+    await new Promise((r) => setTimeout(r, 240));
+    const enLabel = await page.$eval('#parse-btn span', (el) => el.textContent.trim());
+    check('中英切换生效', zhLabel === '解析并修复' && enLabel === 'Parse and fix', `${zhLabel} → ${enLabel}`);
     await page.click(SELECTORS.langButton);
     await new Promise((r) => setTimeout(r, 220));
-    const enHeader = await page.$eval('.bf-table thead th:nth-child(2)', (el) => el.textContent.trim());
-    check('中英切换生效', zhHeader === '渐变' && enHeader === 'Gradient', `${zhHeader} → ${enHeader}`);
-    await page.click(SELECTORS.langButton);
-    await new Promise((r) => setTimeout(r, 200));
-    check('切回中文', (await page.$eval('.bf-table thead th:nth-child(2)', (el) => el.textContent.trim())) === '渐变');
+
+    /* ---------- 7. 已一致的文件：不修复、导出禁用 ---------- */
+    await page.goto(PAGE_URL, { waitUntil: 'networkidle0' });
+    await upload(FIXTURE_MATCH);
+    await page.click(SELECTORS.parseButton);
+    out = await waitDone();
+    check('已一致：摘要提示无需修改', /无需修改/.test(out.summary), out.summary);
+    check('已一致：导出按钮禁用', out.downloadDisabled === true);
+    check('已一致：预览仍然渲染', out.svgBefore && out.svgAfter);
 
     /* ---------- 8. CDN 不可用时回退同源 ---------- */
     await page.setRequestInterception(true);
@@ -343,17 +318,19 @@ try {
     page.on('request', blockCdn);
     await page.goto(PAGE_URL_AUTO, { waitUntil: 'networkidle0' });
     await upload(FIXTURE_LOST);
-    out = await parse();
-    check('CDN 被阻断时回退同源并能完成解析', out.rows[0]?.status === '待修正',
-        `${out.rows[0]?.status} | ${out.summary}`);
+    await page.click(SELECTORS.parseButton);
+    out = await waitDone();
+    check('CDN 被阻断时回退同源并能完成修复', /已修复 1 个渐变/.test(out.summary), out.summary);
     page.off('request', blockCdn);
     await page.setRequestInterception(false);
 
     /* ---------- 9. 截图 ---------- */
     await page.goto(PAGE_URL, { waitUntil: 'networkidle0' });
     await upload(FIXTURE_LOST);
-    await parse();
-    await page.screenshot({ path: path.join(ARTIFACTS, 'backfill-pending.png') });
+    await page.click(SELECTORS.parseButton);
+    await waitDone();
+    await page.evaluate(() => document.getElementById('play-btn').click());
+    await page.screenshot({ path: path.join(ARTIFACTS, 'backfill-compare.png') });
 } catch (error) {
     console.error('测试过程异常：', error);
     check('测试未异常中断', false, error.message);

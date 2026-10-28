@@ -37,7 +37,7 @@ Although there are some solutions online, they don't always work in certain expo
 | 🔄 **渐变同步** | 导入其他 JSON 文件的渐变配置进行批量同步 |
 | 💾 **一键导出** | 导出修复后的 JSON 文件，直接投入使用 |
 | 🔍 **渐变搜索** | 快速定位动画中的特定渐变 |
-| 🔁 **从 AE 工程回填** | 带上 `.aep` 与 JSON，直接读取工程里的真实色标（含透明度），逐条比对后一键回填 |
+| 🔁 **从 AE 工程回填** | 带上 `.aep` 与 JSON，读取工程里的真实色标（含透明度）并自动修复，附修复前/后对比播放 |
 
 ---
 
@@ -49,7 +49,7 @@ Although there are some solutions online, they don't always work in certain expo
 | 🔄 **Gradient Sync** | Import gradient configs from other JSON files for batch syncing |
 | 💾 **One-click Export** | Export fixed JSON files ready for production |
 | 🔍 **Gradient Search** | Quickly locate specific gradients in animations |
-| 🔁 **Backfill from AE** | Load a `.aep` plus a JSON, read the real stops (alpha included), compare and write back |
+| 🔁 **Backfill from AE** | Load a `.aep` plus a JSON, read the real stops (alpha included), auto-fix them and preview before/after |
 
 ---
 

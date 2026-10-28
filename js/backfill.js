@@ -22,6 +22,7 @@ const LIBS_ZIP = new URL('pyaep-libs.zip', LOCAL_VENDOR).href;
 const EXTRACT_PY = new URL('pyaep/extract.py', LOCAL_VENDOR).href;
 
 /* ============ i18n ============ */
+/* ============ i18n ============ */
 
 const i18n = {
     zh: {
@@ -32,14 +33,16 @@ const i18n = {
         jsonTitle: 'Lottie JSON',
         aepTitle: 'AE 工程',
         pickFile: '选择文件',
-        parse: '解析并比对',
+        parse: '解析并修复',
+        exportJson: '导出 JSON',
         statusPick: '选择两个文件',
         statusReady: '文件就绪',
         statusNeedOther: '还需要选择另一个文件',
-        statusPyLoading: '正在加载 Python 运行时（首次约 13 MB）…',
+        statusPyLoading: '正在加载 Python 运行时…',
         statusUnpacking: '正在解包 py-aep 依赖…',
         statusParsing: '正在解析 .aep…',
         statusDone: '完成 · 耗时 {ms} ms',
+        statusFailed: '解析失败：{msg}',
         loadingTitle: '正在准备运行环境',
         loadingHint: '首次加载约 15 MB，之后走浏览器缓存',
         loadingPy: '加载 Python 运行时',
@@ -47,47 +50,34 @@ const i18n = {
         loadingParse: '解析工程文件',
         loadingElapsed: '{s} 秒',
         loadingMB: '已下载 {got} MB',
-        runtimeTimeout: '运行时加载超时，请刷新重试',
         loadingFallback: '当前来源不可用，正在切换备用来源…',
-        statusFailed: '解析失败：{msg}',
-        onlyPending: '只看待修正',
-        showAll: '显示全部',
-        apply: '应用勾选项',
-        applyWithCount: '应用勾选项（{n}）',
-        exportJson: '导出 JSON',
-        reportTitle: '比对报告',
-        thGradient: '渐变',
-        thType: '类型',
-        thAE: 'AE 真值',
-        thJSON: '当前 JSON',
-        thStatus: '状态',
-        stPending: '待修正',
-        stIdentical: '一致',
-        stKeyframed: '关键帧 · 跳过',
-        stNoArray: '无法解析',
-        stMissing: 'JSON 中缺失',
-        stExtra: 'JSON 多出',
-        typeFill: '填充',
-        typeStroke: '描边',
-        badgeNameMatch: '按名匹配',
-        stops: '{c} 色标',
-        stopsWithAlpha: '{c} 色标 · {a} 透明度',
-        keyframedShort: '（关键帧）',
-        applied: '已回填 {n} 个渐变，共 {total} 个',
-        nothingSelected: '没有勾选可应用的项',
-        emptyNoData: '还没有数据',
-        emptyAllMatch: '两侧渐变已经一致，没有需要回填的项。',
-        toastAllMatch: '两侧渐变已经一致',
-        toastApplied: '已回填 {n} 个渐变',
+        runtimeTimeout: '运行时加载超时，请刷新重试',
+        before: '修复前',
+        after: '修复后',
+        previewEmpty: '解析后在这里对比',
+        play: '播放',
+        pause: '暂停',
+        summaryFixed: '已修复 {n} 个渐变',
+        summaryNothing: '两侧渐变已经一致，无需修改',
+        summarySkipped: '{n} 项未处理',
+        summaryMatchedByName: '{n} 个按名称匹配',
+        skipTitle: '未处理的项',
+        skipDesc: '这些渐变没有回填',
+        reasonKeyframed: '关键帧渐变',
+        reasonMissing: 'JSON 中缺失',
+        reasonExtra: 'JSON 中多出',
+        reasonNoArray: '无法解析',
+        toastApplied: '已修复 {n} 个渐变',
+        toastNothing: '两侧渐变已经一致',
         toastFailed: '解析失败：{msg}',
         helpTitle: '关于渐变回填',
-        helpDesc: '从 .aep 读取真实色标',
+        helpDesc: '自动修复 + 前后对比',
         help1Title: '它做什么',
-        help1Body: '把 After Effects 工程里真实存在的渐变（色标位置、颜色、透明度）读出来，与你手上的 Lottie JSON 比对。你确认之后，才把工程里的值回填进 JSON。文件不会上传，解析全部在本机浏览器里完成。',
+        help1Body: '从 After Effects 工程里读出真实的渐变（色标位置、颜色、透明度），自动替换到你的 Lottie JSON 中，并把修复前后的动画并排播放给你看。文件不会上传，解析全部在本机浏览器里完成。',
         help2Title: '匹配规则',
-        help2Body: '先按「合成 / 图层 / 组 / 渐变名」完整路径精确匹配；路径对不上时退回「同名 + 出现顺序」匹配，并在类型列标注「按名匹配」。两侧数量不一致时，摘要里会分别列出「JSON 缺失」与「JSON 多出」。',
+        help2Body: '先按「合成 / 图层 / 组 / 渐变名」完整路径精确匹配；路径对不上时退回「同名 + 出现顺序」匹配。匹配上的渐变会被直接改写，不需要手动挑选。',
         help3Title: '不会处理的情况',
-        help3Body: '关键帧渐变只提示、不回填；JSON 里缺失的渐变不会凭空插入；工程未存盘时无法解析。'
+        help3Body: '关键帧渐变、JSON 里缺失或多出的渐变不会改动，会汇总在「未处理项」里供你确认。工程未存盘时无法解析。'
     },
     en: {
         backfill: 'Gradient backfill',
@@ -97,14 +87,16 @@ const i18n = {
         jsonTitle: 'Lottie JSON',
         aepTitle: 'AE project',
         pickFile: 'Choose file',
-        parse: 'Parse and compare',
+        parse: 'Parse and fix',
+        exportJson: 'Export JSON',
         statusPick: 'Choose two files',
         statusReady: 'Files ready',
         statusNeedOther: 'Pick the other file too',
-        statusPyLoading: 'Loading Python runtime (about 13 MB on first run)…',
+        statusPyLoading: 'Loading Python runtime…',
         statusUnpacking: 'Unpacking py-aep…',
         statusParsing: 'Parsing .aep…',
         statusDone: 'Done · {ms} ms',
+        statusFailed: 'Failed: {msg}',
         loadingTitle: 'Preparing runtime',
         loadingHint: 'About 15 MB on first run, cached afterwards',
         loadingPy: 'Loading Python runtime',
@@ -112,47 +104,34 @@ const i18n = {
         loadingParse: 'Parsing project',
         loadingElapsed: '{s}s',
         loadingMB: '{got} MB downloaded',
-        runtimeTimeout: 'Runtime loading timed out; please reload',
         loadingFallback: 'Source unavailable, switching to the fallback…',
-        statusFailed: 'Failed: {msg}',
-        onlyPending: 'Only pending',
-        showAll: 'Show all',
-        apply: 'Apply selected',
-        applyWithCount: 'Apply selected ({n})',
-        exportJson: 'Export JSON',
-        reportTitle: 'Comparison',
-        thGradient: 'Gradient',
-        thType: 'Type',
-        thAE: 'From AE',
-        thJSON: 'Current JSON',
-        thStatus: 'Status',
-        stPending: 'To fix',
-        stIdentical: 'Matched',
-        stKeyframed: 'Keyframed · skipped',
-        stNoArray: 'Unreadable',
-        stMissing: 'Missing in JSON',
-        stExtra: 'Extra in JSON',
-        typeFill: 'Fill',
-        typeStroke: 'Stroke',
-        badgeNameMatch: 'matched by name',
-        stops: '{c} stops',
-        stopsWithAlpha: '{c} stops · {a} alpha',
-        keyframedShort: '(keyframed)',
-        applied: 'Applied {n} gradients ({total} total)',
-        nothingSelected: 'Nothing selected',
-        emptyNoData: 'No data yet',
-        emptyAllMatch: 'All gradients already match.',
-        toastAllMatch: 'All gradients already match',
-        toastApplied: 'Applied {n} gradients',
+        runtimeTimeout: 'Runtime loading timed out; please reload',
+        before: 'Before',
+        after: 'After',
+        previewEmpty: 'Compare here after parsing',
+        play: 'Play',
+        pause: 'Pause',
+        summaryFixed: 'Fixed {n} gradients',
+        summaryNothing: 'All gradients already match',
+        summarySkipped: '{n} not handled',
+        summaryMatchedByName: '{n} matched by name',
+        skipTitle: 'Not handled',
+        skipDesc: 'These gradients were left untouched',
+        reasonKeyframed: 'Keyframed gradient',
+        reasonMissing: 'Missing in JSON',
+        reasonExtra: 'Extra in JSON',
+        reasonNoArray: 'Unreadable',
+        toastApplied: 'Fixed {n} gradients',
+        toastNothing: 'All gradients already match',
         toastFailed: 'Failed: {msg}',
         helpTitle: 'About gradient backfill',
-        helpDesc: 'Read real stops from .aep',
+        helpDesc: 'Auto-fix with before/after preview',
         help1Title: 'What it does',
-        help1Body: 'Reads the gradients that really exist in the After Effects project (stop positions, colors, alpha) and compares them with your Lottie JSON. Nothing is written back until you confirm. Files never leave your machine — parsing happens in the browser.',
+        help1Body: 'Reads the real gradients from the After Effects project (stop positions, colors, alpha), applies them to your Lottie JSON automatically, and plays the before/after animations side by side. Files never leave your machine.',
         help2Title: 'Matching',
-        help2Body: 'First an exact match on the full "comp / layer / group / gradient" path; if that fails it falls back to "same name + occurrence order" and marks the row "matched by name". When the two sides differ in count, the summary lists "missing in JSON" and "extra in JSON".',
+        help2Body: 'First an exact match on the full "comp / layer / group / gradient" path; if that fails it falls back to "same name + occurrence order". Matched gradients are rewritten directly — no manual selection.',
         help3Title: 'Not handled',
-        help3Body: 'Keyframed gradients are reported but never written; gradients missing from the JSON are never inserted; an unsaved .aep cannot be parsed.'
+        help3Body: 'Keyframed gradients, gradients missing from the JSON, and extra gradients are left untouched and listed under "Not handled". An unsaved project cannot be parsed.'
     }
 };
 
@@ -185,13 +164,13 @@ function applyStaticText() {
 /* ============ 状态 ============ */
 
 const state = {
-    jsonData: null,
+    jsonData: null,        // 会被就地修复的数据（导出用）
+    originalJson: null,    // 解析时的原始副本（预览「修复前」用）
     jsonName: '',
     aepBytes: null,
     aepName: '',
     py: null,
     rows: [],
-    showIdentical: true,
     appliedCount: 0,
     status: { key: 'statusPick', params: {} },
 };
@@ -225,6 +204,12 @@ function toast(message, type = 'info') {
         el.classList.remove('toast-show');
         setTimeout(() => el.remove(), 300);
     }, 3200);
+}
+
+function escapeHtml(value) {
+    return String(value).replace(/[&<>"']/g, (c) => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+    }[c]));
 }
 
 /* ============ 加载状态 ============ */
@@ -689,116 +674,6 @@ function matchGradients(aeList, jsonList) {
     return rows;
 }
 
-/* ============ 渲染 ============ */
-
-const STATUS_KEY = {
-    identical: 'stIdentical',
-    pending: 'stPending',
-    keyframed: 'stKeyframed',
-    noarray: 'stNoArray',
-    missing: 'stMissing',
-    extra: 'stExtra',
-};
-
-const STATUS_CLASS = {
-    identical: 'badge--outline',
-    pending: 'badge--warn',
-    keyframed: 'badge--outline',
-    noarray: 'badge--outline',
-    missing: 'badge--warn',
-    extra: 'badge--outline',
-};
-
-function escapeHtml(value) {
-    return String(value).replace(/[&<>"']/g, (c) => ({
-        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
-    }[c]));
-}
-
-function renderSummary() {
-    const counts = state.rows.reduce((acc, row) => {
-        acc[row.status] = (acc[row.status] || 0) + 1;
-        return acc;
-    }, {});
-    const items = [['stPending', counts.pending || 0]];
-    if (counts.identical) items.push(['stIdentical', counts.identical]);
-    if (counts.missing) items.push(['stMissing', counts.missing]);
-    if (counts.extra) items.push(['stExtra', counts.extra]);
-    if (counts.keyframed) items.push(['stKeyframed', counts.keyframed]);
-    $('summary').innerHTML = items
-        .map(([key, value]) => `<span class="badge badge--outline">${t(key)} <strong>${value}</strong></span>`)
-        .join('');
-}
-
-function pathHtml(row) {
-    const path = row.ae ? row.ae.path : row.json.path;
-    const name = path[path.length - 1];
-    const dir = path.slice(0, -1).join(' / ');
-    return `<div class="bf-path"><span class="nm">${escapeHtml(name)}</span><span class="dir">${escapeHtml(dir)}</span></div>`;
-}
-
-function renderRows() {
-    const body = $('report-body');
-    const rows = state.showIdentical
-        ? state.rows
-        : state.rows.filter((row) => row.status !== 'identical');
-    $('row-count').textContent = String(rows.length);
-
-    if (!rows.length) {
-        const message = state.rows.length ? t('emptyAllMatch') : t('emptyNoData');
-        body.innerHTML = `<tr><td colspan="6" class="bf-empty">${escapeHtml(message)}</td></tr>`;
-        return;
-    }
-
-    body.innerHTML = rows.map((row) => {
-        const statusText = t(STATUS_KEY[row.status] || 'stPending');
-        const statusClass = STATUS_CLASS[row.status] || 'badge--warn';
-        const aeCell = row.ae
-            ? `<div class="bf-swatch" style="background:${gradientCss(row.ae.k, row.ae.p)}"></div>
-               <div class="bf-stops">${escapeHtml(stopsText(row.ae.k, row.ae.p))}</div>`
-            : '<span class="bf-stops">—</span>';
-        const jsonCell = row.json && row.jsonArr
-            ? `<div class="bf-swatch" style="background:${gradientCss(row.jsonArr, row.jsonP)}"></div>
-               <div class="bf-stops">${escapeHtml(stopsText(row.jsonArr, row.jsonP))}</div>`
-            : `<span class="bf-stops">${row.json ? escapeHtml(t('keyframedShort')) : '—'}</span>`;
-        const typeRaw = row.ae ? row.ae.ty : (row.json.node.ty || '');
-        const typeLabel = typeRaw === 'gf' ? t('typeFill') : (typeRaw === 'gs' ? t('typeStroke') : typeRaw);
-        const nameHint = row.matchMode === 'name'
-            ? ` <span class="badge badge--outline">${t('badgeNameMatch')}</span>`
-            : '';
-        const canCheck = !!row.json && row.status === 'pending';
-        return `
-        <tr class="is-${row.status}" data-idx="${state.rows.indexOf(row)}">
-            <td><input type="checkbox" class="row-check" ${row.checked ? 'checked' : ''} ${canCheck ? '' : 'disabled'}></td>
-            <td>${pathHtml(row)}</td>
-            <td><code>${escapeHtml(typeLabel)} · ${escapeHtml(typeRaw)}</code>${nameHint}</td>
-            <td>${aeCell}</td>
-            <td>${jsonCell}</td>
-            <td data-status><span class="badge ${statusClass}">${statusText}</span></td>
-        </tr>`;
-    }).join('');
-
-    body.querySelectorAll('.row-check').forEach((box) => {
-        box.addEventListener('change', (event) => {
-            const idx = Number(event.target.closest('tr').dataset.idx);
-            state.rows[idx].checked = event.target.checked;
-            updateApplyButton();
-        });
-    });
-}
-
-function setApplyStatus(text) {
-    $('apply-status').textContent = text;
-    $('panel-foot').classList.toggle('is-visible', !!text);
-}
-
-function updateApplyButton() {
-    const count = state.rows.filter((row) => row.checked && row.json && row.status === 'pending').length;
-    const btn = $('apply-btn');
-    btn.disabled = count === 0;
-    btn.querySelector('span').textContent = count ? t('applyWithCount', { n: count }) : t('apply');
-}
-
 /* ============ Pyodide ============ */
 
 /** 候选来源顺序：优先 10 分钟内成功的那个，否则默认 CDN → 同源 */
@@ -911,6 +786,198 @@ async function extractFromAep() {
     return JSON.parse(json);
 }
 
+/* ============ 自动修复 ============ */
+
+function applyAllFixes() {
+    let count = 0;
+    for (const row of state.rows) {
+        if (!row.json || row.status !== 'pending') continue;
+        const target = row.json.node.g;
+        const arr = row.ae.k;
+        if (target.k && typeof target.k === 'object' && !Array.isArray(target.k)) {
+            target.k.k = arr;
+        } else {
+            target.k = arr;
+        }
+        target.p = row.ae.p;
+        row.status = 'identical';
+        count++;
+    }
+    state.appliedCount = count;
+    return count;
+}
+
+/* ============ 修复前 / 修复后预览 ============ */
+
+const PREVIEW = { before: null, after: null, playing: false, raf: null, frame: 0, total: 0, fps: 30, lastTs: 0 };
+
+function updateTime() {
+    const total = Math.max(0, Math.round(PREVIEW.total) - 1);
+    $('time-display').textContent = `${Math.round(PREVIEW.frame)} / ${total}`;
+}
+
+function seek(frame) {
+    PREVIEW.frame = frame;
+    if (PREVIEW.before) PREVIEW.before.goToAndStop(frame, true);
+    if (PREVIEW.after) PREVIEW.after.goToAndStop(frame, true);
+    const denom = Math.max(1, PREVIEW.total - 1);
+    $('timeline').value = String(Math.round((frame / denom) * 1000));
+    updateTime();
+}
+
+function updatePlayIcon() {
+    const btn = $('play-btn');
+    const key = PREVIEW.playing ? 'pause' : 'play';
+    btn.innerHTML = `<i data-lucide="${key}"></i>`;
+    btn.setAttribute('data-tip', t(key));
+    btn.setAttribute('aria-label', t(key));
+    refreshIcons();
+}
+
+function stopPlay() {
+    PREVIEW.playing = false;
+    if (PREVIEW.raf) cancelAnimationFrame(PREVIEW.raf);
+    PREVIEW.raf = null;
+    updatePlayIcon();
+}
+
+function tickClient(ts) {
+    if (!PREVIEW.playing) return;
+    if (!PREVIEW.lastTs) PREVIEW.lastTs = ts;
+    const dt = Math.min(0.1, (ts - PREVIEW.lastTs) / 1000);
+    PREVIEW.lastTs = ts;
+    PREVIEW.frame += dt * PREVIEW.fps;
+    if (PREVIEW.frame >= PREVIEW.total - 1) PREVIEW.frame = 0;
+    seek(PREVIEW.frame);
+    PREVIEW.raf = requestAnimationFrame(tickClient);
+}
+
+function startPlay() {
+    if (PREVIEW.playing || !PREVIEW.total) return;
+    PREVIEW.playing = true;
+    PREVIEW.lastTs = 0;
+    updatePlayIcon();
+    PREVIEW.raf = requestAnimationFrame(tickClient);
+}
+
+function destroyPreview() {
+    stopPlay();
+    for (const key of ['before', 'after']) {
+        const anim = PREVIEW[key];
+        if (anim) {
+            try { anim.destroy(); } catch (error) { /* 忽略 */ }
+            PREVIEW[key] = null;
+        }
+    }
+    const empty = `<span class="bf-stage-empty">${escapeHtml(t('previewEmpty'))}</span>`;
+    $('stage-before').innerHTML = empty;
+    $('stage-after').innerHTML = empty;
+    $('play-btn').disabled = true;
+    $('timeline').disabled = true;
+    PREVIEW.total = 0;
+    PREVIEW.frame = 0;
+    updateTime();
+}
+
+function renderPreview() {
+    destroyPreview();
+    if (!window.bodymovin) {
+        console.warn('lottie 未加载，跳过预览');
+        return;
+    }
+    const stageBefore = $('stage-before');
+    const stageAfter = $('stage-after');
+    stageBefore.innerHTML = '';
+    stageAfter.innerHTML = '';
+
+    PREVIEW.before = window.bodymovin.loadAnimation({
+        container: stageBefore,
+        renderer: 'svg',
+        loop: true,
+        autoplay: false,
+        animationData: JSON.parse(JSON.stringify(state.originalJson)),
+    });
+    PREVIEW.after = window.bodymovin.loadAnimation({
+        container: stageAfter,
+        renderer: 'svg',
+        loop: true,
+        autoplay: false,
+        animationData: JSON.parse(JSON.stringify(state.jsonData)),
+    });
+    PREVIEW.total = Math.min(PREVIEW.before.totalFrames || 1, PREVIEW.after.totalFrames || 1);
+    PREVIEW.fps = PREVIEW.before.frameRate || 30;
+    $('play-btn').disabled = false;
+    $('timeline').disabled = false;
+    seek(0);
+    startPlay();
+}
+
+/* ============ 摘要 / 未处理项 ============ */
+
+const SKIP_REASON = {
+    keyframed: 'reasonKeyframed',
+    missing: 'reasonMissing',
+    extra: 'reasonExtra',
+    noarray: 'reasonNoArray',
+};
+
+function skippedRows() {
+    return state.rows.filter((row) => SKIP_REASON[row.status]);
+}
+
+function renderSkipList() {
+    const rows = skippedRows();
+    $('skip-list').innerHTML = rows.map((row) => {
+        const path = row.ae ? row.ae.path : row.json.path;
+        return `<div><code>${escapeHtml(path.join(' / '))}</code> · ${t(SKIP_REASON[row.status])}</div>`;
+    }).join('');
+}
+
+function showModal(id) {
+    const modal = $(id);
+    modal.classList.remove('hidden');
+    requestAnimationFrame(() => modal.classList.add('is-open'));
+}
+
+function closeModal(id) {
+    const modal = $(id);
+    modal.classList.remove('is-open');
+    setTimeout(() => modal.classList.add('hidden'), 180);
+}
+
+function openSkipModal() {
+    renderSkipList();
+    showModal('skip-modal');
+}
+
+function renderSummary() {
+    const host = $('summary');
+    const skipped = skippedRows();
+    const byName = state.rows.filter((row) => row.matchMode === 'name').length;
+    const parts = [
+        `<span>${state.appliedCount ? t('summaryFixed', { n: state.appliedCount }) : t('summaryNothing')}</span>`,
+    ];
+    if (byName) {
+        parts.push(`<span class="badge badge--outline">${t('summaryMatchedByName', { n: byName })}</span>`);
+    }
+    if (skipped.length) {
+        parts.push(`<button class="btn btn-ghost" id="skip-btn"><i data-lucide="alert-triangle"></i>${t('summarySkipped', { n: skipped.length })}</button>`);
+    }
+    host.innerHTML = parts.join('');
+    const skipBtn = $('skip-btn');
+    if (skipBtn) skipBtn.addEventListener('click', openSkipModal);
+
+    const badge = $('fixed-count');
+    if (state.appliedCount) {
+        badge.hidden = false;
+        badge.textContent = `+${state.appliedCount}`;
+    } else {
+        badge.hidden = true;
+        badge.textContent = '';
+    }
+    refreshIcons();
+}
+
 /* ============ 主流程 ============ */
 
 async function runCompare() {
@@ -925,14 +992,13 @@ async function runCompare() {
         const aeGradients = await extractFromAep();
         const jsonGradients = collectJsonGradients(state.jsonData);
         state.rows = matchGradients(aeGradients, jsonGradients);
-        state.appliedCount = 0;
-        setApplyStatus('');
-        $('download-btn').disabled = true;
+        const fixed = applyAllFixes();
+
+        $('download-btn').disabled = fixed === 0;
         renderSummary();
-        renderRows();
-        updateApplyButton();
+        renderPreview();
         setStatus('statusDone', { ms: Math.round(performance.now() - startedAt) });
-        if (!state.rows.some((row) => row.status === 'pending')) toast(t('toastAllMatch'), 'success');
+        toast(fixed ? t('toastApplied', { n: fixed }) : t('toastNothing'), fixed ? 'success' : 'info');
     } catch (error) {
         console.error(error);
         setStatus('statusFailed', { msg: error.message });
@@ -943,33 +1009,6 @@ async function runCompare() {
         label.textContent = originalLabel;
         refreshIcons();
     }
-}
-
-function applyChecked() {
-    let count = 0;
-    for (const row of state.rows) {
-        if (!row.checked || !row.json || row.status !== 'pending') continue;
-        const target = row.json.node.g;
-        const arr = row.ae.k;
-        if (target.k && typeof target.k === 'object' && !Array.isArray(target.k)) {
-            target.k.k = arr;
-        } else {
-            target.k = arr;
-        }
-        target.p = row.ae.p;
-        row.jsonArr = arr;
-        row.jsonP = row.ae.p;
-        row.status = 'identical';
-        row.checked = false;
-        count++;
-    }
-    state.appliedCount += count;
-    renderSummary();
-    renderRows();
-    updateApplyButton();
-    $('download-btn').disabled = count === 0 && state.appliedCount === 0;
-    setApplyStatus(count ? t('applied', { n: count, total: state.appliedCount }) : t('nothingSelected'));
-    if (count) toast(t('toastApplied', { n: count }), 'success');
 }
 
 function downloadJson() {
@@ -1025,10 +1064,13 @@ function bindDrop(zoneId, inputId, nameId, onFile) {
 
 function boot() {
     applyStaticText();
+    destroyPreview();
 
     bindDrop('drop-json', 'json-file', 'json-name', async (file) => {
         const text = await file.text();
-        state.jsonData = JSON.parse(text.replace(/^\ufeff/, ''));
+        const parsed = JSON.parse(text.replace(/^\ufeff/, ''));
+        state.jsonData = parsed;
+        state.originalJson = JSON.parse(JSON.stringify(parsed));
         state.jsonName = file.name;
     });
 
@@ -1038,46 +1080,45 @@ function boot() {
     });
 
     $('parse-btn').addEventListener('click', runCompare);
-    $('apply-btn').addEventListener('click', applyChecked);
     $('download-btn').addEventListener('click', downloadJson);
 
-    const toggleBtn = $('toggle-identical');
-    const syncToggleLabel = () => {
-        toggleBtn.textContent = state.showIdentical ? t('onlyPending') : t('showAll');
-    };
-    syncToggleLabel();
-    toggleBtn.addEventListener('click', () => {
-        state.showIdentical = !state.showIdentical;
-        syncToggleLabel();
-        renderRows();
+    $('play-btn').addEventListener('click', () => {
+        if (PREVIEW.playing) stopPlay();
+        else startPlay();
+    });
+    $('timeline').addEventListener('input', (event) => {
+        const denom = Math.max(1, PREVIEW.total - 1);
+        const frame = (Number(event.target.value) / 1000) * denom;
+        stopPlay();
+        seek(frame);
     });
 
-    const helpModal = $('help-modal');
-    const openHelp = () => {
-        helpModal.classList.remove('hidden');
-        requestAnimationFrame(() => helpModal.classList.add('is-open'));
-    };
-    const closeHelp = () => {
-        helpModal.classList.remove('is-open');
-        setTimeout(() => helpModal.classList.add('hidden'), 180);
-    };
-    $('help-btn').addEventListener('click', openHelp);
-    helpModal.querySelectorAll('[data-close]').forEach((el) => el.addEventListener('click', closeHelp));
+    $('help-btn').addEventListener('click', () => showModal('help-modal'));
+    $('help-modal').querySelectorAll('[data-close]').forEach((el) => {
+        el.addEventListener('click', () => closeModal('help-modal'));
+    });
+    $('skip-modal').querySelectorAll('[data-close]').forEach((el) => {
+        el.addEventListener('click', () => closeModal('skip-modal'));
+    });
     document.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape' && helpModal.classList.contains('is-open')) closeHelp();
+        if (event.key !== 'Escape') return;
+        for (const id of ['help-modal', 'skip-modal']) {
+            const modal = document.getElementById(id);
+            if (modal.classList.contains('is-open')) closeModal(id);
+        }
     });
 
     $('lang-btn').addEventListener('click', () => {
         currentLang = currentLang === 'zh' ? 'en' : 'zh';
         localStorage.setItem('lottie-lang', currentLang);
         applyStaticText();
-        syncToggleLabel();
         setStatus(state.status.key, state.status.params);
         if (state.rows.length) {
             renderSummary();
-            renderRows();
-            updateApplyButton();
+            if (document.getElementById('skip-modal').classList.contains('is-open')) renderSkipList();
         }
+        if (PREVIEW.before) updatePlayIcon();
+        else destroyPreview();
     });
 
     $('theme-btn').addEventListener('click', () => {
@@ -1089,4 +1130,5 @@ function boot() {
 }
 
 window.__backfillState = state;
+window.__backfillPreview = PREVIEW;
 boot();
