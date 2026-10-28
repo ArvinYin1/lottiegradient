@@ -761,10 +761,29 @@ function updateApplyButton() {
 
 /* ============ Pyodide ============ */
 
-/** 候选来源顺序：优先上次成功的，其次默认 CDN → 同源 */
+/** 候选来源顺序：优先 10 分钟内成功的那个，否则默认 CDN → 同源 */
+const VENDOR_MEMORY_MS = 10 * 60 * 1000;
+
+function readVendorMemory() {
+    try {
+        const raw = JSON.parse(localStorage.getItem('backfill-vendor') || 'null');
+        if (!raw || typeof raw !== 'object') return null;
+        if (Date.now() - (raw.at || 0) > VENDOR_MEMORY_MS) return null;
+        return raw.vendor;
+    } catch (error) {
+        return null;
+    }
+}
+
+function writeVendorMemory(vendor) {
+    try {
+        localStorage.setItem('backfill-vendor', JSON.stringify({ vendor, at: Date.now() }));
+    } catch (error) { /* 隐私模式下忽略 */ }
+}
+
 function vendorCandidates() {
     if (FORCE_LOCAL) return [LOCAL_VENDOR];
-    const remembered = localStorage.getItem('backfill-vendor');
+    const remembered = readVendorMemory();
     return remembered === 'local' ? [LOCAL_VENDOR, CDN_VENDOR] : [CDN_VENDOR, LOCAL_VENDOR];
 }
 
@@ -800,19 +819,20 @@ async function ensurePyodide() {
 
     const candidates = vendorCandidates();
     let lastError = null;
-    for (const base of candidates) {
-        try {
-            const py = await loadRuntimeFrom(base);
-            localStorage.setItem('backfill-vendor', base === CDN_VENDOR ? 'cdn' : 'local');
-            state.py = py;
-            break;
-        } catch (error) {
-            lastError = error;
-            console.warn('runtime load failed from', base, error);
-            if (candidates.indexOf(base) < candidates.length - 1) {
-                setStatus('statusPyLoading');
-                showLoading('loadingFallback', {});
+    for (let ci = 0; ci < candidates.length && !state.py; ci++) {
+        const base = candidates[ci];
+        for (let attempt = 0; attempt < 2 && !state.py; attempt++) {
+            try {
+                state.py = await loadRuntimeFrom(base);
+                writeVendorMemory(base === CDN_VENDOR ? 'cdn' : 'local');
+            } catch (error) {
+                lastError = error;
+                console.warn(`runtime load failed from ${base} (attempt ${attempt + 1})`, error);
             }
+        }
+        if (!state.py && ci < candidates.length - 1) {
+            setStatus('statusPyLoading');
+            showLoading('loadingFallback', {});
         }
     }
     const py = state.py;
