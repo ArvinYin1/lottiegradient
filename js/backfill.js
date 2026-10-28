@@ -48,6 +48,7 @@ const i18n = {
         loadingElapsed: '{s} 秒',
         loadingMB: '已下载 {got} MB',
         runtimeTimeout: '运行时加载超时，请刷新重试',
+        loadingFallback: '当前来源不可用，正在切换备用来源…',
         statusFailed: '解析失败：{msg}',
         onlyPending: '只看待修正',
         showAll: '显示全部',
@@ -112,6 +113,7 @@ const i18n = {
         loadingElapsed: '{s}s',
         loadingMB: '{got} MB downloaded',
         runtimeTimeout: 'Runtime loading timed out; please reload',
+        loadingFallback: 'Source unavailable, switching to the fallback…',
         statusFailed: 'Failed: {msg}',
         onlyPending: 'Only pending',
         showAll: 'Show all',
@@ -288,8 +290,9 @@ function hideLoading() {
     loadingBytes = null;
 }
 
-const RUNTIME_TIMEOUT_MS = 90000;
-const ASSET_TIMEOUT_MS = 30000;
+const RUNTIME_TIMEOUT_MS = 150000;
+const STALL_TIMEOUT_MS = 25000;   // 连续 25s 没有新字节才算卡住
+const ASSET_TIMEOUT_MS = 240000;  // 单文件硬上限（慢速网络也能下完）
 // 运行时三个必需文件：一起预取，进度才真实（之前只统计 wasm，进度条跑完了还在下别的）
 const RUNTIME_ASSETS = [
     { key: 'asm', path: 'pyodide/pyodide.asm.esm.js' },
@@ -305,7 +308,12 @@ function assetUrl(base, path) {
 /** 下载单个资源，带字节进度与 30s 超时（避免网络卡住时无限等） */
 async function downloadAsset(url, onBytes) {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), ASSET_TIMEOUT_MS);
+    let stallTimer = setTimeout(() => controller.abort(), STALL_TIMEOUT_MS);
+    const hardTimer = setTimeout(() => controller.abort(), ASSET_TIMEOUT_MS);
+    const touch = () => {
+        clearTimeout(stallTimer);
+        stallTimer = setTimeout(() => controller.abort(), STALL_TIMEOUT_MS);
+    };
     try {
         const response = await fetch(url, { signal: controller.signal });
         if (!response.ok) throw new Error(`HTTP ${response.status} for ${url}`);
@@ -321,6 +329,7 @@ async function downloadAsset(url, onBytes) {
         for (;;) {
             const { done, value } = await reader.read();
             if (done) break;
+            touch();
             chunks.push(value);
             received += value.length;
             onBytes(received, total);
@@ -333,7 +342,8 @@ async function downloadAsset(url, onBytes) {
         }
         return merged;
     } finally {
-        clearTimeout(timer);
+        clearTimeout(stallTimer);
+        clearTimeout(hardTimer);
     }
 }
 
@@ -751,33 +761,11 @@ function updateApplyButton() {
 
 /* ============ Pyodide ============ */
 
-/** 快速探测某个来源是否可用（避免回退时被浏览器超时拖住） */
-async function probeVendor(base, timeoutMs = 2500) {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
-    try {
-        const response = await fetch(new URL('pyodide/pyodide.esm.js', base).href, {
-            method: 'HEAD',
-            signal: controller.signal,
-        });
-        return response.ok;
-    } catch (error) {
-        return false;
-    } finally {
-        clearTimeout(timer);
-    }
-}
-
-async function pickVendorBase() {
-    if (FORCE_LOCAL) return LOCAL_VENDOR;
+/** 候选来源顺序：优先上次成功的，其次默认 CDN → 同源 */
+function vendorCandidates() {
+    if (FORCE_LOCAL) return [LOCAL_VENDOR];
     const remembered = localStorage.getItem('backfill-vendor');
-    const order = remembered === 'local'
-        ? [LOCAL_VENDOR, CDN_VENDOR]
-        : [CDN_VENDOR, LOCAL_VENDOR];
-    for (const base of order) {
-        if (await probeVendor(base)) return base;
-    }
-    return LOCAL_VENDOR;
+    return remembered === 'local' ? [LOCAL_VENDOR, CDN_VENDOR] : [CDN_VENDOR, LOCAL_VENDOR];
 }
 
 async function loadRuntimeFrom(base) {
@@ -810,17 +798,25 @@ async function ensurePyodide() {
     setStatus('statusPyLoading');
     showLoading('loadingPy', {});
 
-    const base = await pickVendorBase();
-    let py;
-    try {
-        py = await loadRuntimeFrom(base);
-        localStorage.setItem('backfill-vendor', base === CDN_VENDOR ? 'cdn' : 'local');
-    } catch (error) {
-        if (base === LOCAL_VENDOR) throw error;
-        console.warn('CDN runtime failed, falling back to same-origin', error);
-        showLoading('loadingPy', {});
-        py = await loadRuntimeFrom(LOCAL_VENDOR);
+    const candidates = vendorCandidates();
+    let lastError = null;
+    for (const base of candidates) {
+        try {
+            const py = await loadRuntimeFrom(base);
+            localStorage.setItem('backfill-vendor', base === CDN_VENDOR ? 'cdn' : 'local');
+            state.py = py;
+            break;
+        } catch (error) {
+            lastError = error;
+            console.warn('runtime load failed from', base, error);
+            if (candidates.indexOf(base) < candidates.length - 1) {
+                setStatus('statusPyLoading');
+                showLoading('loadingFallback', {});
+            }
+        }
     }
+    const py = state.py;
+    if (!py) throw lastError || new Error(t('runtimeTimeout'));
 
     setStatus('statusUnpacking');
     showLoading('loadingUnpack');
@@ -840,7 +836,6 @@ async function ensurePyodide() {
 
     const code = await (await fetch(EXTRACT_PY)).text();
     py.runPython(code);
-    state.py = py;
     hideLoading();
     return py;
 }
