@@ -46,7 +46,7 @@ const i18n = {
         loadingUnpack: '解包 py-aep 依赖',
         loadingParse: '解析工程文件',
         loadingElapsed: '{s} 秒',
-        loadingMB: '{got} MB / {total} MB',
+        loadingMB: '已下载 {got} MB',
         runtimeTimeout: '运行时加载超时，请刷新重试',
         statusFailed: '解析失败：{msg}',
         onlyPending: '只看待修正',
@@ -110,7 +110,7 @@ const i18n = {
         loadingUnpack: 'Unpacking py-aep',
         loadingParse: 'Parsing project',
         loadingElapsed: '{s}s',
-        loadingMB: '{got} MB / {total} MB',
+        loadingMB: '{got} MB downloaded',
         runtimeTimeout: 'Runtime loading timed out; please reload',
         statusFailed: 'Failed: {msg}',
         onlyPending: 'Only pending',
@@ -236,11 +236,8 @@ function renderLoadingPhase() {
     const el = $('loading-phase');
     if (!el) return;
     const parts = [t(loadingPhase.key, loadingPhase.params)];
-    if (loadingBytes && loadingBytes.total > 0) {
-        parts.push(t('loadingMB', {
-            got: (loadingBytes.got / 1048576).toFixed(1),
-            total: (loadingBytes.total / 1048576).toFixed(1),
-        }));
+    if (loadingBytes && loadingBytes.got > 0) {
+        parts.push(t('loadingMB', { got: (loadingBytes.got / 1048576).toFixed(1) }));
     }
     const seconds = ((performance.now() - loadingStartedAt) / 1000).toFixed(0);
     parts.push(t('loadingElapsed', { s: seconds }));
@@ -260,8 +257,8 @@ function showLoading(key, params = {}) {
     loadingTicker = setInterval(renderLoadingPhase, 250);
 }
 
-function setLoadingBytes(got, total) {
-    loadingBytes = { got: got || 0, total: total || 0 };
+function setLoadingBytes(got) {
+    loadingBytes = { got: got || 0 };
     renderLoadingPhase();
 }
 
@@ -355,28 +352,33 @@ async function headSize(url) {
     }
 }
 
-/** 依次预取运行时资源，进度按总字节计算 */
+/**
+ * 依次预取运行时资源。
+ * 进度按「已完成的文件比例 + 当前文件比例」平均，而不是字节总和：
+ * 有的 CDN 会 gzip，Content-Length 是压缩后大小，而流式读出来的是解压后字节，
+ * 直接相除会算出 >100%（曾出现「7.4 MB / 6.1 MB」）。
+ */
 async function prefetchRuntime(base, onProgress) {
     const assets = RUNTIME_ASSETS.map((asset) => ({ ...asset, url: assetUrl(base, asset.path) }));
     const sizes = await Promise.all(assets.map((asset) => headSize(asset.url)));
 
-    const totals = {};
     const received = {};
+    const totals = {};
     assets.forEach((asset, index) => {
-        totals[asset.key] = sizes[index];
         received[asset.key] = 0;
+        totals[asset.key] = sizes[index];
     });
 
     const report = () => {
-        const keys = Object.keys(totals);
-        const known = keys.every((key) => totals[key] > 0);
-        const got = keys.reduce((sum, key) => sum + (received[key] || 0), 0);
-        const all = keys.reduce((sum, key) => sum + (totals[key] || 0), 0);
-        if (known && all > 0) {
-            onProgress(Math.min(1, got / all), got, all);
-        } else {
-            onProgress(null, got, all);
-        }
+        let done = 0;
+        let downloaded = 0;
+        assets.forEach((asset) => {
+            const got = received[asset.key] || 0;
+            const total = totals[asset.key] || 0;
+            downloaded += got;
+            done += total > 0 ? Math.min(1, got / total) : 0;
+        });
+        onProgress(done / assets.length, downloaded, 0);
     };
 
     const buffers = {};
@@ -387,7 +389,6 @@ async function prefetchRuntime(base, onProgress) {
             report();
         });
         received[asset.key] = buffers[asset.key].length;
-        if (!totals[asset.key]) totals[asset.key] = buffers[asset.key].length;
         report();
     }
     return buffers;
@@ -781,9 +782,9 @@ async function pickVendorBase() {
 
 async function loadRuntimeFrom(base) {
     activeVendorBase = base;
-    const buffers = await prefetchRuntime(base, (ratio, got, total) => {
+    const buffers = await prefetchRuntime(base, (ratio, got) => {
         setLoadingProgress(ratio);
-        setLoadingBytes(got, total);
+        setLoadingBytes(got);
     });
 
     const pyodideDir = new URL('pyodide/', base).href;
