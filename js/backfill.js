@@ -825,13 +825,16 @@ function seek(frame) {
     updateTime();
 }
 
+// 用实心图标：lucide 的 play/pause 是描边，16px 下看起来像空心
+const ICON_PLAY = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>';
+const ICON_PAUSE = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>';
+
 function updatePlayIcon() {
     const btn = $('play-btn');
     const key = PREVIEW.playing ? 'pause' : 'play';
-    btn.innerHTML = `<i data-lucide="${key}"></i>`;
+    btn.innerHTML = PREVIEW.playing ? ICON_PAUSE : ICON_PLAY;
     btn.setAttribute('data-tip', t(key));
     btn.setAttribute('aria-label', t(key));
-    refreshIcons();
 }
 
 function stopPlay() {

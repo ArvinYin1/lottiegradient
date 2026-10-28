@@ -263,12 +263,19 @@ try {
         document.getElementById('timeline').dispatchEvent(new Event('input', { bubbles: true }));
         const mid = window.__backfillPreview.frame;
         document.getElementById('play-btn').click();       // 继续播放
-        await new Promise((r) => setTimeout(r, 400));
-        return { paused, mid, after: window.__backfillPreview.frame, playing: window.__backfillPreview.playing };
+        // headless 下 rAF 有节流，轮询等待推进，避免偶发假失败
+        const startedAt = Date.now();
+        let after = mid;
+        while (Date.now() - startedAt < 5000) {
+            await new Promise((r) => setTimeout(r, 250));
+            after = window.__backfillPreview.frame;
+            if (after > mid + 1) break;
+        }
+        return { paused, mid, after, playing: window.__backfillPreview.playing };
     });
     check('播放/暂停可切换', frames.paused === true, JSON.stringify(frames));
     check('拖动时间轴能定位到中间帧', frames.mid > 0, `frame=${frames.mid}`);
-    check('继续播放后帧数推进', frames.playing && frames.after !== frames.mid,
+    check('继续播放后帧数推进', frames.playing && frames.after > frames.mid + 1,
         `${frames.mid} → ${frames.after}`);
 
     /* ---------- 4. 深色主题 ---------- */

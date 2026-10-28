@@ -1532,6 +1532,7 @@ html.dark .badge--warn { color: #fbbf24; }
   border-radius: var(--radius);
   background: var(--card);
 }
+.bf-transport .btn-icon svg { width: 16px; height: 16px; }
 .bf-time {
   font-family: var(--font-mono);
   font-size: 11.5px;
