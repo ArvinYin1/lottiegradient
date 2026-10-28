@@ -34,6 +34,8 @@
 
 ```
 lottiegradient/
+├── .github/workflows/deploy.yml # main 推送 / 手动触发的自动部署
+├── deploy.sh           # 统一手动部署脚本（rsync + 线上验收）
 ├── index.html          # 编辑器（顶栏 + 三栏工作台 + 两个弹窗）
 ├── backfill.html       # 渐变回填页（.aep + JSON → 比对 → 回填）
 ├── css/
@@ -227,7 +229,10 @@ cd tests && npm run test:all    # 两套都跑
 推送到 `main` 后自动更新（Settings > Pages，源为 `main`）。
 
 ### 自建服务器
-`deploy.sh` 通过 rsync over SSH 同步 `index.html backfill.html css js svg` 到 nginx 目录，脚本含线上验收。
+- 手动部署：`SSH_KEY=/path/to/key ./deploy.sh`，通过 rsync over SSH 同步 `index.html backfill.html css js svg` 到 nginx 目录并验收线上 HTTP 状态；`--dry-run` 只预览。
+- 自动部署：`.github/workflows/deploy.yml` 在推送 `main` 或手动触发时调用同一个 `deploy.sh`。
+- CI 需要 Secrets：`DEPLOY_SSH_KEY`（部署私钥）与 `DEPLOY_SSH_HOST_KEY`（可信 known_hosts 行）。私钥不得提交到仓库。
+- 脚本启用 `StrictHostKeyChecking=yes`，手动部署机器的 `known_hosts` 也必须包含可信主机公钥；线上验收失败返回非零状态。
 
 ## 浏览器兼容性
 

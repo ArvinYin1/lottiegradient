@@ -1,0 +1,47 @@
+name: Deploy production
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      SSH_KEY: /tmp/lottiegradient_deploy_ssh_key
+      HOST: root@43.155.27.82
+      REMOTE_DIR: /var/www/lottiegradient
+      SITE_URL: https://www.lottie.uno/
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+
+      - name: Configure SSH
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_SSH_HOST_KEY: ${{ secrets.DEPLOY_SSH_HOST_KEY }}
+        run: |
+          if [[ -z "$DEPLOY_SSH_KEY" || -z "$DEPLOY_SSH_HOST_KEY" ]]; then
+            echo "::error::Configure DEPLOY_SSH_KEY and DEPLOY_SSH_HOST_KEY in repository Secrets."
+            exit 1
+          fi
+          install -d -m 700 "$HOME/.ssh"
+          printf '%s\n' "$DEPLOY_SSH_KEY" > "$SSH_KEY"
+          printf '%s\n' "$DEPLOY_SSH_HOST_KEY" > "$HOME/.ssh/known_hosts"
+          chmod 600 "$SSH_KEY" "$HOME/.ssh/known_hosts"
+
+      - name: Check deployment script
+        run: bash -n deploy.sh
+
+      - name: Deploy to nginx
+        run: ./deploy.sh
