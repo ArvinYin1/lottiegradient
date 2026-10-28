@@ -305,8 +305,40 @@ function assetUrl(base, path) {
     return new URL(path, base).href;
 }
 
-/** 下载单个资源，带字节进度与 30s 超时（避免网络卡住时无限等） */
+/* ---------- 运行时缓存（Cache Storage） ----------
+ * 15 MB 的运行时只该下一次。缓存后即使网络抽风/超时，刷新也能秒开。
+ */
+const RUNTIME_CACHE = 'backfill-runtime-v1';
+
+async function cacheMatch(url) {
+    if (!('caches' in window)) return null;
+    try {
+        const cache = await caches.open(RUNTIME_CACHE);
+        const hit = await cache.match(url);
+        if (!hit) return null;
+        return new Uint8Array(await hit.arrayBuffer());
+    } catch (error) {
+        return null;
+    }
+}
+
+async function cachePut(url, bytes) {
+    if (!('caches' in window)) return;
+    try {
+        const cache = await caches.open(RUNTIME_CACHE);
+        await cache.put(url, new Response(bytes, {
+            headers: { 'Content-Type': 'application/octet-stream' },
+        }));
+    } catch (error) { /* 配额不足等情况忽略 */ }
+}
+
+/** 下载单个资源，带字节进度与停滞超时（避免网络卡住时无限等） */
 async function downloadAsset(url, onBytes) {
+    const cached = await cacheMatch(url);
+    if (cached) {
+        onBytes(cached.length, cached.length);
+        return cached;
+    }
     const controller = new AbortController();
     let stallTimer = setTimeout(() => controller.abort(), STALL_TIMEOUT_MS);
     const hardTimer = setTimeout(() => controller.abort(), ASSET_TIMEOUT_MS);
@@ -340,6 +372,7 @@ async function downloadAsset(url, onBytes) {
             merged.set(chunk, offset);
             offset += chunk.length;
         }
+        await cachePut(url, merged);
         return merged;
     } finally {
         clearTimeout(stallTimer);
@@ -437,6 +470,13 @@ function installRuntimeFetchBridge(buffers) {
 
 /** 带下载进度的 fetch（能拿到 Content-Length 时给出百分比） */
 async function fetchWithProgress(url, onProgress, asText = false) {
+    if (!asText) {
+        const cached = await cacheMatch(url);
+        if (cached) {
+            onProgress(1);
+            return cached.buffer;
+        }
+    }
     const response = await fetch(url);
     if (!response.ok) throw new Error(`HTTP ${response.status} for ${url}`);
     const total = Number(response.headers.get('content-length') || 0);
