@@ -137,7 +137,7 @@ to_css() / to_lottie()        // 合并预览 CSS / Lottie 平铺数组
 - **懒加载**：`js/vendor/pyodide/`（约 13 MB）与 `js/vendor/pyaep-libs.zip`（约 2.8 MB）只在用户点「解析并比对」时才加载；编辑器首屏零新增请求。
 - **加载态**：`#bf-loading` 遮罩（spinner + 阶段文案 + 进度条 + 已下载 / 总字节 + 已用时）。三个运行时文件（asm 模块 / wasm / stdlib）由前端统一预取，进度按总字节真实推进；每个文件 30s 超时，整体 90s 看门狗，网络卡住不会再无声等待。
 - **运行时来源**：默认优先从 GitHub Pages 取 Pyodide（走 CDN，实测 ~2.7 MB/s，且带 `Access-Control-Allow-Origin: *`），探测失败或加载失败则回落到同源 `js/vendor/`；`?local=1` 强制只用同源（测试与离线场景）。
-- **兼容 nginx 的 MIME**：线上 nginx 的 `mime.types` 不含 `mjs`（会按 `octet-stream` 返回，浏览器拒绝当模块加载），且 `.wasm` 也不是 `application/wasm`（Pyodide 的 `instantiateStreaming` 会抛错且不降级，界面直接卡死）。因此：ESM 入口用 `pyodide.esm.js` / `pyodide.asm.esm.js`；wasm 由前端自行预取后，用 MIME 正确的 `Response` 通过临时 fetch 桥交给 Pyodide。加载有 120s 超时看门狗。
+- **兼容 nginx 的 MIME**：线上 nginx 的 `mime.types` 不含 `mjs`（会按 `octet-stream` 返回，浏览器拒绝当模块加载），且 `.wasm` 也不是 `application/wasm`（Pyodide 的 `instantiateStreaming` 会抛错且不降级，界面直接卡死）。因此：ESM 入口用 `pyodide.esm.js` / `pyodide.asm.esm.js`；wasm/stdlib 由前端预取后，用 MIME 正确的 `Response` 通过临时 fetch 桥交给 Pyodide；每个资源 30s 超时、整体 90s 看门狗。
 - **关键规则**：Bodymovin 会把 AE 的「中点」展开成额外色标（N → 2N−1），颜色与透明度各自独立展开；所有 alpha 为 1 时不写透明度段。补丁生成照抄了这套规则（`js/vendor/pyaep/extract.py` 的 `expand_stops()`），因此回填值与 Bodymovin 导出值逐位一致。
 - **匹配**：先按「合成 / 图层 / 组 / 渐变名」完整路径精确匹配；失败则退回「同名 + 出现顺序」，并在类型列标注「按名匹配」。关键帧渐变只提示不回填；JSON 缺失/多出的渐变只统计不增删。
 - **i18n**：回填页有自己的字典（`js/backfill.js` 顶部），与编辑器共用 `localStorage['lottie-lang']` 和 `localStorage['lottie-theme']`，两个页面语言/主题同步。

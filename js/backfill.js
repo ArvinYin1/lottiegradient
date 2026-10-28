@@ -340,22 +340,48 @@ async function downloadAsset(url, onBytes) {
     }
 }
 
+/** 先拿各文件的 Content-Length，进度条与「x MB / y MB」才能从一开始就准确 */
+async function headSize(url) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 8000);
+    try {
+        const response = await fetch(url, { method: 'HEAD', signal: controller.signal });
+        if (!response.ok) return 0;
+        return Number(response.headers.get('content-length') || 0);
+    } catch (error) {
+        return 0;
+    } finally {
+        clearTimeout(timer);
+    }
+}
+
 /** 依次预取运行时资源，进度按总字节计算 */
 async function prefetchRuntime(base, onProgress) {
+    const assets = RUNTIME_ASSETS.map((asset) => ({ ...asset, url: assetUrl(base, asset.path) }));
+    const sizes = await Promise.all(assets.map((asset) => headSize(asset.url)));
+
     const totals = {};
     const received = {};
+    assets.forEach((asset, index) => {
+        totals[asset.key] = sizes[index];
+        received[asset.key] = 0;
+    });
+
     const report = () => {
         const keys = Object.keys(totals);
-        const got = keys.reduce((sum, key) => sum + (received[key] || 0), 0);
         const known = keys.every((key) => totals[key] > 0);
+        const got = keys.reduce((sum, key) => sum + (received[key] || 0), 0);
         const all = keys.reduce((sum, key) => sum + (totals[key] || 0), 0);
-        onProgress(known && all > 0 ? Math.min(1, got / all) : null, got, all);
+        if (known && all > 0) {
+            onProgress(Math.min(1, got / all), got, all);
+        } else {
+            onProgress(null, got, all);
+        }
     };
+
     const buffers = {};
-    for (const asset of RUNTIME_ASSETS) {
-        totals[asset.key] = 0;
-        received[asset.key] = 0;
-        buffers[asset.key] = await downloadAsset(assetUrl(base, asset.path), (got, total) => {
+    for (const asset of assets) {
+        buffers[asset.key] = await downloadAsset(asset.url, (got, total) => {
             received[asset.key] = got;
             if (total) totals[asset.key] = total;
             report();
