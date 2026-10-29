@@ -51,6 +51,7 @@ const i18n = {
         statusPick: '选择 Lottie JSON 与 AE 工程',
         statusReady: '文件就绪',
         statusNeedOther: '还需要选择 AE 工程',
+        statusNeedAep: '还需要选择 AE 工程（.aep）—— 修复需要它的真实渐变数据',
         statusNeedJson: '还需要选择 Lottie JSON',
         statusPyLoading: '正在加载 Python 运行时…',
         statusUnpacking: '正在解包 py-aep 依赖…',
@@ -124,6 +125,7 @@ const i18n = {
         statusPick: 'Choose Lottie JSON and an AE project',
         statusReady: 'Files ready',
         statusNeedOther: 'Choose the AE project too',
+        statusNeedAep: 'Choose the AE project (.aep) too — the fix needs its real gradient data',
         statusNeedJson: 'Choose Lottie JSON too',
         statusPyLoading: 'Loading Python runtime…',
         statusUnpacking: 'Unpacking py-aep…',
@@ -228,7 +230,14 @@ function filesWithFix() {
 function setStatus(key, params = {}) {
     state.status = { key, params };
     const el = $('status-text');
-    if (el) el.textContent = t(key, params);
+    if (!el) return;
+    const next = t(key, params);
+    if (el.textContent === next) return;
+    el.textContent = next;
+    el.title = next;   // 文案被省略号截断时，悬停可看全
+    if (typeof el.animate === 'function') {
+        el.animate([{ opacity: 0.35 }, { opacity: 1 }], { duration: 160, easing: 'ease-out' });
+    }
 }
 
 function refreshIcons() {
@@ -1326,7 +1335,7 @@ function setRequired(elId, flag) {
     if (badge) badge.hidden = !flag;
 }
 
-/** 缺条件时把「缺什么、点哪里」直接摆出来，而不是只把按钮置灰 */
+/** 缺条件时把「缺什么、点哪里」直接摆在固定引导行里，而不是只把按钮置灰 */
 function updateParseAvailability() {
     const hasJson = state.files.some((file) => !file.error);
     const hasAep = !!state.aepBytes;
@@ -1344,29 +1353,31 @@ function updateParseAvailability() {
     setRequired('json-required', needJson);
     setRequired('aep-required', needAep);
 
-    const hint = $('hint-bar');
-    const hintText = $('hint-text');
-    const hintCta = $('hint-cta');
+    const guide = $('guide-bar');
+    const cta = $('hint-cta');
+
     if (ready) {
-        hint.hidden = true;
+        guide.classList.remove('is-action');
+        cta.hidden = true;
+        cta.onclick = null;
         $('parse-btn').removeAttribute('title');
         setStatus('statusReady');
         return;
     }
 
-    hint.hidden = false;
+    guide.classList.add('is-action');
     if (needAep) {
-        hintText.textContent = t('hintNeedAep');
-        hintCta.textContent = t('hintNeedAepCta');
-        hintCta.onclick = () => $('aep-file').click();
-        setStatus('statusNeedOther');
+        cta.hidden = false;
+        cta.textContent = t('hintNeedAepCta');
+        cta.onclick = () => $('aep-file').click();
+        setStatus('statusNeedAep');
     } else {
-        hintText.textContent = t('hintNeedJson');
-        hintCta.textContent = t('hintNeedJsonCta');
-        hintCta.onclick = () => $('json-file').click();
-        setStatus(hasJson ? 'statusNeedOther' : 'statusPick');
+        cta.hidden = false;
+        cta.textContent = t('hintNeedJsonCta');
+        cta.onclick = () => $('json-file').click();
+        setStatus('statusPick');
     }
-    $('parse-btn').title = hintText.textContent;
+    $('parse-btn').title = $('status-text').textContent;
     refreshIcons();
 }
 

@@ -61,9 +61,9 @@ const SELECTORS = {
     detail: '#detail',
     cardGrid: '#card-grid',
     backButton: '#back-btn',
-    hintBar: '#hint-bar',
-    hintText: '#hint-text',
-    hintCta: '#hint-cta',
+    guideBar: '#guide-bar',
+    guideText: '#status-text',
+    guideCta: '#hint-cta',
     loadingMask: '#bf-loading',
     loadingPhase: '#loading-phase',
 };
@@ -209,6 +209,9 @@ try {
         (await page.$('#stage-before')) !== null && (await page.$('#stage-after')) !== null);
 
     /* ---------- 2. 只上传 JSON：修复前先渲染 ---------- */
+    const yStart = await page.evaluate(
+        () => Math.round(document.getElementById('stage-before').getBoundingClientRect().top)
+    );
     await uploadJson(FIXTURE_LOST);
     await page.waitForFunction(
         () => !!document.querySelector('#stage-before svg'),
@@ -228,18 +231,23 @@ try {
 
     /* ---------- 2a. 缺 AE 工程时的引导 ---------- */
     const needAep = await page.evaluate(() => ({
-        hintVisible: !document.getElementById('hint-bar').hidden,
-        hintText: document.getElementById('hint-text').textContent.trim(),
+        ctaVisible: !document.getElementById('hint-cta').hidden,
+        text: document.getElementById('status-text').textContent.trim(),
         ctaText: document.getElementById('hint-cta').textContent.trim(),
+        action: document.getElementById('guide-bar').classList.contains('is-action'),
         aepRequired: document.getElementById('drop-aep').classList.contains('is-required'),
         aepBadge: !document.getElementById('aep-required').hidden,
         jsonRequired: document.getElementById('drop-json').classList.contains('is-required'),
         parseDisabled: document.getElementById('parse-btn').disabled,
         tooltip: document.getElementById('parse-btn').title,
     }));
-    check('只传 JSON 时提示还需要 AE 工程', needAep.hintVisible && /AE 工程/.test(needAep.hintText),
-        needAep.hintText);
-    check('提示里带「选择 .aep 工程」按钮', /选择|Choose/.test(needAep.ctaText), needAep.ctaText);
+    const yAfterJson = await page.evaluate(
+        () => Math.round(document.getElementById('stage-before').getBoundingClientRect().top)
+    );
+    check('引导行出现不引起布局位移（画布位置不变）', yAfterJson === yStart, `${yStart} → ${yAfterJson}`);
+    check('只传 JSON 时引导行提示还需要 AE 工程',
+        needAep.ctaVisible && /AE 工程/.test(needAep.text) && needAep.action === true, needAep.text);
+    check('引导行带「选择 .aep 工程」按钮', /选择|Choose/.test(needAep.ctaText), needAep.ctaText);
     check('缺失的 AE 工程区域被高亮 + 必选徽标',
         needAep.aepRequired === true && needAep.aepBadge === true && needAep.jsonRequired === false);
     check('按钮置灰但能悬停看到原因', needAep.parseDisabled === true && /AE 工程/.test(needAep.tooltip),
@@ -248,12 +256,18 @@ try {
     /* ---------- 2b. 选好工程 → 自动修复 → 双侧预览 ---------- */
     await uploadAep();
     const hintGone = await page.evaluate(() => ({
-        hintHidden: document.getElementById('hint-bar').hidden,
+        ctaHidden: document.getElementById('hint-cta').hidden,
+        text: document.getElementById('status-text').textContent.trim(),
+        action: document.getElementById('guide-bar').classList.contains('is-action'),
         aepRequired: document.getElementById('drop-aep').classList.contains('is-required'),
         parseDisabled: document.getElementById('parse-btn').disabled,
     }));
-    check('补齐 AE 工程后引导消失、按钮可用',
-        hintGone.hintHidden && !hintGone.aepRequired && hintGone.parseDisabled === false,
+    const yAfterAep = await page.evaluate(
+        () => Math.round(document.getElementById('stage-before').getBoundingClientRect().top)
+    );
+    check('引导收起也不引起布局位移', yAfterAep === yStart, `${yStart} → ${yAfterAep}`);
+    check('补齐 AE 工程后引导收起、按钮可用',
+        hintGone.ctaHidden && !hintGone.action && !hintGone.aepRequired && hintGone.parseDisabled === false,
         JSON.stringify(hintGone));
     await page.click(SELECTORS.parseButton);
 
@@ -379,13 +393,13 @@ try {
     await page.goto(PAGE_URL, { waitUntil: 'networkidle0' });
     await (await page.$(SELECTORS.aepInput)).uploadFile(FIXTURE_AEP);
     const needJson = await page.evaluate(() => ({
-        hintVisible: !document.getElementById('hint-bar').hidden,
-        hintText: document.getElementById('hint-text').textContent.trim(),
+        ctaVisible: !document.getElementById('hint-cta').hidden,
+        text: document.getElementById('status-text').textContent.trim(),
         jsonRequired: document.getElementById('drop-json').classList.contains('is-required'),
         aepRequired: document.getElementById('drop-aep').classList.contains('is-required'),
     }));
     check('只传 AE 工程时提示缺少 JSON',
-        needJson.hintVisible && /JSON/.test(needJson.hintText)
+        needJson.ctaVisible && /JSON/.test(needJson.text)
         && needJson.jsonRequired === true && needJson.aepRequired === false,
         JSON.stringify(needJson));
 

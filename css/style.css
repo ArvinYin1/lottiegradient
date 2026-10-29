@@ -1640,22 +1640,35 @@ html.dark .badge--warn { color: #fbbf24; }
   font-weight: 500;
 }
 
-.bf-hint {
+/* 固定高度的引导行：内容随状态变化，但高度恒定，出现/消失都不会推挤下方内容 */
+.bf-guide {
   display: flex;
   align-items: center;
   gap: 8px;
+  height: 36px;
   margin-bottom: 12px;
-  padding: 9px 12px;
+  padding: 0 12px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm, 6px);
-  background: color-mix(in srgb, var(--primary) 5%, var(--card));
+  background: var(--card);
   font-size: 12.5px;
+  color: var(--muted-foreground);
+  overflow: hidden;
+  transition: border-color .15s ease, background .15s ease, color .15s ease;
+}
+.bf-guide.is-action {
+  border-color: color-mix(in srgb, var(--primary) 45%, var(--border));
+  background: color-mix(in srgb, var(--primary) 6%, var(--card));
   color: var(--foreground);
 }
-.bf-hint[hidden] { display: none !important; }
-.bf-hint svg { width: 15px; height: 15px; color: var(--muted-foreground); flex: none; }
-.bf-hint-text { flex: 1; color: var(--muted-foreground); }
-.bf-hint .btn { height: 26px; padding: 0 10px; font-size: 12px; }
+.bf-guide svg { width: 15px; height: 15px; flex: none; }
+.bf-guide-text {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bf-guide .btn { height: 26px; padding: 0 10px; font-size: 12px; flex: none; }
 
 .bf-files {
   display: grid;

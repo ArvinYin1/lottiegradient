@@ -58,16 +58,15 @@
             <button id="download-btn" class="btn btn-outline" disabled>
                 <i data-lucide="download"></i><span data-i18n="exportJson">导出 JSON</span>
             </button>
-            <span class="bf-status" id="status-text" data-i18n="statusPick">选择两个文件</span>
+        </div>
+
+        <div class="bf-guide" id="guide-bar">
+            <i data-lucide="info"></i>
+            <span class="bf-guide-text" id="status-text" data-i18n="statusPick">选择两个文件</span>
+            <button type="button" class="btn btn-outline" id="hint-cta" hidden></button>
         </div>
 
         <div class="bf-files" id="file-list" hidden></div>
-
-        <div class="bf-hint" id="hint-bar" hidden>
-            <i data-lucide="info"></i>
-            <span class="bf-hint-text" id="hint-text"></span>
-            <button type="button" class="btn btn-outline" id="hint-cta"></button>
-        </div>
 
         <div class="bf-summary" id="summary"></div>
 
