@@ -1619,18 +1619,15 @@ html.dark .badge--warn { color: #fbbf24; }
 /* ---- 摘要 + 未处理项 ---- */
 /* 缺失条件时的引导 */
 .bf-drop.is-required {
-  border-color: var(--primary);
-  border-style: dashed;
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 8%, transparent);
+  border-style: solid;
+  border-color: color-mix(in srgb, var(--foreground) 22%, var(--border));
 }
 .bf-required {
   margin-left: auto;
-  padding: 1px 6px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--primary) 12%, transparent);
-  color: var(--foreground);
+  color: var(--muted-foreground);
   font-size: 10.5px;
-  font-weight: 500;
+  font-weight: 400;
+  letter-spacing: .02em;
 }
 
 /* 固定高度的引导行：内容随状态变化，但高度恒定，出现/消失都不会推挤下方内容 */
@@ -1650,11 +1647,10 @@ html.dark .badge--warn { color: #fbbf24; }
   transition: border-color .15s ease, background .15s ease, color .15s ease;
 }
 .bf-guide.is-action {
-  border-color: color-mix(in srgb, var(--primary) 45%, var(--border));
-  background: color-mix(in srgb, var(--primary) 6%, var(--card));
+  /* 缺条件时只需文字说清楚，不再用主色底/描边强调（视觉过强） */
   color: var(--foreground);
 }
-.bf-guide svg { width: 15px; height: 15px; flex: none; }
+.bf-guide svg { width: 14px; height: 14px; flex: none; opacity: .55; }
 .bf-guide-text {
   flex: 1;
   overflow: hidden;
