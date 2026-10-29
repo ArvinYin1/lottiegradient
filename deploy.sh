@@ -5,7 +5,7 @@ SSH_KEY="${SSH_KEY:-$HOME/.ssh/hongkongserver.pem}"
 HOST="${HOST:-root@43.155.27.82}"
 REMOTE_DIR="${REMOTE_DIR:-/var/www/lottiegradient}"
 SITE_URL="${SITE_URL:-https://www.lottie.uno/}"
-ASSETS=(index.html backfill.html css js svg)
+ASSETS=(index.html editor.html backfill.html css js svg)
 
 case "${1:-}" in
   "") DRY_RUN=0 ;;

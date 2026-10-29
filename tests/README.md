@@ -3,7 +3,7 @@
 给 Lottie 渐变编辑器（纯静态站，**无构建步骤**）用的一套「真实浏览器交互」冒烟测试。
 目的：UI 改版 / 重构后，一条命令确认导入、选中、改色、增删色标、搜索、播放、导出、响应式都没坏。
 
-不修改产品代码：所有文件都在 `tests/` 内，站点通过 `file://` 直接打开 `index.html`。
+不修改产品代码：所有文件都在 `tests/` 内，站点通过 `file://` 直接打开 `editor.html`（编辑器）。
 
 ## 快速开始
 
@@ -94,9 +94,9 @@ tests/
 
 **降级是显式记录的**：用例详情里带 `[降级]`，控制台末尾汇总「因基线 DOM 缺稳定钩子而降级的断言」，`artifacts/last-run.json` 里有 `degradations` 与 `hookProbe`（每个钩子是否就位）。改版后钩子就位时会自动走 hook 路径，不再产生降级记录；若某条用例仍降级，说明对应钩子还没接上。
 
-## 回填页测试（`backfill.mjs`，51 条）
+## 回填页测试（`backfill.mjs`，52 条）
 
-`backfill.html` 用 Pyodide 在浏览器里跑 Python 解析 `.aep`，需要 http(s) 加载 wasm / zip，
+首页 `index.html`（渐变回填）用 Pyodide 在浏览器里跑 Python 解析 `.aep`，需要 http(s) 加载 wasm / zip，
 所以这套测试**自带一个静态文件服务器**（随机端口），不走 `file://`。
 
 ```bash

@@ -31,7 +31,7 @@ const TESTS_DIR = __dirname;
 const REPO_ROOT = path.resolve(__dirname, '..');
 // 被测站点根目录：默认仓库根，可用 SITE_ROOT 指向任意 checkout（基线对比用）
 const SITE_ROOT = process.env.SITE_ROOT ? path.resolve(process.env.SITE_ROOT) : REPO_ROOT;
-const INDEX_URL = 'file://' + path.join(SITE_ROOT, 'index.html');
+const INDEX_URL = 'file://' + path.join(SITE_ROOT, 'editor.html');
 const FIXTURE = path.join(TESTS_DIR, 'fixtures', 'master.json');
 // 用例 11-14 专用 fixture（新功能覆盖，不改动 master.json）
 const FIXTURE_DUPLICATE_NAMES = path.join(TESTS_DIR, 'fixtures', 'duplicate-names.json');

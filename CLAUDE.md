@@ -4,13 +4,15 @@
 
 ## 项目概述
 
-本项目是一个 **Lottie 渐变色编辑器**，用于解决 After Effects 通过 Bodymovin 插件导出 Lottie JSON 动画时经常丢失渐变色（颜色、透明度、位置）的问题。
+本项目是 **Lottie 渐变修复工具**，用于解决 After Effects 通过 Bodymovin 导出 Lottie JSON 时经常丢失渐变色（颜色、透明度、位置）的问题。
 
-用户可以通过本工具：
-- 上传和预览 Lottie JSON 动画文件
-- 可视化编辑动画中的渐变色（色标颜色 / 位置 / 透明度）
-- 同步其他文件的渐变配置
-- 导出修复后的 JSON（或导出当前帧 PNG / GIF）
+首页（`index.html`，渐变回填）：
+- 同时选择 `.aep` 工程与一个/多个 Lottie JSON，自动读取工程里的真实渐变并修复
+- 修复前/后并排对比播放，多文件有结果总览，可逐个核对与导出
+
+编辑器（`editor.html`）：
+- 上传并预览 Lottie JSON，可视化编辑渐变（颜色 / 位置 / 透明度）
+- 同步其他文件的渐变配置，导出修复后的 JSON（或当前帧 PNG / GIF）
 
 **在线地址**: https://www.lottie.uno
 **备用地址**: https://arvinyin1.github.io/lottiegradient/
@@ -36,8 +38,9 @@
 lottiegradient/
 ├── .github/workflows/deploy.yml # main 推送 / 手动触发的自动部署
 ├── deploy.sh           # 统一手动部署脚本（rsync + 线上验收）
-├── index.html          # 编辑器（顶栏 + 三栏工作台 + 两个弹窗）
-├── backfill.html       # 渐变回填页（.aep + JSON → 比对 → 回填）
+├── index.html          # 首页：渐变回填（.aep + JSON → 自动修复 → 前后对比）
+├── editor.html         # 渐变编辑器（顶栏 + 三栏工作台 + 两个弹窗）
+├── backfill.html       # 旧地址，meta refresh 跳到 index.html
 ├── css/
 │   └── style.css       # 设计系统：tokens / 组件 / 响应式 / 深色主题 / 回填页
 ├── js/
@@ -46,7 +49,7 @@ lottiegradient/
 │   └── vendor/         # 自托管依赖：lucide / lottie / gif.js + pyodide / py-aep
 ├── tests/
 │   ├── smoke.mjs       # 编辑器冒烟测试（14 条用例，file://）
-│   ├── backfill.mjs    # 回填页测试（27 条用例，自带静态服务器）
+│   ├── backfill.mjs    # 首页回填测试（52 条用例，自带静态服务器）
 │   ├── fixtures/       # 测试用 Lottie JSON + sample.aep
 │   └── README.md       # 跑测说明 / 改版适配
 ├── svg/                # 本地 SVG 图标备用资源（运行时实际用 js/vendor/lucide）
@@ -129,9 +132,9 @@ to_css() / to_lottie()        // 合并预览 CSS / Lottie 平铺数组
 - 文案字典在 `js/main.js` 顶部（`zh` / `en`），静态节点用 `data-i18n` / `data-i18n-placeholder`，JS 动态文案用 `t(key)`。
 - 新增文案必须同时补 `zh` 与 `en`；动态生成的表头 / 按钮在 `refreshLanguage()` 里更新。
 
-### 7. 渐变回填页（`backfill.html` + `js/backfill.js`）
+### 7. 首页：渐变回填（`index.html` + `js/backfill.js`）
 
-独立页面，入口是编辑器顶栏的「渐变回填」链接。解决的是「手里还有 AE 工程，想直接拿工程里的真实渐变」的场景：
+站点首页（`index.html`），编辑器（`editor.html`）顶栏有「渐变回填」链接指回这里；本页顶栏有「渐变编辑器」按钮跳到编辑器。解决的是「手里还有 AE 工程，想直接拿工程里的真实渐变」的场景：
 
 - **原理**：AE 脚本 API 读不到渐变（`ADBE Vector Grad Colors` 是 `NO_VALUE`），Bodymovin 自己也是把 `.aep` 当文本搜索。这里改用 **Pyodide 在浏览器里跑 py-aep**，直接解析 `.aep` 里的渐变 XML，拿到色标（offset / 中点 / RGB）与透明度色标。
 - **懒加载**：`js/vendor/pyodide/`（约 13 MB）与 `js/vendor/pyaep-libs.zip`（约 2.8 MB）只在用户点「解析并比对」时才加载；编辑器首屏零新增请求。
@@ -161,7 +164,7 @@ shadcn 风格，light 在 `:root`，dark 在 `html.dark`：
 ```
 
 - 面板之间用 1px 描边分隔，不用悬浮卡片；中间画布是视觉主角。
-- 深浅主题由 `<html class="dark">` 驱动；`index.html` 头部内联脚本在首帧前读取 `localStorage['lottie-theme']`，避免闪白。
+- 深浅主题由 `<html class="dark">` 驱动；两个页面头部都有内联脚本在首帧前读取 `localStorage['lottie-theme']`，避免闪白。
 - 切换入口：`#theme-btn`（`js/main.js` 末尾的「主题切换」块）。
 
 ### 关键类名
@@ -214,8 +217,8 @@ npm test               # 等价于 cd tests && npm test
 
 | 文件 | 覆盖 | 条数 | 运行方式 |
 |---|---|---|---|
-| `tests/smoke.mjs` | 编辑器：加载 / 导入 / 选中 / 改色 / 增删色标 / 搜索 / 播放 / 导出 / 响应式 / 同名渐变 / 色标分离 / 播放状态保持 / 关键帧 | 14 | `file://` 直接打开 |
-| `tests/backfill.mjs` | 回填页：入口 / 加载态 / nginx MIME 兼容 / CDN 回退 / 解析 / 一致 / 失配 / 回填 / 主题 / 说明弹窗 / 中英切换 | 27 | 自带静态服务器（Pyodide 需要 http） |
+| `tests/smoke.mjs` | 编辑器（`editor.html`）：加载 / 导入 / 选中 / 改色 / 增删色标 / 搜索 / 播放 / 导出 / 响应式 / 同名渐变 / 色标分离 / 播放状态保持 / 关键帧 | 14 | `file://` 直接打开 |
+| `tests/backfill.mjs` | 首页回填（`index.html`）：入口互通 / 上传即预览 / 总览与细节 / 单一动作位 / 场景提示 / 加载态 / MIME 与 CDN 回退 / 自动修复 / 聚焦 / 中英切换 | 52 | 自带静态服务器（Pyodide 需要 http） |
 
 ```bash
 cd tests && npm test            # 编辑器
@@ -231,7 +234,7 @@ cd tests && npm run test:all    # 两套都跑
 推送到 `main` 后自动更新（Settings > Pages，源为 `main`）。
 
 ### 自建服务器
-- 手动部署：`SSH_KEY=/path/to/key ./deploy.sh`，通过 rsync over SSH 同步 `index.html backfill.html css js svg` 到 nginx 目录并验收线上 HTTP 状态；`--dry-run` 只预览。
+- 手动部署：`SSH_KEY=/path/to/key ./deploy.sh`，通过 rsync over SSH 同步 `index.html editor.html backfill.html css js svg` 到 nginx 目录并验收线上 HTTP 状态；`--dry-run` 只预览。
 - 自动部署：`.github/workflows/deploy.yml` 在推送 `main` 或手动触发时调用同一个 `deploy.sh`。
 - CI 需要 Secrets：`DEPLOY_SSH_KEY`（部署私钥）与 `DEPLOY_SSH_HOST_KEY`（可信 known_hosts 行）。私钥不得提交到仓库。
 - 脚本启用 `StrictHostKeyChecking=yes`，手动部署机器的 `known_hosts` 也必须包含可信主机公钥；线上验收失败返回非零状态。

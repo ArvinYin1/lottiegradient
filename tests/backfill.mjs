@@ -55,7 +55,8 @@ const SELECTORS = {
     helpModal: '#help-modal',
     themeButton: '#theme-btn',
     langButton: '#lang-btn',
-    backfillEntry: 'a[href="backfill.html"]',
+    editorEntry: 'a[href="index.html"]',
+    editorPageLink: 'a[href="editor.html"]',
     overview: '#overview',
     detail: '#detail',
     cardGrid: '#card-grid',
@@ -132,8 +133,8 @@ fs.rmSync(CHROME_PROFILE, { recursive: true, force: true });
 const { server, port } = await startServer();
 const BASE = `http://127.0.0.1:${port}`;
 // 测试只跑同源路径（?local=1），避免依赖外网 CDN；CDN 路径由线上 E2E 覆盖
-const PAGE_URL = `${BASE}/backfill.html?local=1`;
-const PAGE_URL_AUTO = `${BASE}/backfill.html`;
+const PAGE_URL = `${BASE}/index.html?local=1`;
+const PAGE_URL_AUTO = `${BASE}/index.html`;
 
 const browser = await puppeteer.launch({
     executablePath: CHROME_PATH,
@@ -200,14 +201,22 @@ async function waitDone() {
 }
 
 try {
-    /* ---------- 0. 主站入口 ---------- */
-    await page.goto(`${BASE}/index.html`, { waitUntil: 'domcontentloaded' });
-    const entry = await page.$eval(SELECTORS.backfillEntry, (el) => ({
+    /* ---------- 0. 首页 ↔ 编辑器互跳 ---------- */
+    await page.goto(`${BASE}/editor.html`, { waitUntil: 'domcontentloaded' });
+    const entry = await page.$eval(SELECTORS.editorEntry, (el) => ({
         text: el.textContent.trim(),
         visible: el.getBoundingClientRect().width > 0,
     })).catch(() => null);
-    check('编辑器顶栏有回填入口', !!entry && entry.visible && entry.text.length > 0,
+    check('编辑器顶栏有返回首页（渐变回填）入口', !!entry && entry.visible && entry.text.length > 0,
         entry ? JSON.stringify(entry) : '未找到');
+
+    await page.goto(PAGE_URL, { waitUntil: 'domcontentloaded' });
+    const toEditor = await page.$eval(SELECTORS.editorPageLink, (el) => ({
+        text: el.textContent.trim(),
+        visible: el.getBoundingClientRect().width > 0,
+    })).catch(() => null);
+    check('首页有「渐变编辑器」入口按钮', !!toEditor && toEditor.visible && /编辑器|editor/i.test(toEditor.text),
+        toEditor ? JSON.stringify(toEditor) : '未找到');
 
     /* ---------- 1. 页面加载 ---------- */
     await page.goto(PAGE_URL, { waitUntil: 'networkidle0' });

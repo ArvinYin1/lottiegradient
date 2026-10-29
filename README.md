@@ -132,12 +132,11 @@ git clone https://github.com/ArvinYin1/lottiegradient.git
 # 进入目录
 cd lottiegradient
 
-# 编辑器可直接双击打开
-open index.html
-
-# 回填页（backfill.html）要加载 wasm，必须走本地服务器
+# 首页（渐变回填）要加载 wasm，必须走本地服务器
 python3 -m http.server 8080
-# 然后访问 http://localhost:8080/backfill.html
+open http://localhost:8080/
+
+# 渐变编辑器在 /editor.html
 ```
 
 ---
@@ -149,12 +148,11 @@ git clone https://github.com/ArvinYin1/lottiegradient.git
 # Enter the directory
 cd lottiegradient
 
-# The editor opens straight from disk
-open index.html
-
-# The backfill page loads wasm, so it needs a local server
+# The homepage (gradient backfill) loads wasm, so it needs a local server
 python3 -m http.server 8080
-# then open http://localhost:8080/backfill.html
+open http://localhost:8080/
+
+# The editor lives at /editor.html
 ```
 
 ---
@@ -183,7 +181,7 @@ SSH_KEY=/path/to/key ./deploy.sh            # 同步静态文件并自动验收
 SSH_KEY=/path/to/key ./deploy.sh --dry-run  # 只预览，不改动服务器
 ```
 
-默认服务器为 `root@43.155.27.82`，目标目录为 `/var/www/lottiegradient`，验收地址为 `https://www.lottie.uno/`。可用 `HOST`、`REMOTE_DIR`、`SITE_URL` 环境变量覆盖。脚本只同步 `index.html backfill.html css js svg`，并启用 SSH 严格主机校验；本机 `known_hosts` 必须包含可信的服务器主机公钥。
+默认服务器为 `root@43.155.27.82`，目标目录为 `/var/www/lottiegradient`，验收地址为 `https://www.lottie.uno/`。可用 `HOST`、`REMOTE_DIR`、`SITE_URL` 环境变量覆盖。脚本只同步 `index.html editor.html backfill.html css js svg`，并启用 SSH 严格主机校验；本机 `known_hosts` 必须包含可信的服务器主机公钥。
 
 ### GitHub Actions 自动部署
 
@@ -217,7 +215,7 @@ SSH_KEY=/path/to/key ./deploy.sh            # Sync static files and verify the l
 SSH_KEY=/path/to/key ./deploy.sh --dry-run  # Preview without changing the server
 ```
 
-Defaults are `root@43.155.27.82`, `/var/www/lottiegradient`, and `https://www.lottie.uno/`; override them with `HOST`, `REMOTE_DIR`, and `SITE_URL`. Only `index.html backfill.html css js svg` are synced. Strict SSH host checking is enabled, so the local `known_hosts` must contain the verified server host key.
+Defaults are `root@43.155.27.82`, `/var/www/lottiegradient`, and `https://www.lottie.uno/`; override them with `HOST`, `REMOTE_DIR`, and `SITE_URL`. Only `index.html editor.html backfill.html css js svg` are synced. Strict SSH host checking is enabled, so the local `known_hosts` must contain the verified server host key.
 
 ### Automatic deployment with GitHub Actions
 
