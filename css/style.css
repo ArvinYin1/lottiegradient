@@ -1624,6 +1624,39 @@ html.dark .badge--warn { color: #fbbf24; }
 }
 
 /* ---- 摘要 + 未处理项 ---- */
+/* 缺失条件时的引导 */
+.bf-drop.is-required {
+  border-color: var(--primary);
+  border-style: dashed;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 8%, transparent);
+}
+.bf-required {
+  margin-left: auto;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
+  color: var(--foreground);
+  font-size: 10.5px;
+  font-weight: 500;
+}
+
+.bf-hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm, 6px);
+  background: color-mix(in srgb, var(--primary) 5%, var(--card));
+  font-size: 12.5px;
+  color: var(--foreground);
+}
+.bf-hint[hidden] { display: none !important; }
+.bf-hint svg { width: 15px; height: 15px; color: var(--muted-foreground); flex: none; }
+.bf-hint-text { flex: 1; color: var(--muted-foreground); }
+.bf-hint .btn { height: 26px; padding: 0 10px; font-size: 12px; }
+
 .bf-files {
   display: grid;
   gap: 6px;

@@ -28,6 +28,8 @@ const REPO_ROOT = path.resolve(__dirname, '..');
 const FIXTURE_MATCH = path.join(__dirname, 'fixtures', 'gradient-match.json');
 const FIXTURE_LOST = path.join(__dirname, 'fixtures', 'gradient-lost.json');
 const FIXTURE_MULTI = path.join(__dirname, 'fixtures', 'gradient-multi.json');
+const FIXTURE_NO_GRADIENTS = path.join(__dirname, 'fixtures', 'no-gradients.json');
+const FIXTURE_MASTER = path.join(__dirname, 'fixtures', 'master.json');
 const FIXTURE_AEP = path.join(__dirname, 'fixtures', 'sample.aep');
 
 const ARTIFACTS = process.env.ARTIFACTS_DIR
@@ -59,6 +61,9 @@ const SELECTORS = {
     detail: '#detail',
     cardGrid: '#card-grid',
     backButton: '#back-btn',
+    hintBar: '#hint-bar',
+    hintText: '#hint-text',
+    hintCta: '#hint-cta',
     loadingMask: '#bf-loading',
     loadingPhase: '#loading-phase',
 };
@@ -112,7 +117,7 @@ function check(name, ok, detail = '') {
     console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? `  — ${detail}` : ''}`);
 }
 
-for (const file of [FIXTURE_MATCH, FIXTURE_LOST, FIXTURE_MULTI, FIXTURE_AEP]) {
+for (const file of [FIXTURE_MATCH, FIXTURE_LOST, FIXTURE_MULTI, FIXTURE_NO_GRADIENTS, FIXTURE_AEP]) {
     if (!fs.existsSync(file)) {
         console.error(`缺少测试素材：${file}`);
         process.exit(1);
@@ -221,8 +226,35 @@ try {
     check('此时「修复后」仍是空态', preParse.afterPlaceholder === true);
     check('未解析时导出保持禁用', preParse.downloadDisabled === true);
 
+    /* ---------- 2a. 缺 AE 工程时的引导 ---------- */
+    const needAep = await page.evaluate(() => ({
+        hintVisible: !document.getElementById('hint-bar').hidden,
+        hintText: document.getElementById('hint-text').textContent.trim(),
+        ctaText: document.getElementById('hint-cta').textContent.trim(),
+        aepRequired: document.getElementById('drop-aep').classList.contains('is-required'),
+        aepBadge: !document.getElementById('aep-required').hidden,
+        jsonRequired: document.getElementById('drop-json').classList.contains('is-required'),
+        parseDisabled: document.getElementById('parse-btn').disabled,
+        tooltip: document.getElementById('parse-btn').title,
+    }));
+    check('只传 JSON 时提示还需要 AE 工程', needAep.hintVisible && /AE 工程/.test(needAep.hintText),
+        needAep.hintText);
+    check('提示里带「选择 .aep 工程」按钮', /选择|Choose/.test(needAep.ctaText), needAep.ctaText);
+    check('缺失的 AE 工程区域被高亮 + 必选徽标',
+        needAep.aepRequired === true && needAep.aepBadge === true && needAep.jsonRequired === false);
+    check('按钮置灰但能悬停看到原因', needAep.parseDisabled === true && /AE 工程/.test(needAep.tooltip),
+        needAep.tooltip);
+
     /* ---------- 2b. 选好工程 → 自动修复 → 双侧预览 ---------- */
     await uploadAep();
+    const hintGone = await page.evaluate(() => ({
+        hintHidden: document.getElementById('hint-bar').hidden,
+        aepRequired: document.getElementById('drop-aep').classList.contains('is-required'),
+        parseDisabled: document.getElementById('parse-btn').disabled,
+    }));
+    check('补齐 AE 工程后引导消失、按钮可用',
+        hintGone.hintHidden && !hintGone.aepRequired && hintGone.parseDisabled === false,
+        JSON.stringify(hintGone));
     await page.click(SELECTORS.parseButton);
 
     const maskShown = await page
@@ -342,6 +374,34 @@ try {
     check('中英切换生效', zhLabel === '解析并修复' && enLabel === 'Parse and fix', `${zhLabel} → ${enLabel}`);
     await page.click(SELECTORS.langButton);
     await new Promise((r) => setTimeout(r, 220));
+
+    /* ---------- 6b. 只传 AE 工程时提示缺少 JSON ---------- */
+    await page.goto(PAGE_URL, { waitUntil: 'networkidle0' });
+    await (await page.$(SELECTORS.aepInput)).uploadFile(FIXTURE_AEP);
+    const needJson = await page.evaluate(() => ({
+        hintVisible: !document.getElementById('hint-bar').hidden,
+        hintText: document.getElementById('hint-text').textContent.trim(),
+        jsonRequired: document.getElementById('drop-json').classList.contains('is-required'),
+        aepRequired: document.getElementById('drop-aep').classList.contains('is-required'),
+    }));
+    check('只传 AE 工程时提示缺少 JSON',
+        needJson.hintVisible && /JSON/.test(needJson.hintText)
+        && needJson.jsonRequired === true && needJson.aepRequired === false,
+        JSON.stringify(needJson));
+
+    /* ---------- 6c. 工程里找不到对应渐变时给出原因 ---------- */
+    await uploadJson(FIXTURE_MASTER);
+    await page.click(SELECTORS.parseButton);
+    out = await waitDone();
+    check('工程与 JSON 对不上时提示来源不一致', /没找到对应渐变/.test(out.summary), out.summary);
+
+    /* ---------- 6d. 文件里没有渐变时给出原因 ---------- */
+    await page.goto(PAGE_URL, { waitUntil: 'networkidle0' });
+    await uploadJson(FIXTURE_NO_GRADIENTS);
+    await uploadAep();
+    await page.click(SELECTORS.parseButton);
+    out = await waitDone();
+    check('没有渐变时提示无需修复', /没有渐变色/.test(out.summary), out.summary);
 
     /* ---------- 7. 已一致的文件：不修复、导出禁用 ---------- */
     await page.goto(PAGE_URL, { waitUntil: 'networkidle0' });

@@ -33,6 +33,13 @@ const i18n = {
         aepTitle: 'AE 工程',
         pickFile: '选择文件',
         pickFiles: '选择文件（可多选）',
+        required: '必选',
+        hintNeedAep: '还需要上传这份 JSON 对应的 AE 工程（.aep）—— 修复要用工程里的真实渐变数据。',
+        hintNeedAepCta: '选择 .aep 工程',
+        hintNeedJson: '还需要上传要修复的 Lottie JSON。',
+        hintNeedJsonCta: '选择 JSON',
+        summaryNoGradients: '这些文件里没有渐变色，无需修复',
+        summaryNoMatch: '工程里没找到对应渐变，确认 .aep 与 JSON 来自同一个项目',
         filesCount: '{n} 个文件',
         fileFixed: '已修复 {n}',
         fileOk: '无需修改',
@@ -99,6 +106,13 @@ const i18n = {
         aepTitle: 'AE project',
         pickFile: 'Choose file',
         pickFiles: 'Choose files (multiple allowed)',
+        required: 'Required',
+        hintNeedAep: 'This JSON still needs its After Effects project (.aep) — the real gradient data comes from it.',
+        hintNeedAepCta: 'Choose .aep',
+        hintNeedJson: 'Choose the Lottie JSON to fix.',
+        hintNeedJsonCta: 'Choose JSON',
+        summaryNoGradients: 'No gradients in these files',
+        summaryNoMatch: 'No matching gradients in the project — check that the .aep and JSON come from the same project',
         filesCount: '{n} files',
         fileFixed: 'Fixed {n}',
         fileOk: 'No changes',
@@ -1058,14 +1072,18 @@ function renderSummary() {
     }
     const fixed = totalFixed();
     const skipped = state.files.reduce((sum, file) => sum + skippedRows(file).length, 0);
+    const totalGradients = state.files.reduce((sum, file) => sum + (file.gradients || []).length, 0);
+    const matchedRows = state.files.reduce(
+        (sum, file) => sum + (file.rows || []).filter((row) => row.ae).length, 0
+    );
     const byName = state.files.reduce(
         (sum, file) => sum + (file.rows || []).filter((row) => row.matchMode === 'name').length, 0
     );
-    const parts = [
-        fixed
-            ? `<span>${t('summaryTotal', { n: fixed, files: filesWithFix().length })}</span>`
-            : `<span>${t('summaryNothing')}</span>`,
-    ];
+    let lead = t('summaryNothing');
+    if (fixed) lead = t('summaryTotal', { n: fixed, files: filesWithFix().length });
+    else if (!totalGradients) lead = t('summaryNoGradients');
+    else if (!matchedRows) lead = t('summaryNoMatch');
+    const parts = [`<span>${lead}</span>`];
     if (byName) parts.push(`<span class="badge badge--outline">${t('summaryMatchedByName', { n: byName })}</span>`);
     if (skipped) {
         parts.push(`<button class="btn btn-ghost" id="skip-btn"><i data-lucide="alert-triangle"></i>${t('summarySkipped', { n: skipped })}</button>`);
@@ -1257,7 +1275,18 @@ async function runCompare() {
         if (state.files.length > 1) showOverview();
         else showDetail(0);
         setStatus('statusDone', { ms: state.lastParseMs });
-        toast(fixed ? t('toastApplied', { n: fixed }) : t('toastNothing'), fixed ? 'success' : 'info');
+        if (fixed) {
+            toast(t('toastApplied', { n: fixed }), 'success');
+        } else {
+            const totalGradients = state.files.reduce((sum, file) => sum + (file.gradients || []).length, 0);
+            const matched = state.files.reduce(
+                (sum, file) => sum + (file.rows || []).filter((row) => row.ae).length, 0
+            );
+            const message = !totalGradients
+                ? t('summaryNoGradients')
+                : (matched ? t('toastNothing') : t('summaryNoMatch'));
+            toast(message, matched ? 'info' : 'error');
+        }
     } catch (error) {
         console.error(error);
         setStatus('statusFailed', { msg: error.message });
@@ -1292,16 +1321,53 @@ function downloadAll() {
 
 /* ============ 文件选择 ============ */
 
+function setRequired(elId, flag) {
+    const badge = $(elId);
+    if (badge) badge.hidden = !flag;
+}
+
+/** 缺条件时把「缺什么、点哪里」直接摆出来，而不是只把按钮置灰 */
 function updateParseAvailability() {
     const hasJson = state.files.some((file) => !file.error);
-    const ready = hasJson && !!state.aepBytes;
+    const hasAep = !!state.aepBytes;
+    const needJson = !hasJson;
+    const needAep = hasJson && !hasAep;
+    const ready = hasJson && hasAep;
+
     $('parse-btn').disabled = !ready;
     $('download-btn').disabled = true;
     const downloadLabel = $('download-btn').querySelector('span');
     if (downloadLabel) downloadLabel.textContent = t('exportJson');
-    if (ready) setStatus('statusReady');
-    else if (!hasJson) setStatus('statusPick');
-    else setStatus('statusNeedOther');
+
+    $('drop-json').classList.toggle('is-required', needJson);
+    $('drop-aep').classList.toggle('is-required', needAep);
+    setRequired('json-required', needJson);
+    setRequired('aep-required', needAep);
+
+    const hint = $('hint-bar');
+    const hintText = $('hint-text');
+    const hintCta = $('hint-cta');
+    if (ready) {
+        hint.hidden = true;
+        $('parse-btn').removeAttribute('title');
+        setStatus('statusReady');
+        return;
+    }
+
+    hint.hidden = false;
+    if (needAep) {
+        hintText.textContent = t('hintNeedAep');
+        hintCta.textContent = t('hintNeedAepCta');
+        hintCta.onclick = () => $('aep-file').click();
+        setStatus('statusNeedOther');
+    } else {
+        hintText.textContent = t('hintNeedJson');
+        hintCta.textContent = t('hintNeedJsonCta');
+        hintCta.onclick = () => $('json-file').click();
+        setStatus(hasJson ? 'statusNeedOther' : 'statusPick');
+    }
+    $('parse-btn').title = hintText.textContent;
+    refreshIcons();
 }
 
 async function addJsonFiles(fileList) {
