@@ -1,9 +1,9 @@
-# Lottie Gradient Editor / Lottie 渐变色编辑器
+# Lottie Gradient — Lottie 渐变修复 / Gradient Fix
 
-> 一个用于修复和编辑 Lottie 动画渐变色的在线工具  
-> An online tool for fixing and editing gradient colors in Lottie animations
+> 从 After Effects 工程读取真实渐变色标，一键修复 Lottie JSON 里**丢失、变黑白、颜色错位**的渐变；附手动编辑器与修复前后对比  
+> Fix lost, black-and-white or shifted gradient colors in Lottie animations, using the real stops from your After Effects project.
 
-[🌐 在线使用 / Live Demo](https://www.lottie.uno) | [📺 视频演示 / Video Demo](https://www.bilibili.com/video/BV1xcBRBREWL/)
+[🌐 在线使用 · 渐变修复](https://www.lottie.uno) | [✏️ 渐变编辑器](https://www.lottie.uno/editor.html) | [📺 视频演示](https://www.bilibili.com/video/BV1xcBRBREWL/)
 
 ---
 
