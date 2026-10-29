@@ -27,6 +27,7 @@ const REPO_ROOT = path.resolve(__dirname, '..');
 
 const FIXTURE_MATCH = path.join(__dirname, 'fixtures', 'gradient-match.json');
 const FIXTURE_LOST = path.join(__dirname, 'fixtures', 'gradient-lost.json');
+const FIXTURE_MULTI = path.join(__dirname, 'fixtures', 'gradient-multi.json');
 const FIXTURE_AEP = path.join(__dirname, 'fixtures', 'sample.aep');
 
 const ARTIFACTS = process.env.ARTIFACTS_DIR
@@ -107,7 +108,7 @@ function check(name, ok, detail = '') {
     console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? `  — ${detail}` : ''}`);
 }
 
-for (const file of [FIXTURE_MATCH, FIXTURE_LOST, FIXTURE_AEP]) {
+for (const file of [FIXTURE_MATCH, FIXTURE_LOST, FIXTURE_MULTI, FIXTURE_AEP]) {
     if (!fs.existsSync(file)) {
         console.error(`缺少测试素材：${file}`);
         process.exit(1);
@@ -316,7 +317,33 @@ try {
     check('已一致：导出按钮禁用', out.downloadDisabled === true);
     check('已一致：预览仍然渲染', out.svgBefore && out.svgAfter);
 
-    /* ---------- 8. CDN 不可用时回退同源 ---------- */
+    /* ---------- 8. 聚焦单个渐变 ---------- */
+    await page.goto(PAGE_URL, { waitUntil: 'networkidle0' });
+    await upload(FIXTURE_MULTI);
+    await page.click(SELECTORS.parseButton);
+    await waitDone();
+    const focusInfo = await page.evaluate(() => {
+        const select = document.getElementById('focus-select');
+        if (!select) return null;
+        const options = [...select.options].map((option) => option.textContent.trim());
+        select.value = '1';
+        select.dispatchEvent(new Event('change', { bubbles: true }));
+        const opacityOf = (id) => [...document.querySelectorAll(`#${id} svg [fill]`)]
+            .filter((el) => !el.closest('defs'))
+            .map((el) => el.style.opacity || '1');
+        const focused = opacityOf('stage-after');
+        select.value = '';
+        select.dispatchEvent(new Event('change', { bubbles: true }));
+        const cleared = opacityOf('stage-after');
+        return { options, focused, cleared };
+    });
+    check('多渐变时出现聚焦下拉', !!focusInfo && focusInfo.options.length === 3,
+        focusInfo ? JSON.stringify(focusInfo.options) : '没有下拉');
+    check('选择某个渐变后其余被压暗',
+        !!focusInfo && focusInfo.focused.some((v) => v !== '1') && focusInfo.cleared.every((v) => v === '1'),
+        focusInfo ? `focused=${JSON.stringify(focusInfo.focused)} cleared=${JSON.stringify(focusInfo.cleared)}` : '');
+
+    /* ---------- 9. CDN 不可用时回退同源 ---------- */
     await page.setRequestInterception(true);
     const blockCdn = (request) => {
         if (request.url().includes('arvinyin1.github.io')) request.abort();
@@ -331,7 +358,7 @@ try {
     page.off('request', blockCdn);
     await page.setRequestInterception(false);
 
-    /* ---------- 9. 截图 ---------- */
+    /* ---------- 10. 截图 ---------- */
     await page.goto(PAGE_URL, { waitUntil: 'networkidle0' });
     await upload(FIXTURE_LOST);
     await page.click(SELECTORS.parseButton);

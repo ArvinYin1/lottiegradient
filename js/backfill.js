@@ -61,6 +61,9 @@ const i18n = {
         summaryNothing: '两侧渐变已经一致，无需修改',
         summarySkipped: '{n} 项未处理',
         summaryMatchedByName: '{n} 个按名称匹配',
+        focusLabel: '聚焦',
+        focusAll: '全部渐变',
+        focusOption: '{n}. {name}',
         skipTitle: '未处理的项',
         skipDesc: '这些渐变没有回填',
         reasonKeyframed: '关键帧渐变',
@@ -115,6 +118,9 @@ const i18n = {
         summaryNothing: 'All gradients already match',
         summarySkipped: '{n} not handled',
         summaryMatchedByName: '{n} matched by name',
+        focusLabel: 'Focus',
+        focusAll: 'All gradients',
+        focusOption: '{n}. {name}',
         skipTitle: 'Not handled',
         skipDesc: 'These gradients were left untouched',
         reasonKeyframed: 'Keyframed gradient',
@@ -171,6 +177,7 @@ const state = {
     aepName: '',
     py: null,
     rows: [],
+    jsonGradients: [],
     appliedCount: 0,
     status: { key: 'statusPick', params: {} },
 };
@@ -911,8 +918,87 @@ function renderPreview() {
     PREVIEW.fps = PREVIEW.before.frameRate || 30;
     $('play-btn').disabled = false;
     $('timeline').disabled = false;
+    applyFocus(null);
     seek(0);
     startPlay();
+}
+
+/* ============ 聚焦单个渐变 ============ */
+
+const FOCUS_DIM = 0.18;
+
+function gradientElements(container) {
+    const svg = container.querySelector('svg');
+    if (!svg) return null;
+    const defs = [...svg.querySelectorAll('defs linearGradient, defs radialGradient')];
+    const ids = new Map(defs.map((node, index) => [node.id, index]));
+    const shapes = [...svg.querySelectorAll('[fill], [stroke]')].filter(
+        (node) => !node.closest('defs')
+    );
+    return { svg, ids, shapes };
+}
+
+/** 只高亮第 index 个渐变，其余压暗；index 为 null 时恢复 */
+function applyFocus(index) {
+    for (const key of ['before', 'after']) {
+        const anim = PREVIEW[key];
+        const container = key === 'before' ? $('stage-before') : $('stage-after');
+        if (!anim || !container) continue;
+        const info = gradientElements(container);
+        if (!info) continue;
+        for (const shape of info.shapes) {
+            const refs = [];
+            for (const attr of ['fill', 'stroke']) {
+                const value = shape.getAttribute(attr) || '';
+                const match = value.match(/url\(["']?#([^"')]+)/);
+                if (match && info.ids.has(match[1])) refs.push(info.ids.get(match[1]));
+            }
+            if (index === null) {
+                shape.style.opacity = '';
+            } else if (!refs.length) {
+                shape.style.opacity = String(FOCUS_DIM);
+            } else {
+                shape.style.opacity = refs.includes(index) ? '' : String(FOCUS_DIM);
+            }
+        }
+    }
+}
+
+function buildFocusSelect() {
+    const host = $('summary');
+    const gradients = state.jsonGradients;
+    if (!host || gradients.length < 2) {
+        const existing = $('focus-select');
+        if (existing) existing.closest('.bf-focus').remove();
+        return;
+    }
+    let wrap = host.querySelector('.bf-focus');
+    if (!wrap) {
+        wrap = document.createElement('label');
+        wrap.className = 'bf-focus';
+        host.appendChild(wrap);
+    }
+    wrap.innerHTML = `<span>${escapeHtml(t('focusLabel'))}</span>`;
+    const select = document.createElement('select');
+    select.id = 'focus-select';
+    const allOption = document.createElement('option');
+    allOption.value = '';
+    allOption.textContent = t('focusAll');
+    select.appendChild(allOption);
+    gradients.forEach((gradient, index) => {
+        const option = document.createElement('option');
+        option.value = String(index);
+        option.textContent = t('focusOption', {
+            n: index + 1,
+            name: gradient.node.nm || '(gradient)',
+        });
+        select.appendChild(option);
+    });
+    select.addEventListener('change', () => {
+        const value = select.value === '' ? null : Number(select.value);
+        applyFocus(value);
+    });
+    wrap.appendChild(select);
 }
 
 /* ============ 摘要 / 未处理项 ============ */
@@ -993,13 +1079,15 @@ async function runCompare() {
     const startedAt = performance.now();
     try {
         const aeGradients = await extractFromAep();
-        const jsonGradients = collectJsonGradients(state.jsonData);
+        state.jsonGradients = collectJsonGradients(state.jsonData);
+        const jsonGradients = state.jsonGradients;
         state.rows = matchGradients(aeGradients, jsonGradients);
         const fixed = applyAllFixes();
 
         $('download-btn').disabled = fixed === 0;
         renderSummary();
         renderPreview();
+        buildFocusSelect();
         setStatus('statusDone', { ms: Math.round(performance.now() - startedAt) });
         toast(fixed ? t('toastApplied', { n: fixed }) : t('toastNothing'), fixed ? 'success' : 'info');
     } catch (error) {
@@ -1118,6 +1206,7 @@ function boot() {
         setStatus(state.status.key, state.status.params);
         if (state.rows.length) {
             renderSummary();
+            buildFocusSelect();
             if (document.getElementById('skip-modal').classList.contains('is-open')) renderSkipList();
         }
         if (PREVIEW.before) updatePlayIcon();
