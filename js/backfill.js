@@ -1195,7 +1195,6 @@ function boot() {
 
         // 不等解析，先把「修复前」画出来
         renderBeforeOnly();
-        buildFocusSelect();
     });
 
     bindDrop('drop-aep', 'aep-file', 'aep-name', async (file) => {
@@ -1241,7 +1240,7 @@ function boot() {
             renderSummary();
             if (document.getElementById('skip-modal').classList.contains('is-open')) renderSkipList();
         }
-        if (state.jsonGradients.length >= 2) buildFocusSelect();
+        if (state.rows.length && state.jsonGradients.length >= 2) buildFocusSelect();
         if (PREVIEW.before) updatePlayIcon();
         else destroyPreview();
     });
