@@ -146,6 +146,7 @@ to_css() / to_lottie()        // 合并预览 CSS / Lottie 平铺数组
 - **i18n**：首页有自己的字典（`js/backfill.js` 顶部），与编辑器共用 `localStorage['lottie-lang']` 和 `localStorage['lottie-theme']`，两个页面语言/主题同步。
 - **测试钩子**：`window.__backfillState` 暴露内部状态，供 `tests/backfill.mjs` 断言回填后的 `g.k` / `g.p`。
 - **样式**：页面级样式以 `.bf-*` 前缀写在 `css/style.css` 末尾，只允许用 token。
+- **README 配图**：图片在 `docs/images/`（banner / compare / home-done / overview / editor / editor-drag.gif），都是用真实页面截图合成的；改 UI 后记得重新截图更新，否则文档会过时。
 
 ## 主题与样式
 

@@ -1,135 +1,80 @@
-# Lottie Gradient — Lottie 渐变修复 / Gradient Fix
+<p align="center">
+  <img src="docs/images/banner.png" alt="Lottie Gradient — 从 AE 工程修复 Lottie 渐变色" width="880">
+</p>
 
-> 从 After Effects 工程读取真实渐变色标，一键修复 Lottie JSON 里**丢失、变黑白、颜色错位**的渐变；附手动编辑器与修复前后对比  
-> Fix lost, black-and-white or shifted gradient colors in Lottie animations, using the real stops from your After Effects project.
+<h1 align="center">Lottie Gradient · 渐变修复</h1>
 
-[🌐 在线使用 · 渐变修复](https://www.lottie.uno) | [✏️ 渐变编辑器](https://www.lottie.uno/editor.html) | [📺 视频演示](https://www.bilibili.com/video/BV1xcBRBREWL/)
+<p align="center">
+  <a href="https://www.lottie.uno"><img src="https://img.shields.io/badge/%E5%9C%A8%E7%BA%BF%E4%BD%BF%E7%94%A8-lottie.uno-171717?style=flat-square" alt="Live"></a>
+  <a href="https://www.lottie.uno/editor.html"><img src="https://img.shields.io/badge/%E6%B8%90%E5%8F%98%E7%BC%96%E8%BE%91%E5%99%A8-editor.html-171717?style=flat-square" alt="Editor"></a>
+  <a href="https://github.com/ArvinYin1/lottiegradient/actions/workflows/deploy.yml"><img src="https://github.com/ArvinYin1/lottiegradient/actions/workflows/deploy.yml/badge.svg" alt="Deploy"></a>
+  <a href="https://github.com/ArvinYin1/lottiegradient/stargazers"><img src="https://img.shields.io/github/stars/ArvinYin1/lottiegradient?style=flat-square" alt="Stars"></a>
+</p>
 
----
-
-## 背景问题 / Background
-
-在使用 After Effects 配合 Bodymovin 插件导出 Lottie 动画时，经常会遇到**渐变色丢失**的问题：
-- 渐变色变成黑白或纯色
-- 透明度信息丢失
-- 颜色位置偏移或错乱
-
-虽然网上有一些解决方法，但在某些导出环境下仍然无法完全修复。本工具就是为了解决这个痛点而生。
-
----
-
-When exporting Lottie animations from After Effects using the Bodymovin plugin, **gradient colors are often lost**:
-- Gradients turn black/white or solid colors
-- Transparency information is lost
-- Color positions are offset or scrambled
-
-Although there are some solutions online, they don't always work in certain export environments. This tool was created to solve this pain point.
+<p align="center">
+  从 After Effects 工程读取真实渐变色标，一键修复 Lottie JSON 里 <b>丢失、变黑白、颜色错位</b> 的渐变。<br>
+  <sub>Fix lost, black-and-white or shifted gradient colors in Lottie animations — using the real stops from your AE project.</sub>
+</p>
 
 ---
 
-## 功能特性 / Features
+## 效果
 
-| 功能 | 说明 |
-|------|------|
-| 📂 **JSON 导入** | 拖拽或点击上传 Lottie JSON 文件 |
-| ▶️ **动画预览** | 实时播放动画，支持进度控制和背景切换 |
-| 🎨 **渐变色编辑** | 可视化编辑每个渐变的颜色、位置、透明度 |
-| 🔄 **渐变同步** | 导入其他 JSON 文件的渐变配置进行批量同步 |
-| 💾 **一键导出** | 导出修复后的 JSON 文件，直接投入使用 |
-| 🔍 **渐变搜索** | 快速定位动画中的特定渐变 |
-| 🛠️ **渐变修复** | Lottie 渐变丢失/变黑白/错位时，带上 `.aep` 与 JSON（可多选），从工程里读真实色标自动修复，附修复前/后对比播放 |
+![修复前 / 修复后](docs/images/compare.png)
 
----
+左边是 Bodymovin 导出的典型丢色结果（白 → 黑），右边是从 AE 工程读回真实色标并修复后的画面——颜色、位置和透明度一起恢复到工程里的样子。
 
-| Feature | Description |
-|---------|-------------|
-| 📂 **JSON Import** | Drag or click to upload Lottie JSON files |
-| ▶️ **Animation Preview** | Real-time playback with progress control and background switching |
-| 🎨 **Gradient Edit** | Visually edit colors, positions, and transparency of each gradient |
-| 🔄 **Gradient Sync** | Import gradient configs from other JSON files for batch syncing |
-| 💾 **One-click Export** | Export fixed JSON files ready for production |
-| 🔍 **Gradient Search** | Quickly locate specific gradients in animations |
-| 🛠️ **Gradient Fix** | When gradients are lost, black-and-white or shifted, load a `.aep` plus one or more JSON files, auto-fix from the project and preview before/after |
+## 怎么用
 
----
+1. 拖入 **AE 工程（`.aep`）** 和 **一个或多个 Lottie JSON**
+2. 点「解析并修复」（首次会加载约 15 MB 的浏览器内 Python 运行时，之后走缓存）
+3. 看修复前 / 修复后对比，导出结果
 
-> 首页（渐变修复）首次使用需加载约 15 MB 的浏览器内 Python 运行时（之后走缓存），页面会显示加载进度。
+![首页](docs/images/home-done.png)
 
-## 快速开始 / Quick Start
+一次选了多个 JSON 时，先给「结果总览」，点卡片再进单个文件的细节对比：
 
-### 1. 打开工具
-访问在线地址：https://www.lottie.uno
+![多文件总览](docs/images/overview.png)
 
-### 2. 导入动画
-- 点击「导入 JSON」按钮，或
-- 直接将 `.json` 文件拖拽到左侧预览区域
+## 为什么能修准
 
-### 3. 编辑渐变
-- 在「渐变列表」中点击需要修改的渐变项
-- 在右侧编辑器中调整颜色、位置、透明度
-- 左侧预览区实时查看效果
+| 关键点 | 说明 |
+|---|---|
+| 颜色为什么丢 | Bodymovin 的渐变是从 `.aep` 里**按名字文本搜索**刮出来的：工程没存盘、名字重复（`Gradient Fill 1` ×N）、非英文界面都会导致颜色丢失或串色 |
+| 我们怎么取真值 | 浏览器里用 Pyodide 跑 [py-aep](https://github.com/forticheprod/py-aep)，**直接解析 `.aep` 的渐变 XML**，拿到每个色标的位置、颜色、透明度与中点 |
+| 怎么对上号 | 按「合成 / 图层 / 组 / 渐变名」路径精确匹配，失败再退回「同名 + 出现顺序」 |
+| 写回是否一致 | 复刻 Bodymovin 的中点展开规则（AE 的 N 个色标 → Lottie 的 2N−1 个），写回的值与 AE 逐位一致 |
+| 隐私 | 工程和 JSON 都不会上传，解析全部在本机浏览器里完成 |
 
-### 4. 导出文件
-点击「导出 JSON」按钮，下载修复后的动画文件
+## 渐变编辑器（手动微调）
 
----
+自动修复覆盖不到的场景（关键帧渐变、工程已丢失、只有 JSON 没有 `.aep`），用编辑器手动改：拖色标、改 HEX / 位置、单独增删透明度色标、从别的 JSON 同步渐变。
 
-### 1. Open the Tool
-Visit the live demo: https://www.lottie.uno
+![编辑器拖动色标](docs/images/editor-drag.gif)
 
-### 2. Import Animation
-- Click the "Import JSON" button, or
-- Directly drag and drop a `.json` file into the preview area on the left
+![编辑器界面](docs/images/editor.png)
 
-### 3. Edit Gradients
-- Click the gradient item you want to modify in the "Gradient List"
-- Adjust colors, positions, and transparency in the editor on the right
-- View the effect in real-time in the preview area on the left
+编辑器还支持：动画播放与逐帧预览、棋盘格 / 纯色背景切换、当前帧 PNG 与整段 GIF 导出。
 
-### 4. Export File
-Click the "Export JSON" button to download the fixed animation file.
+## 技术栈
 
----
+纯前端静态站点，**无构建步骤**：
 
-## 使用技巧 / Tips
+| 技术 | 用途 | 来源 |
+|------|------|------|
+| HTML5 + Vanilla JS | 页面结构和逻辑 | 原生 |
+| 手写 CSS 设计系统 | shadcn 风格 tokens + 深浅主题 | `css/style.css` |
+| Lottie Web | 动画渲染 / 修复前后对比 | `js/vendor/lottie.min.js` |
+| Pyodide + py-aep | 浏览器内解析 `.aep`，读取真实渐变色标 | `js/vendor/pyodide/`、`js/vendor/pyaep-libs.zip` |
+| gif.js | GIF 导出 | `js/vendor/gif.js` |
+| Lucide | 图标 | `js/vendor/lucide.min.js` |
 
-- **背景切换**：点击「网格」按钮切换透明背景，或使用颜色选择器设置纯色背景
-- **渐变同步**：如果你有多个动画需要统一渐变色，可以先在一个动画中调好，然后使用「同步渐变」功能应用到其他动画
-- **播放控制**：拖动进度条可以精确查看动画某一帧的效果
+> 运行时资源默认从 GitHub Pages（CDN）加载，失败自动回落同源 `js/vendor/`；加 `?local=1` 可强制同源（离线 / 内网场景）。
 
----
-
-- **Background Toggle**: Click the "Grid" button to toggle transparent background, or use the color picker to set a solid background
-- **Gradient Sync**: If you have multiple animations that need unified gradients, adjust one first, then use the "Sync Gradient" feature to apply to others
-- **Playback Control**: Drag the progress bar to precisely view the animation at any frame
-
----
-
-## 技术栈 / Tech Stack
-
-- **前端**：原生 HTML + JavaScript（无构建步骤）
-- **样式**：手写 CSS 设计系统（shadcn 风格 token + 深浅主题）
-- **动画渲染**：Lottie Web (Bodymovin)，自托管
-- **图标 / GIF**：Lucide、gif.js，自托管
-- **渐变修复**：Pyodide + py-aep（浏览器内跑 Python 解析 `.aep`，按需加载）
-
----
-
-- **Frontend**: Vanilla HTML + JavaScript (no build step)
-- **Styling**: Hand-written CSS design system (shadcn-style tokens, light/dark)
-- **Animation Rendering**: Lottie Web (Bodymovin), self-hosted
-- **Icons / GIF**: Lucide, gif.js, self-hosted
-- **Gradient backfill**: Pyodide + py-aep (Python in the browser to parse `.aep`, lazy-loaded)
-
----
-
-## 本地运行 / Local Development
+## 本地运行
 
 ```bash
-# 克隆仓库
 git clone https://github.com/ArvinYin1/lottiegradient.git
-
-# 进入目录
 cd lottiegradient
 
 # 首页（渐变修复）要加载 wasm，必须走本地服务器
@@ -139,106 +84,55 @@ open http://localhost:8080/
 # 渐变编辑器在 /editor.html
 ```
 
----
+## 测试
+
+两套真实浏览器测试（puppeteer-core + 系统 Chrome）：
 
 ```bash
-# Clone the repository
-git clone https://github.com/ArvinYin1/lottiegradient.git
-
-# Enter the directory
-cd lottiegradient
-
-# The homepage (gradient backfill) loads wasm, so it needs a local server
-python3 -m http.server 8080
-open http://localhost:8080/
-
-# The editor lives at /editor.html
+cd tests
+npm install          # 仅首次
+npm test             # 编辑器：14 条
+npm run test:backfill  # 首页渐变修复：52 条
+npm run test:all       # 两套都跑
 ```
 
----
+| 套件 | 覆盖 |
+|---|---|
+| `tests/smoke.mjs` | 编辑器：加载 / 导入 / 选中 / 改色 / 增删色标 / 搜索 / 播放 / 导出 / 响应式 / 同名渐变 / 色标分离 / 播放状态 / 关键帧 |
+| `tests/backfill.mjs` | 首页：上传即预览 / 总览与细节 / 单一动作位 / 场景提示 / 加载态 / MIME 与 CDN 回退 / 自动修复 / 聚焦 / 中英切换 |
 
-## 部署 / Deployment
+## 部署
 
-本项目是纯静态站点，同时托管在 GitHub Pages 与自建 nginx 服务器上。
+纯静态站点，同时托管在 GitHub Pages 与自建 nginx：
 
-- **GitHub Pages**：推送到 `main` 分支后自动更新，备用地址 https://arvinyin1.github.io/lottiegradient/
-- **自建服务器**：通过仓库根目录的 `deploy.sh` 用 rsync over SSH 同步到 nginx 站点目录（HTTPS 由 Let's Encrypt 自动续期）
+- **GitHub Pages**：推送 `main` 后自动更新，备用地址 https://arvinyin1.github.io/lottiegradient/
+- **自建服务器**：`deploy.sh` 用 rsync over SSH 同步到 nginx 目录，并验收线上 HTTP 状态
 
-> **首页运行时来源**：默认从 GitHub Pages（CDN）加载 Pyodide，失败自动回落同源 `js/vendor/`；自建服务器带宽有限时可显著提速。需要强制同源时给页面加 `?local=1`。
+```bash
+SSH_KEY=/path/to/key ./deploy.sh            # 同步 + 线上验收
+SSH_KEY=/path/to/key ./deploy.sh --dry-run  # 只预览
+```
 
-> **nginx MIME 建议**（首页已在前端兜底，配了可启用 wasm 流式编译并省一次内存拷贝）：
+推送 `main` 也会触发 `.github/workflows/deploy.yml` 自动部署（需要 `DEPLOY_SSH_KEY` 与 `DEPLOY_SSH_HOST_KEY` 两个 Secrets）。
+
+> **nginx 建议**：前端已对 MIME 做兜底，配上这两行可启用 wasm 流式编译并省流量：
 > ```nginx
 > types { application/wasm wasm; }
 > gzip on; gzip_types application/wasm application/javascript;
 > ```
 
-### 手动部署
+## English
 
-在任意已检出仓库、安装 rsync 并持有部署密钥的机器上运行：
+- **Gradient Fix** (homepage) — load your After Effects project plus one or more Bodymovin JSON files; the tool reads the real gradient stops out of the `.aep` (via py-aep running in Pyodide), writes them back automatically, and plays a before/after comparison. Everything runs locally in the browser.
+- **Gradient Editor** (`editor.html`) — manual editing: drag stops, change HEX / offsets, edit alpha stops independently, export JSON / PNG / GIF.
+- No build step. Serve `index.html` over HTTP (wasm needs it); the editor also works from `file://`.
 
-```bash
-SSH_KEY=/path/to/key ./deploy.sh            # 同步静态文件并自动验收
-SSH_KEY=/path/to/key ./deploy.sh --dry-run  # 只预览，不改动服务器
-```
-
-默认服务器为 `root@43.155.27.82`，目标目录为 `/var/www/lottiegradient`，验收地址为 `https://www.lottie.uno/`。可用 `HOST`、`REMOTE_DIR`、`SITE_URL` 环境变量覆盖。脚本只同步 `index.html editor.html backfill.html css js svg`，并启用 SSH 严格主机校验；本机 `known_hosts` 必须包含可信的服务器主机公钥。
-
-### GitHub Actions 自动部署
-
-在 **Settings > Secrets and variables > Actions > Secrets** 中配置：
-
-| Secret | 内容 |
-|--------|------|
-| `DEPLOY_SSH_KEY` | 部署私钥的完整内容，仅保存在 GitHub Secrets，不提交到仓库 |
-| `DEPLOY_SSH_HOST_KEY` | 经核对的服务器 known_hosts 行，例如 `43.155.27.82 ssh-ed25519 AAAA...` |
-
-配置后，每次推送 `main` 都会自动执行 `.github/workflows/deploy.yml`，也可在 **Actions > Deploy production > Run workflow** 手动触发。工作流调用同一个 `deploy.sh`，线上验收失败会使任务失败。
-
----
-
-This is a pure static site, hosted on both GitHub Pages and a self-managed nginx server.
-
-> **Runtime source**: the backfill page loads Pyodide from GitHub Pages (CDN) by default and falls back to `js/vendor/` on the same origin; append `?local=1` to force same-origin.
-
-> **Recommended nginx MIME** (the backfill page works without it, but this enables streaming wasm compilation and gzip):
-> ```nginx
-> types { application/wasm wasm; }
-> gzip on; gzip_types application/wasm application/javascript;
-> ```
-
-### Manual deployment
-
-Run this on any machine with a repository checkout, rsync, and the deployment key:
-
-```bash
-SSH_KEY=/path/to/key ./deploy.sh            # Sync static files and verify the live site
-SSH_KEY=/path/to/key ./deploy.sh --dry-run  # Preview without changing the server
-```
-
-Defaults are `root@43.155.27.82`, `/var/www/lottiegradient`, and `https://www.lottie.uno/`; override them with `HOST`, `REMOTE_DIR`, and `SITE_URL`. Only `index.html editor.html backfill.html css js svg` are synced. Strict SSH host checking is enabled, so the local `known_hosts` must contain the verified server host key.
-
-### Automatic deployment with GitHub Actions
-
-Under **Settings > Secrets and variables > Actions > Secrets**, configure:
-
-| Secret | Contents |
-|--------|----------|
-| `DEPLOY_SSH_KEY` | Full deployment private key; store it only in GitHub Secrets, never in Git |
-| `DEPLOY_SSH_HOST_KEY` | Verified server known_hosts line, such as `43.155.27.82 ssh-ed25519 AAAA...` |
-
-Every push to `main` then runs `.github/workflows/deploy.yml`. You can also use **Actions > Deploy production > Run workflow**. The workflow runs the same `deploy.sh` and fails when live verification fails.
-
----
-
-## 相关链接 / Related Links
+## 相关链接
 
 - [Lottie 官方文档](https://airbnb.io/lottie/)
 - [Bodymovin 插件](https://github.com/airbnb/lottie-web)
-
----
-
-- [Lottie Documentation](https://airbnb.io/lottie/)
-- [Bodymovin Plugin](https://github.com/airbnb/lottie-web)
+- [py-aep](https://github.com/forticheprod/py-aep)（`.aep` 解析）
+- [使用演示 (Bilibili)](https://www.bilibili.com/video/BV1xcBRBREWL/)
 
 ---
 
