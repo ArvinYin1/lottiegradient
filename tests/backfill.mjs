@@ -55,6 +55,10 @@ const SELECTORS = {
     themeButton: '#theme-btn',
     langButton: '#lang-btn',
     backfillEntry: 'a[href="backfill.html"]',
+    overview: '#overview',
+    detail: '#detail',
+    cardGrid: '#card-grid',
+    backButton: '#back-btn',
     loadingMask: '#bf-loading',
     loadingPhase: '#loading-phase',
 };
@@ -177,6 +181,8 @@ async function waitDone() {
         svgAfter: !!document.querySelector('#stage-after svg'),
         downloadDisabled: document.getElementById('download-btn').disabled,
         total: window.__backfillPreview.total,
+        overviewVisible: !document.getElementById('overview').hidden,
+        detailVisible: !document.getElementById('detail').hidden,
     }));
 }
 
@@ -251,6 +257,8 @@ try {
     check('预览：修复前后都渲染出 svg', out.svgBefore && out.svgAfter);
     check('预览：时间轴拿到总帧数', out.total > 1, `total=${out.total}`);
     check('导出按钮可用', out.downloadDisabled === false);
+    check('单文件：直接进细节视图（无总览）', out.overviewVisible === false && out.detailVisible === true,
+        `overview=${out.overviewVisible} detail=${out.detailVisible}`);
 
     const data = await page.evaluate(() => {
         const walk = (node) => {
@@ -389,26 +397,46 @@ try {
     await page.click(SELECTORS.parseButton);
     out = await waitDone();
     check('多文件：汇总按所有文件统计', /共修复 1 个渐变/.test(out.summary), out.summary);
-    const listAfter = await page.evaluate(() => [...document.querySelectorAll('.bf-file-row')].map((el) => ({
-        status: el.querySelector('.bf-file-status').textContent.trim(),
-        active: el.classList.contains('is-active'),
-    })));
-    check('多文件：每个文件显示自己的结果',
-        /已修复 1/.test(listAfter[0]?.status || '') && /无需修改/.test(listAfter[1]?.status || ''),
-        JSON.stringify(listAfter));
+    check('多文件：解析后先进结果总览', out.overviewVisible === true && out.detailVisible === false,
+        `overview=${out.overviewVisible} detail=${out.detailVisible}`);
 
-    const switched = await page.evaluate(async () => {
-        document.querySelectorAll('.bf-file-row')[1].click();
-        await new Promise((r) => setTimeout(r, 300));
+    const cards = await page.evaluate(() => [...document.querySelectorAll('.bf-card')].map((el) => ({
+        name: el.querySelector('.bf-card-name').textContent,
+        status: el.querySelector('.bf-card-status').textContent.trim(),
+        thumb: !!el.querySelector('.bf-card-stage svg'),
+    })));
+    check('多文件：总览显示每个文件的缩略图与结果',
+        cards.length === 2 && cards.every((card) => card.thumb)
+        && /已修复 1/.test(cards[0]?.status || '') && /无需修改/.test(cards[1]?.status || ''),
+        JSON.stringify(cards));
+
+    const opened = await page.evaluate(async () => {
+        document.querySelectorAll('.bf-card')[1].click();
+        await new Promise((r) => setTimeout(r, 400));
         return {
             selected: window.__backfillState.selected,
-            activeIndex: [...document.querySelectorAll('.bf-file-row')].findIndex((el) => el.classList.contains('is-active')),
+            overviewHidden: document.getElementById('overview').hidden,
+            detailVisible: !document.getElementById('detail').hidden,
             svg: !!document.querySelector('#stage-after svg'),
+            detailName: document.getElementById('detail-name').textContent,
         };
     });
-    check('多文件：点击可切换预览的文件',
-        switched.selected === 1 && switched.activeIndex === 1 && switched.svg === true,
-        JSON.stringify(switched));
+    check('多文件：点卡片进入该文件的细节对比',
+        opened.selected === 1 && opened.overviewHidden === true && opened.detailVisible === true
+        && opened.svg === true && /gradient-multi/.test(opened.detailName),
+        JSON.stringify(opened));
+
+    const back = await page.evaluate(async () => {
+        document.getElementById('back-btn').click();
+        await new Promise((r) => setTimeout(r, 300));
+        return {
+            overviewVisible: !document.getElementById('overview').hidden,
+            detailHidden: document.getElementById('detail').hidden,
+            cards: document.querySelectorAll('.bf-card').length,
+        };
+    });
+    check('多文件：可以从细节返回总览', back.overviewVisible && back.detailHidden && back.cards === 2,
+        JSON.stringify(back));
 
     /* ---------- 10. CDN 不可用时回退同源 ---------- */
     await page.setRequestInterception(true);

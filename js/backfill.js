@@ -73,6 +73,7 @@ const i18n = {
         reasonKeyframed: '关键帧渐变',
         reasonMissing: '工程中未找到',
         reasonNoArray: '无法解析',
+        backToOverview: '返回总览',
         focusLabel: '聚焦',
         focusAll: '全部渐变',
         focusOption: '{n}. {name}',
@@ -137,6 +138,7 @@ const i18n = {
         reasonKeyframed: 'Keyframed gradient',
         reasonMissing: 'Not found in project',
         reasonNoArray: 'Unreadable',
+        backToOverview: 'Back to overview',
         focusLabel: 'Focus',
         focusAll: 'All gradients',
         focusOption: '{n}. {name}',
@@ -186,6 +188,7 @@ const state = {
     // 每个 Lottie JSON 一个条目：json 是会被就地修复的数据，original 用于「修复前」
     files: [],
     selected: 0,
+    view: 'detail',
     aepBytes: null,
     aepName: '',
     py: null,
@@ -897,7 +900,7 @@ function buildFocusSelect() {
     const host = $('summary');
     const file = currentFile();
     const gradients = (file && file.gradients) || [];
-    if (!host || !file || !file.rows || gradients.length < 2) {
+    if (!host || !file || !file.parsed || gradients.length < 2) {
         clearFocusSelect();
         return;
     }
@@ -926,6 +929,86 @@ function buildFocusSelect() {
     wrap.appendChild(select);
 }
 
+/* ============ 结果总览（多文件） ============ */
+
+const CARD_LIMIT = 24;
+const cardAnims = [];
+
+function clearCardAnims() {
+    while (cardAnims.length) {
+        const anim = cardAnims.pop();
+        try { anim.destroy(); } catch (error) { /* 忽略 */ }
+    }
+}
+
+function cardStatusText(file) {
+    if (file.error) return t('fileFailed');
+    let text = file.appliedCount ? t('fileFixed', { n: file.appliedCount }) : t('fileOk');
+    const skipped = skippedRows(file).length;
+    if (skipped) text += ` · ${t('fileSkipped', { n: skipped })}`;
+    return text;
+}
+
+function renderCards() {
+    const grid = $('card-grid');
+    grid.innerHTML = '';
+    clearCardAnims();
+    state.files.slice(0, CARD_LIMIT).forEach((file, index) => {
+        const card = document.createElement('button');
+        card.type = 'button';
+        card.className = 'bf-card';
+        card.dataset.index = String(index);
+        card.innerHTML = `
+            <div class="bf-card-stage"></div>
+            <div class="bf-card-meta">
+                <span class="bf-card-name">${escapeHtml(file.name)}</span>
+                <span class="bf-card-status">${escapeHtml(cardStatusText(file))}</span>
+            </div>`;
+        grid.appendChild(card);
+
+        const stage = card.querySelector('.bf-card-stage');
+        if (!file.error && window.bodymovin && file.json) {
+            // 只渲染首帧，悬停才播放：几十个文件也不卡
+            const anim = mountAnimation(stage, file.json);
+            anim.goToAndStop(0, true);
+            card.addEventListener('mouseenter', () => anim.play());
+            card.addEventListener('mouseleave', () => {
+                anim.stop();
+                anim.goToAndStop(0, true);
+            });
+            cardAnims.push(anim);
+        }
+        card.addEventListener('click', () => showDetail(index));
+    });
+}
+
+function showOverview() {
+    clearCardAnims();
+    destroyPreview();
+    state.view = 'overview';
+    $('overview').hidden = false;
+    $('detail').hidden = true;
+    renderSummary();
+    $('file-list').hidden = true;   // 总览用卡片展示，列表暂时收起
+    renderCards();
+}
+
+function showDetail(index) {
+    if (typeof index === 'number' && index >= 0) state.selected = index;
+    clearCardAnims();
+    state.view = 'detail';
+    $('overview').hidden = true;
+    $('detail').hidden = false;
+    $('detail-bar').hidden = state.files.length < 2;
+    const file = currentFile();
+    $('detail-name').textContent = file ? file.name : '';
+    renderFileList();
+    renderSummary();
+    if (file && file.parsed) renderPreview(file);
+    else if (file) renderBeforeOnly(file);
+    buildFocusSelect();
+}
+
 /* ============ 文件列表 / 摘要 / 弹窗 ============ */
 
 function skippedRows(file) {
@@ -946,7 +1029,7 @@ function renderFileList() {
         const skipped = skippedRows(file).length;
         let statusText = '';
         if (file.error) statusText = t('fileFailed');
-        else if (file.rows) {
+        else if (file.parsed) {
             statusText = file.appliedCount ? t('fileFixed', { n: file.appliedCount }) : t('fileOk');
             if (skipped) statusText += ` · ${t('fileSkipped', { n: skipped })}`;
         }
@@ -965,7 +1048,7 @@ function renderFileList() {
 function renderSummary() {
     const host = $('summary');
     if (!host) return;
-    const parsed = state.files.some((file) => file.rows);
+    const parsed = state.files.some((file) => file.parsed);
     if (!parsed) {
         host.innerHTML = '';
         return;
@@ -1144,14 +1227,9 @@ async function extractFromAep() {
 
 function selectFile(index) {
     if (index < 0 || index >= state.files.length) return;
-    state.selected = index;
+    showDetail(index);
     const file = currentFile();
-    renderFileList();
-    renderSummary();
-    if (file.rows) renderPreview(file);
-    else renderBeforeOnly(file);
-    buildFocusSelect();
-    if (file.rows) setStatus('statusDone', { ms: state.lastParseMs || 0 });
+    if (file && file.parsed) setStatus('statusDone', { ms: state.lastParseMs || 0 });
 }
 
 async function runCompare() {
@@ -1168,14 +1246,13 @@ async function runCompare() {
         for (const file of state.files) {
             if (file.error) continue;
             file.rows = matchFile(aeGradients, file.gradients);
+            file.parsed = true;
             fixed += applyFixes(file);
         }
         state.lastParseMs = Math.round(performance.now() - startedAt);
         $('download-btn').disabled = fixed === 0;
-        renderFileList();
-        renderSummary();
-        renderPreview(currentFile());
-        buildFocusSelect();
+        if (state.files.length > 1) showOverview();
+        else showDetail(0);
         setStatus('statusDone', { ms: state.lastParseMs });
         toast(fixed ? t('toastApplied', { n: fixed }) : t('toastNothing'), fixed ? 'success' : 'info');
     } catch (error) {
@@ -1238,11 +1315,12 @@ async function addJsonFiles(fileList) {
                 original: JSON.parse(JSON.stringify(json)),
                 gradients: collectJsonGradients(json),
                 rows: [],
+                parsed: false,
                 appliedCount: 0,
                 error: null,
             };
         } catch (error) {
-            return { name: file.name, error: error.message, gradients: [], rows: [], appliedCount: 0 };
+            return { name: file.name, error: error.message, gradients: [], rows: [], parsed: false, appliedCount: 0 };
         }
     }));
 
@@ -1252,10 +1330,9 @@ async function addJsonFiles(fileList) {
     $('fixed-count').hidden = true;
     clearFocusSelect();
 
-    renderFileList();
+    showDetail(Math.max(0, state.selected));
     const file = currentFile();
-    if (file && !file.error) renderBeforeOnly(file);
-    else destroyPreview();
+    if (file && file.error) destroyPreview();
 
     const failed = parsed.filter((item) => item.error);
     if (failed.length) toast(t('toastFailed', { msg: failed.map((f) => f.name).join(', ') }), 'error');
@@ -1338,6 +1415,8 @@ function boot() {
         seek(frame);
     });
 
+    $('back-btn').addEventListener('click', () => showOverview());
+
     $('help-btn').addEventListener('click', () => showModal('help-modal'));
     $('help-modal').querySelectorAll('[data-close]').forEach((el) => {
         el.addEventListener('click', () => closeModal('help-modal'));
@@ -1358,9 +1437,10 @@ function boot() {
         localStorage.setItem('lottie-lang', currentLang);
         applyStaticText();
         setStatus(state.status.key, state.status.params);
-        if (state.files.some((file) => file.rows)) {
+        if (state.files.some((file) => file.parsed)) {
             renderSummary();
             renderFileList();
+            if (state.view === 'overview') renderCards();
             if (document.getElementById('skip-modal').classList.contains('is-open')) renderSkipList();
             buildFocusSelect();
         }

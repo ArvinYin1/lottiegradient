@@ -65,6 +65,18 @@
 
         <div class="bf-summary" id="summary"></div>
 
+        <section class="bf-overview" id="overview" hidden>
+            <div class="bf-cards" id="card-grid"></div>
+        </section>
+
+        <div id="detail">
+            <div class="bf-detail-bar" id="detail-bar" hidden>
+                <button id="back-btn" class="btn btn-ghost">
+                    <i data-lucide="arrow-left"></i><span data-i18n="backToOverview">返回总览</span>
+                </button>
+                <span class="bf-detail-name" id="detail-name"></span>
+            </div>
+
         <div class="bf-compare">
             <section class="bf-stage-card">
                 <div class="bf-stage-head">
@@ -93,6 +105,7 @@
             </button>
             <input id="timeline" class="bf-timeline" type="range" min="0" max="1000" value="0" disabled>
             <span class="bf-time" id="time-display">0 / 0</span>
+        </div>
         </div>
     </main>
 
