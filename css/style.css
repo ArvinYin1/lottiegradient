@@ -1501,8 +1501,8 @@ html.dark .badge--warn { color: #fbbf24; }
   position: relative;
   display: grid;
   place-items: center;
-  aspect-ratio: 1 / 1;
-  max-height: 46vh;
+  /* 不要用 aspect-ratio：一旦高度被 max-height 夹住，宽度会跟着缩，右侧留白 */
+  height: clamp(240px, 46vh, 560px);
   background-color: var(--surface-2);
   background-image:
     linear-gradient(45deg, color-mix(in srgb, var(--foreground) 6%, transparent) 25%, transparent 25%),
@@ -1696,6 +1696,6 @@ html.dark .badge--warn { color: #fbbf24; }
 
 @media (max-width: 860px) {
   .bf-grid, .bf-compare { grid-template-columns: 1fr; }
-  .bf-stage { max-height: none; aspect-ratio: 4 / 3; }
+  .bf-stage { height: clamp(220px, 40vh, 420px); }
   .bf-main { padding: 18px 16px 48px; }
 }
