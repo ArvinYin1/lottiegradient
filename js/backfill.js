@@ -870,7 +870,11 @@ function startPlay() {
     PREVIEW.raf = requestAnimationFrame(tickClient);
 }
 
-function destroyPreview() {
+function emptyStageHtml() {
+    return `<span class="bf-stage-empty">${escapeHtml(t('previewEmpty'))}</span>`;
+}
+
+function clearAnimations() {
     stopPlay();
     for (const key of ['before', 'after']) {
         const anim = PREVIEW[key];
@@ -879,14 +883,48 @@ function destroyPreview() {
             PREVIEW[key] = null;
         }
     }
-    const empty = `<span class="bf-stage-empty">${escapeHtml(t('previewEmpty'))}</span>`;
-    $('stage-before').innerHTML = empty;
-    $('stage-after').innerHTML = empty;
+}
+
+function destroyPreview() {
+    clearAnimations();
+    $('stage-before').innerHTML = emptyStageHtml();
+    $('stage-after').innerHTML = emptyStageHtml();
     $('play-btn').disabled = true;
     $('timeline').disabled = true;
     PREVIEW.total = 0;
     PREVIEW.frame = 0;
     updateTime();
+}
+
+function mountAnimation(stage, data) {
+    stage.innerHTML = '';
+    return window.bodymovin.loadAnimation({
+        container: stage,
+        renderer: 'svg',
+        loop: true,
+        autoplay: false,
+        animationData: JSON.parse(JSON.stringify(data)),
+    });
+}
+
+function enableTransport(totalFrames, frameRate) {
+    PREVIEW.total = Math.max(1, totalFrames || 1);
+    PREVIEW.fps = frameRate || 30;
+    $('play-btn').disabled = false;
+    $('timeline').disabled = false;
+}
+
+/** 只渲染「修复前」：JSON 一上传就先给用户看到动画，不等解析 */
+function renderBeforeOnly() {
+    if (!window.bodymovin || !state.originalJson) return;
+    destroyPreview();
+    const stageBefore = $('stage-before');
+    stageBefore.innerHTML = '';
+    PREVIEW.before = mountAnimation(stageBefore, state.originalJson);
+    enableTransport(PREVIEW.before.totalFrames, PREVIEW.before.frameRate);
+    applyFocus(null);
+    seek(0);
+    startPlay();
 }
 
 function renderPreview() {
@@ -895,29 +933,12 @@ function renderPreview() {
         console.warn('lottie 未加载，跳过预览');
         return;
     }
-    const stageBefore = $('stage-before');
-    const stageAfter = $('stage-after');
-    stageBefore.innerHTML = '';
-    stageAfter.innerHTML = '';
-
-    PREVIEW.before = window.bodymovin.loadAnimation({
-        container: stageBefore,
-        renderer: 'svg',
-        loop: true,
-        autoplay: false,
-        animationData: JSON.parse(JSON.stringify(state.originalJson)),
-    });
-    PREVIEW.after = window.bodymovin.loadAnimation({
-        container: stageAfter,
-        renderer: 'svg',
-        loop: true,
-        autoplay: false,
-        animationData: JSON.parse(JSON.stringify(state.jsonData)),
-    });
-    PREVIEW.total = Math.min(PREVIEW.before.totalFrames || 1, PREVIEW.after.totalFrames || 1);
-    PREVIEW.fps = PREVIEW.before.frameRate || 30;
-    $('play-btn').disabled = false;
-    $('timeline').disabled = false;
+    PREVIEW.before = mountAnimation($('stage-before'), state.originalJson);
+    PREVIEW.after = mountAnimation($('stage-after'), state.jsonData);
+    enableTransport(
+        Math.min(PREVIEW.before.totalFrames || 1, PREVIEW.after.totalFrames || 1),
+        PREVIEW.before.frameRate
+    );
     applyFocus(null);
     seek(0);
     startPlay();
@@ -1163,6 +1184,18 @@ function boot() {
         state.jsonData = parsed;
         state.originalJson = JSON.parse(JSON.stringify(parsed));
         state.jsonName = file.name;
+
+        // 换文件后先把上一次的修复结果清掉，避免看到旧结论
+        state.rows = [];
+        state.appliedCount = 0;
+        state.jsonGradients = collectJsonGradients(parsed);
+        $('summary').innerHTML = '';
+        $('download-btn').disabled = true;
+        $('fixed-count').hidden = true;
+
+        // 不等解析，先把「修复前」画出来
+        renderBeforeOnly();
+        buildFocusSelect();
     });
 
     bindDrop('drop-aep', 'aep-file', 'aep-name', async (file) => {
@@ -1206,9 +1239,9 @@ function boot() {
         setStatus(state.status.key, state.status.params);
         if (state.rows.length) {
             renderSummary();
-            buildFocusSelect();
             if (document.getElementById('skip-modal').classList.contains('is-open')) renderSkipList();
         }
+        if (state.jsonGradients.length >= 2) buildFocusSelect();
         if (PREVIEW.before) updatePlayIcon();
         else destroyPreview();
     });

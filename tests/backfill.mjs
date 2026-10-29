@@ -141,14 +141,22 @@ page.on('pageerror', (error) => console.log('[page exception]', error.message));
 const requestedUrls = [];
 page.on('request', (request) => requestedUrls.push(request.url()));
 
-async function upload(jsonFixture) {
+async function uploadJson(jsonFixture) {
     await (await page.$(SELECTORS.jsonInput)).uploadFile(jsonFixture);
+}
+
+async function uploadAep() {
     await (await page.$(SELECTORS.aepInput)).uploadFile(FIXTURE_AEP);
     await page.waitForFunction(
         (selector) => !document.querySelector(selector).disabled,
         { timeout: WAIT_TIMEOUT },
         SELECTORS.parseButton
     );
+}
+
+async function upload(jsonFixture) {
+    await uploadJson(jsonFixture);
+    await uploadAep();
 }
 
 async function waitDone() {
@@ -189,8 +197,26 @@ try {
     check('默认有修复前/修复后两块画布',
         (await page.$('#stage-before')) !== null && (await page.$('#stage-after')) !== null);
 
-    /* ---------- 2. 渐变丢失 → 自动修复 + 预览 ---------- */
-    await upload(FIXTURE_LOST);
+    /* ---------- 2. 只上传 JSON：修复前先渲染 ---------- */
+    await uploadJson(FIXTURE_LOST);
+    await page.waitForFunction(
+        () => !!document.querySelector('#stage-before svg'),
+        { timeout: 15000 }
+    );
+    const preParse = await page.evaluate(() => ({
+        svgBefore: !!document.querySelector('#stage-before svg'),
+        afterPlaceholder: /解析后在这里对比/.test(document.querySelector('#stage-after').textContent),
+        total: window.__backfillPreview.total,
+        playing: window.__backfillPreview.playing,
+        downloadDisabled: document.getElementById('download-btn').disabled,
+    }));
+    check('上传 JSON 后立刻显示「修复前」', preParse.svgBefore && preParse.total > 1,
+        JSON.stringify(preParse));
+    check('此时「修复后」仍是空态', preParse.afterPlaceholder === true);
+    check('未解析时导出保持禁用', preParse.downloadDisabled === true);
+
+    /* ---------- 2b. 选好工程 → 自动修复 → 双侧预览 ---------- */
+    await uploadAep();
     await page.click(SELECTORS.parseButton);
 
     const maskShown = await page
