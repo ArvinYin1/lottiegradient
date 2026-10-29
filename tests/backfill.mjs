@@ -43,8 +43,7 @@ const WAIT_TIMEOUT = Number(process.env.WAIT_TIMEOUT || 60000);
 const SELECTORS = {
     jsonInput: '#json-file',
     aepInput: '#aep-file',
-    parseButton: '#parse-btn',
-    downloadButton: '#download-btn',
+    primaryAction: '#primary-action',
     statusText: '#status-text',
     summary: '#summary',
     stageBefore: '#stage-before',
@@ -63,7 +62,6 @@ const SELECTORS = {
     backButton: '#back-btn',
     guideBar: '#guide-bar',
     guideText: '#status-text',
-    guideCta: '#hint-cta',
     loadingMask: '#bf-loading',
     loadingPhase: '#loading-phase',
 };
@@ -157,9 +155,11 @@ async function uploadJson(...jsonFixtures) {
 async function uploadAep() {
     await (await page.$(SELECTORS.aepInput)).uploadFile(FIXTURE_AEP);
     await page.waitForFunction(
-        (selector) => !document.querySelector(selector).disabled,
-        { timeout: WAIT_TIMEOUT },
-        SELECTORS.parseButton
+        () => {
+            const btn = document.getElementById('primary-action');
+            return btn && btn.dataset.action === 'parse' && !btn.disabled;
+        },
+        { timeout: WAIT_TIMEOUT }
     );
 }
 
@@ -169,26 +169,34 @@ async function upload(jsonFixture) {
 }
 
 async function waitDone() {
-    await page.waitForFunction(
-        (selector) => !document.querySelector(selector).disabled
-            && /完成|Done|失败|Failed/.test(document.querySelector('#status-text').textContent),
-        { timeout: WAIT_TIMEOUT },
-        SELECTORS.parseButton
-    );
-    return page.evaluate(() => ({
-        status: document.getElementById('status-text').textContent,
-        summary: document.getElementById('summary').textContent.replace(/\s+/g, ' ').trim(),
-        fixedBadge: (() => {
-            const el = document.getElementById('fixed-count');
-            return el && !el.hidden ? el.textContent : null;
-        })(),
-        svgBefore: !!document.querySelector('#stage-before svg'),
-        svgAfter: !!document.querySelector('#stage-after svg'),
-        downloadDisabled: document.getElementById('download-btn').disabled,
-        total: window.__backfillPreview.total,
-        overviewVisible: !document.getElementById('overview').hidden,
-        detailVisible: !document.getElementById('detail').hidden,
-    }));
+    await page.waitForFunction(() => {
+        const btn = document.getElementById('primary-action');
+        const action = btn ? btn.dataset.action : 'none';
+        const status = document.getElementById('status-text').textContent;
+        return ['export', 'retry', 'none'].includes(action) || /失败|Failed/.test(status);
+    }, { timeout: WAIT_TIMEOUT });
+    return page.evaluate(() => {
+        const btn = document.getElementById('primary-action');
+        const guide = document.getElementById('status-text');
+        return {
+            status: guide.textContent,
+            guide: guide.textContent,
+            summary: document.getElementById('summary').textContent.replace(/\s+/g, ' ').trim(),
+            fixedBadge: (() => {
+                const el = document.getElementById('fixed-count');
+                return el && !el.hidden ? el.textContent : null;
+            })(),
+            svgBefore: !!document.querySelector('#stage-before svg'),
+            svgAfter: !!document.querySelector('#stage-after svg'),
+            action: btn ? btn.dataset.action : 'none',
+            actionLabel: btn ? btn.textContent.trim() : '',
+            actionHidden: btn ? btn.hidden : true,
+            actionDisabled: btn ? btn.disabled : false,
+            total: window.__backfillPreview.total,
+            overviewVisible: !document.getElementById('overview').hidden,
+            detailVisible: !document.getElementById('detail').hidden,
+        };
+    });
 }
 
 try {
@@ -205,6 +213,17 @@ try {
     await page.goto(PAGE_URL, { waitUntil: 'networkidle0' });
     check('回填页加载', await page.$eval('.brand-name', (el) => el.textContent.includes('Lottie')));
     check('两个文件选择区', (await page.$$('.bf-drop')).length === 2);
+    const initial = await page.evaluate(() => {
+        const btn = document.getElementById('primary-action');
+        return {
+            action: btn.dataset.action,
+            label: btn.textContent.trim(),
+            hidden: btn.hidden,
+            text: document.getElementById('status-text').textContent.trim(),
+        };
+    });
+    check('初始状态主按钮就是「选择 JSON」', initial.action === 'pick-json' && !initial.hidden,
+        JSON.stringify(initial));
     check('默认有修复前/修复后两块画布',
         (await page.$('#stage-before')) !== null && (await page.$('#stage-after')) !== null);
 
@@ -222,54 +241,60 @@ try {
         afterPlaceholder: /解析后在这里对比/.test(document.querySelector('#stage-after').textContent),
         total: window.__backfillPreview.total,
         playing: window.__backfillPreview.playing,
-        downloadDisabled: document.getElementById('download-btn').disabled,
+        action: document.getElementById('primary-action').dataset.action,
     }));
     check('上传 JSON 后立刻显示「修复前」', preParse.svgBefore && preParse.total > 1,
         JSON.stringify(preParse));
     check('此时「修复后」仍是空态', preParse.afterPlaceholder === true);
-    check('未解析时导出保持禁用', preParse.downloadDisabled === true);
+    check('未解析时主按钮指向还缺的文件', preParse.action === 'pick-aep', preParse.action);
 
     /* ---------- 2a. 缺 AE 工程时的引导 ---------- */
-    const needAep = await page.evaluate(() => ({
-        ctaVisible: !document.getElementById('hint-cta').hidden,
-        text: document.getElementById('status-text').textContent.trim(),
-        ctaText: document.getElementById('hint-cta').textContent.trim(),
-        action: document.getElementById('guide-bar').classList.contains('is-action'),
-        aepRequired: document.getElementById('drop-aep').classList.contains('is-required'),
-        aepBadge: !document.getElementById('aep-required').hidden,
-        jsonRequired: document.getElementById('drop-json').classList.contains('is-required'),
-        parseDisabled: document.getElementById('parse-btn').disabled,
-        tooltip: document.getElementById('parse-btn').title,
-    }));
+    const needAep = await page.evaluate(() => {
+        const btn = document.getElementById('primary-action');
+        return {
+            action: btn.dataset.action,
+            actionLabel: btn.textContent.trim(),
+            actionDisabled: btn.disabled,
+            text: document.getElementById('status-text').textContent.trim(),
+            guideAction: document.getElementById('guide-bar').classList.contains('is-action'),
+            aepRequired: document.getElementById('drop-aep').classList.contains('is-required'),
+            aepBadge: !document.getElementById('aep-required').hidden,
+            jsonRequired: document.getElementById('drop-json').classList.contains('is-required'),
+        };
+    });
     const yAfterJson = await page.evaluate(
         () => Math.round(document.getElementById('stage-before').getBoundingClientRect().top)
     );
     check('引导行出现不引起布局位移（画布位置不变）', yAfterJson === yStart, `${yStart} → ${yAfterJson}`);
     check('只传 JSON 时引导行提示还需要 AE 工程',
-        needAep.ctaVisible && /AE 工程/.test(needAep.text) && needAep.action === true, needAep.text);
-    check('引导行带「选择 .aep 工程」按钮', /选择|Choose/.test(needAep.ctaText), needAep.ctaText);
+        /AE 工程/.test(needAep.text) && needAep.guideAction === true, needAep.text);
+    check('主按钮直接变成「选择 .aep 工程」（不是置灰的解析）',
+        needAep.action === 'pick-aep' && /aep/i.test(needAep.actionLabel) && needAep.actionDisabled === false,
+        `${needAep.action} / ${needAep.actionLabel}`);
     check('缺失的 AE 工程区域被高亮 + 必选徽标',
         needAep.aepRequired === true && needAep.aepBadge === true && needAep.jsonRequired === false);
-    check('按钮置灰但能悬停看到原因', needAep.parseDisabled === true && /AE 工程/.test(needAep.tooltip),
-        needAep.tooltip);
 
     /* ---------- 2b. 选好工程 → 自动修复 → 双侧预览 ---------- */
     await uploadAep();
-    const hintGone = await page.evaluate(() => ({
-        ctaHidden: document.getElementById('hint-cta').hidden,
-        text: document.getElementById('status-text').textContent.trim(),
-        action: document.getElementById('guide-bar').classList.contains('is-action'),
-        aepRequired: document.getElementById('drop-aep').classList.contains('is-required'),
-        parseDisabled: document.getElementById('parse-btn').disabled,
-    }));
+    const hintGone = await page.evaluate(() => {
+        const btn = document.getElementById('primary-action');
+        return {
+            action: btn.dataset.action,
+            actionDisabled: btn.disabled,
+            text: document.getElementById('status-text').textContent.trim(),
+            guideAction: document.getElementById('guide-bar').classList.contains('is-action'),
+            aepRequired: document.getElementById('drop-aep').classList.contains('is-required'),
+        };
+    });
     const yAfterAep = await page.evaluate(
         () => Math.round(document.getElementById('stage-before').getBoundingClientRect().top)
     );
     check('引导收起也不引起布局位移', yAfterAep === yStart, `${yStart} → ${yAfterAep}`);
-    check('补齐 AE 工程后引导收起、按钮可用',
-        hintGone.ctaHidden && !hintGone.action && !hintGone.aepRequired && hintGone.parseDisabled === false,
+    check('补齐 AE 工程后主按钮变成「解析并修复」',
+        hintGone.action === 'parse' && hintGone.actionDisabled === false
+        && !hintGone.guideAction && !hintGone.aepRequired,
         JSON.stringify(hintGone));
-    await page.click(SELECTORS.parseButton);
+    await page.click(SELECTORS.primaryAction);
 
     const maskShown = await page
         .waitForFunction(
@@ -285,9 +310,9 @@ try {
         : null;
     check('解析时出现加载遮罩', maskShown && maskInfo.visible, maskInfo ? maskInfo.phase : '未出现');
     await page.waitForFunction(
-        (selector) => !document.querySelector(selector).disabled,
+        (selector) => !document.querySelector(selector).classList.contains('is-visible'),
         { timeout: WAIT_TIMEOUT },
-        SELECTORS.parseButton
+        SELECTORS.loadingMask
     );
     check('加载完成后遮罩消失', await page.evaluate(
         (selector) => !document.querySelector(selector).classList.contains('is-visible'),
@@ -298,11 +323,13 @@ try {
         mjsRequests.length ? mjsRequests.join(', ') : '0 个 .mjs 请求');
 
     let out = await waitDone();
-    check('自动修复：摘要显示共修复 1 个渐变', /共修复 1 个渐变/.test(out.summary), out.summary);
+    check('自动修复：摘要显示共修复 1 个渐变', /共修复 1 个渐变/.test(out.guide), out.guide);
     check('自动修复：数量徽标 +1', out.fixedBadge === '+1', String(out.fixedBadge));
     check('预览：修复前后都渲染出 svg', out.svgBefore && out.svgAfter);
     check('预览：时间轴拿到总帧数', out.total > 1, `total=${out.total}`);
-    check('导出按钮可用', out.downloadDisabled === false);
+    check('解析完成后主按钮变成「导出 JSON」',
+        out.action === 'export' && !out.actionDisabled && /导出|Export/.test(out.actionLabel),
+        `${out.action} / ${out.actionLabel}`);
     check('单文件：直接进细节视图（无总览）', out.overviewVisible === false && out.detailVisible === true,
         `overview=${out.overviewVisible} detail=${out.detailVisible}`);
 
@@ -360,6 +387,25 @@ try {
     check('继续播放后帧数推进', frames.playing && frames.after > frames.mid + 1,
         `${frames.mid} → ${frames.after}`);
 
+    /* ---------- 3b. 窄屏下按钮降级为图标，行高不变 ---------- */
+    await page.setViewport({ width: 480, height: 800 });
+    await new Promise((r) => setTimeout(r, 200));
+    const narrow = await page.evaluate(() => {
+        const guide = document.getElementById('guide-bar');
+        const btn = document.getElementById('primary-action');
+        const span = btn ? btn.querySelector('span') : null;
+        return {
+            guideHeight: Math.round(guide.getBoundingClientRect().height),
+            btnWidth: btn ? Math.round(btn.getBoundingClientRect().width) : 0,
+            spanHidden: span ? getComputedStyle(span).display === 'none' : true,
+        };
+    });
+    check('窄屏下主按钮缩成图标且行高不变',
+        narrow.spanHidden === true && narrow.btnWidth <= 40 && narrow.guideHeight === 46,
+        JSON.stringify(narrow));
+    await page.setViewport({ width: 1280, height: 1000 });
+    await new Promise((r) => setTimeout(r, 200));
+
     /* ---------- 4. 深色主题 ---------- */
     await page.click(SELECTORS.themeButton);
     await new Promise((r) => setTimeout(r, 240));
@@ -381,55 +427,61 @@ try {
     ));
 
     /* ---------- 6. 语言切换 ---------- */
-    const zhLabel = await page.$eval('#parse-btn span', (el) => el.textContent.trim());
+    const zhLabel = await page.$eval('#primary-action span', (el) => el.textContent.trim());
     await page.click(SELECTORS.langButton);
     await new Promise((r) => setTimeout(r, 240));
-    const enLabel = await page.$eval('#parse-btn span', (el) => el.textContent.trim());
-    check('中英切换生效', zhLabel === '解析并修复' && enLabel === 'Parse and fix', `${zhLabel} → ${enLabel}`);
+    const enLabel = await page.$eval('#primary-action span', (el) => el.textContent.trim());
+    check('中英切换生效（含主按钮文案）', zhLabel === '导出 JSON' && enLabel === 'Export JSON',
+        `${zhLabel} → ${enLabel}`);
     await page.click(SELECTORS.langButton);
     await new Promise((r) => setTimeout(r, 220));
 
     /* ---------- 6b. 只传 AE 工程时提示缺少 JSON ---------- */
     await page.goto(PAGE_URL, { waitUntil: 'networkidle0' });
     await (await page.$(SELECTORS.aepInput)).uploadFile(FIXTURE_AEP);
-    const needJson = await page.evaluate(() => ({
-        ctaVisible: !document.getElementById('hint-cta').hidden,
-        text: document.getElementById('status-text').textContent.trim(),
-        jsonRequired: document.getElementById('drop-json').classList.contains('is-required'),
-        aepRequired: document.getElementById('drop-aep').classList.contains('is-required'),
-    }));
+    const needJson = await page.evaluate(() => {
+        const btn = document.getElementById('primary-action');
+        return {
+            action: btn.dataset.action,
+            actionLabel: btn.textContent.trim(),
+            text: document.getElementById('status-text').textContent.trim(),
+            jsonRequired: document.getElementById('drop-json').classList.contains('is-required'),
+            aepRequired: document.getElementById('drop-aep').classList.contains('is-required'),
+        };
+    });
     check('只传 AE 工程时提示缺少 JSON',
-        needJson.ctaVisible && /JSON/.test(needJson.text)
-        && needJson.jsonRequired === true && needJson.aepRequired === false,
+        /JSON/.test(needJson.text) && needJson.jsonRequired === true && needJson.aepRequired === false
+        && needJson.action === 'pick-json',
         JSON.stringify(needJson));
 
     /* ---------- 6c. 工程里找不到对应渐变时给出原因 ---------- */
     await uploadJson(FIXTURE_MASTER);
-    await page.click(SELECTORS.parseButton);
+    await page.click(SELECTORS.primaryAction);
     out = await waitDone();
-    check('工程与 JSON 对不上时提示来源不一致', /没找到对应渐变/.test(out.summary), out.summary);
+    check('工程与 JSON 对不上时提示来源不一致', /没找到对应渐变/.test(out.guide), out.guide);
 
     /* ---------- 6d. 文件里没有渐变时给出原因 ---------- */
     await page.goto(PAGE_URL, { waitUntil: 'networkidle0' });
     await uploadJson(FIXTURE_NO_GRADIENTS);
     await uploadAep();
-    await page.click(SELECTORS.parseButton);
+    await page.click(SELECTORS.primaryAction);
     out = await waitDone();
-    check('没有渐变时提示无需修复', /没有渐变色/.test(out.summary), out.summary);
+    check('没有渐变时提示无需修复', /没有渐变色/.test(out.guide), out.guide);
 
     /* ---------- 7. 已一致的文件：不修复、导出禁用 ---------- */
     await page.goto(PAGE_URL, { waitUntil: 'networkidle0' });
     await upload(FIXTURE_MATCH);
-    await page.click(SELECTORS.parseButton);
+    await page.click(SELECTORS.primaryAction);
     out = await waitDone();
-    check('已一致：摘要提示无需修改', /无需修改/.test(out.summary), out.summary);
-    check('已一致：导出按钮禁用', out.downloadDisabled === true);
+    check('已一致：摘要提示无需修改', /无需修改/.test(out.guide), out.guide);
+    check('已一致：不显示导出按钮', out.action === 'none' && out.actionHidden === true,
+        `${out.action} hidden=${out.actionHidden}`);
     check('已一致：预览仍然渲染', out.svgBefore && out.svgAfter);
 
     /* ---------- 8. 聚焦单个渐变 ---------- */
     await page.goto(PAGE_URL, { waitUntil: 'networkidle0' });
     await upload(FIXTURE_MULTI);
-    await page.click(SELECTORS.parseButton);
+    await page.click(SELECTORS.primaryAction);
     await waitDone();
     const focusInfo = await page.evaluate(() => {
         const select = document.getElementById('focus-select');
@@ -473,9 +525,9 @@ try {
         JSON.stringify(beforeParse.cards));
 
     await uploadAep();
-    await page.click(SELECTORS.parseButton);
+    await page.click(SELECTORS.primaryAction);
     out = await waitDone();
-    check('多文件：汇总按所有文件统计', /共修复 1 个渐变/.test(out.summary), out.summary);
+    check('多文件：汇总按所有文件统计', /共修复 1 个渐变/.test(out.guide), out.guide);
     check('多文件：解析后先进结果总览', out.overviewVisible === true && out.detailVisible === false,
         `overview=${out.overviewVisible} detail=${out.detailVisible}`);
 
@@ -528,7 +580,7 @@ try {
     await page.goto(PAGE_URL, { waitUntil: 'networkidle0' });
     await uploadJson(...manyFixtures);
     await uploadAep();
-    await page.click(SELECTORS.parseButton);
+    await page.click(SELECTORS.primaryAction);
     await waitDone();
     await page.evaluate(() => document.querySelectorAll('.bf-card')[0].click());
     await new Promise((r) => setTimeout(r, 500));
@@ -555,16 +607,16 @@ try {
     page.on('request', blockCdn);
     await page.goto(PAGE_URL_AUTO, { waitUntil: 'networkidle0' });
     await upload(FIXTURE_LOST);
-    await page.click(SELECTORS.parseButton);
+    await page.click(SELECTORS.primaryAction);
     out = await waitDone();
-    check('CDN 被阻断时回退同源并能完成修复', /共修复 1 个渐变/.test(out.summary), out.summary);
+    check('CDN 被阻断时回退同源并能完成修复', /共修复 1 个渐变/.test(out.guide), out.guide);
     page.off('request', blockCdn);
     await page.setRequestInterception(false);
 
     /* ---------- 11. 截图 ---------- */
     await page.goto(PAGE_URL, { waitUntil: 'networkidle0' });
     await upload(FIXTURE_LOST);
-    await page.click(SELECTORS.parseButton);
+    await page.click(SELECTORS.primaryAction);
     await waitDone();
     await page.evaluate(() => document.getElementById('play-btn').click());
     await page.screenshot({ path: path.join(ARTIFACTS, 'backfill-compare.png') });

@@ -52,6 +52,10 @@ const i18n = {
         statusReady: '文件就绪',
         statusNeedOther: '还需要选择 AE 工程',
         statusNeedAep: '还需要选择 AE 工程（.aep）—— 修复需要它的真实渐变数据',
+        statusNeedJson: '还需要选择要修复的 Lottie JSON',
+        statusReadyCta: '文件就绪',
+        parsing: '解析中…',
+        retry: '重新解析',
         statusNeedJson: '还需要选择 Lottie JSON',
         statusPyLoading: '正在加载 Python 运行时…',
         statusUnpacking: '正在解包 py-aep 依赖…',
@@ -126,6 +130,10 @@ const i18n = {
         statusReady: 'Files ready',
         statusNeedOther: 'Choose the AE project too',
         statusNeedAep: 'Choose the AE project (.aep) too — the fix needs its real gradient data',
+        statusNeedJson: 'Choose the Lottie JSON to fix',
+        statusReadyCta: 'Files ready',
+        parsing: 'Parsing…',
+        retry: 'Retry',
         statusNeedJson: 'Choose Lottie JSON too',
         statusPyLoading: 'Loading Python runtime…',
         statusUnpacking: 'Unpacking py-aep…',
@@ -227,17 +235,53 @@ function filesWithFix() {
     return state.files.filter((file) => (file.appliedCount || 0) > 0);
 }
 
-function setStatus(key, params = {}) {
-    state.status = { key, params };
+let primaryActionKind = 'none';
+
+/**
+ * 顶部只有一处动作位：缺文件→去选文件，就绪→解析，完成→导出，失败→重试。
+ * 始终复用同一个按钮节点（只换文字/图标/行为），因此焦点和位置都稳定。
+ */
+function setPrimaryAction(kind, { label = '', icon = 'pointer', onClick = null, disabled = false } = {}) {
+    primaryActionKind = kind;
+    const btn = $('primary-action');
+    if (!btn) return;
+    if (kind === 'none') {
+        btn.hidden = true;
+        btn.dataset.action = 'none';
+        btn.disabled = false;
+        btn.onclick = null;
+        return;
+    }
+    btn.hidden = false;
+    btn.dataset.action = kind;
+    btn.className = kind === 'parse' || kind === 'retry' || kind === 'export'
+        ? 'btn btn-primary'
+        : 'btn btn-outline';
+    btn.disabled = disabled;
+    btn.innerHTML = `<i data-lucide="${icon}"></i><span></span>`;
+    btn.querySelector('span').textContent = label;
+    btn.onclick = onClick;
+    btn.title = label;
+    refreshIcons();
+}
+
+function currentActionKind() {
+    return primaryActionKind;
+}
+
+function setGuideText(next) {
     const el = $('status-text');
-    if (!el) return;
-    const next = t(key, params);
-    if (el.textContent === next) return;
+    if (!el || el.textContent === next) return;
     el.textContent = next;
     el.title = next;   // 文案被省略号截断时，悬停可看全
     if (typeof el.animate === 'function') {
         el.animate([{ opacity: 0.35 }, { opacity: 1 }], { duration: 160, easing: 'ease-out' });
     }
+}
+
+function setStatus(key, params = {}) {
+    state.status = { key, params };
+    setGuideText(t(key, params));
 }
 
 function refreshIcons() {
@@ -1079,20 +1123,11 @@ function renderSummary() {
         host.innerHTML = '';
         return;
     }
-    const fixed = totalFixed();
     const skipped = state.files.reduce((sum, file) => sum + skippedRows(file).length, 0);
-    const totalGradients = state.files.reduce((sum, file) => sum + (file.gradients || []).length, 0);
-    const matchedRows = state.files.reduce(
-        (sum, file) => sum + (file.rows || []).filter((row) => row.ae).length, 0
-    );
     const byName = state.files.reduce(
         (sum, file) => sum + (file.rows || []).filter((row) => row.matchMode === 'name').length, 0
     );
-    let lead = t('summaryNothing');
-    if (fixed) lead = t('summaryTotal', { n: fixed, files: filesWithFix().length });
-    else if (!totalGradients) lead = t('summaryNoGradients');
-    else if (!matchedRows) lead = t('summaryNoMatch');
-    const parts = [`<span>${lead}</span>`];
+    const parts = [];
     if (byName) parts.push(`<span class="badge badge--outline">${t('summaryMatchedByName', { n: byName })}</span>`);
     if (skipped) {
         parts.push(`<button class="btn btn-ghost" id="skip-btn"><i data-lucide="alert-triangle"></i>${t('summarySkipped', { n: skipped })}</button>`);
@@ -1101,12 +1136,8 @@ function renderSummary() {
     const skipBtn = $('skip-btn');
     if (skipBtn) skipBtn.addEventListener('click', openSkipModal);
 
-    const downloadLabel = $('download-btn').querySelector('span');
-    if (downloadLabel) {
-        downloadLabel.textContent = filesWithFix().length > 1 ? t('exportAll') : t('exportJson');
-    }
-
     const badge = $('fixed-count');
+    const fixed = totalFixed();
     if (fixed) {
         badge.hidden = false;
         badge.textContent = `+${fixed}`;
@@ -1114,6 +1145,34 @@ function renderSummary() {
         badge.hidden = true;
         badge.textContent = '';
     }
+    refreshIcons();
+}
+
+/** 解析后的引导行：结果文案 + 唯一动作（有修复就是导出） */
+function refreshResultState() {
+    const fixed = totalFixed();
+    const totalGradients = state.files.reduce((sum, file) => sum + (file.gradients || []).length, 0);
+    const matched = state.files.reduce(
+        (sum, file) => sum + (file.rows || []).filter((row) => row.ae).length, 0
+    );
+    const guide = $('guide-bar');
+
+    if (fixed) {
+        guide.classList.remove('is-action');
+        setGuideText(t('summaryTotal', { n: fixed, files: filesWithFix().length }));
+        setPrimaryAction('export', {
+            label: filesWithFix().length > 1 ? t('exportAll') : t('exportJson'),
+            icon: 'download',
+            onClick: downloadAll,
+        });
+        return;
+    }
+
+    guide.classList.add('is-action');
+    if (!totalGradients) setGuideText(t('summaryNoGradients'));
+    else if (!matched) setGuideText(t('summaryNoMatch'));
+    else setGuideText(t('summaryNothing'));
+    setPrimaryAction('none');
 }
 
 function renderSkipList() {
@@ -1264,12 +1323,11 @@ function selectFile(index) {
 
 async function runCompare() {
     if (!state.files.length || !state.aepBytes) return;
-    const btn = $('parse-btn');
-    const label = btn.querySelector('span');
-    const originalLabel = label.textContent;
-    btn.disabled = true;
-    label.textContent = t('statusParsing');
     const startedAt = performance.now();
+    $('guide-bar').classList.add('is-action');
+    setStatus('parsing');
+    setPrimaryAction('parse', { label: t('parsing'), icon: 'loader', disabled: true });
+
     try {
         const aeGradients = await extractFromAep();
         let fixed = 0;
@@ -1280,10 +1338,12 @@ async function runCompare() {
             fixed += applyFixes(file);
         }
         state.lastParseMs = Math.round(performance.now() - startedAt);
-        $('download-btn').disabled = fixed === 0;
+
         if (state.files.length > 1) showOverview();
         else showDetail(0);
-        setStatus('statusDone', { ms: state.lastParseMs });
+        refreshResultState();
+        $('status-text').title = `${t('statusDone', { ms: state.lastParseMs })} · ${$('status-text').textContent}`;
+
         if (fixed) {
             toast(t('toastApplied', { n: fixed }), 'success');
         } else {
@@ -1299,11 +1359,15 @@ async function runCompare() {
     } catch (error) {
         console.error(error);
         setStatus('statusFailed', { msg: error.message });
+        $('guide-bar').classList.add('is-action');
+        setPrimaryAction('retry', {
+            label: t('retry'),
+            icon: 'refresh-cw',
+            onClick: () => runCompare(),
+        });
         toast(t('toastFailed', { msg: error.message }), 'error');
     } finally {
         hideLoading();
-        btn.disabled = false;
-        label.textContent = originalLabel;
         refreshIcons();
     }
 }
@@ -1335,7 +1399,7 @@ function setRequired(elId, flag) {
     if (badge) badge.hidden = !flag;
 }
 
-/** 缺条件时把「缺什么、点哪里」直接摆在固定引导行里，而不是只把按钮置灰 */
+/** 缺条件时把「缺什么、点哪里」摆在固定引导行里，动作也放在同一行的主按钮上 */
 function updateParseAvailability() {
     const hasJson = state.files.some((file) => !file.error);
     const hasAep = !!state.aepBytes;
@@ -1343,42 +1407,40 @@ function updateParseAvailability() {
     const needAep = hasJson && !hasAep;
     const ready = hasJson && hasAep;
 
-    $('parse-btn').disabled = !ready;
-    $('download-btn').disabled = true;
-    const downloadLabel = $('download-btn').querySelector('span');
-    if (downloadLabel) downloadLabel.textContent = t('exportJson');
-
     $('drop-json').classList.toggle('is-required', needJson);
     $('drop-aep').classList.toggle('is-required', needAep);
     setRequired('json-required', needJson);
     setRequired('aep-required', needAep);
 
     const guide = $('guide-bar');
-    const cta = $('hint-cta');
 
     if (ready) {
         guide.classList.remove('is-action');
-        cta.hidden = true;
-        cta.onclick = null;
-        $('parse-btn').removeAttribute('title');
-        setStatus('statusReady');
+        setStatus('statusReadyCta');
+        setPrimaryAction('parse', {
+            label: t('parse'),
+            icon: 'wand-2',
+            onClick: () => runCompare(),
+        });
         return;
     }
 
     guide.classList.add('is-action');
     if (needAep) {
-        cta.hidden = false;
-        cta.textContent = t('hintNeedAepCta');
-        cta.onclick = () => $('aep-file').click();
         setStatus('statusNeedAep');
+        setPrimaryAction('pick-aep', {
+            label: t('hintNeedAepCta'),
+            icon: 'folder-open',
+            onClick: () => $('aep-file').click(),
+        });
     } else {
-        cta.hidden = false;
-        cta.textContent = t('hintNeedJsonCta');
-        cta.onclick = () => $('json-file').click();
-        setStatus('statusPick');
+        setStatus('statusNeedJson');
+        setPrimaryAction('pick-json', {
+            label: t('hintNeedJsonCta'),
+            icon: 'file-json',
+            onClick: () => $('json-file').click(),
+        });
     }
-    $('parse-btn').title = $('status-text').textContent;
-    refreshIcons();
 }
 
 async function addJsonFiles(fileList) {
@@ -1409,6 +1471,8 @@ async function addJsonFiles(fileList) {
     $('summary').innerHTML = '';
     $('fixed-count').hidden = true;
     clearFocusSelect();
+    $('guide-bar').classList.remove('is-action');
+    setPrimaryAction('none');
 
     // 多文件默认进总览；单文件直接进细节（总览一张卡片没意义）
     if (state.files.length > 1) {
@@ -1486,9 +1550,6 @@ function boot() {
         },
     });
 
-    $('parse-btn').addEventListener('click', runCompare);
-    $('download-btn').addEventListener('click', downloadAll);
-
     $('play-btn').addEventListener('click', () => {
         if (PREVIEW.playing) stopPlay();
         else startPlay();
@@ -1521,7 +1582,8 @@ function boot() {
         currentLang = currentLang === 'zh' ? 'en' : 'zh';
         localStorage.setItem('lottie-lang', currentLang);
         applyStaticText();
-        setStatus(state.status.key, state.status.params);
+        if (state.files.some((file) => file.parsed)) refreshResultState();
+        else updateParseAvailability();
         if (state.files.some((file) => file.parsed)) {
             renderSummary();
             renderFileList();
@@ -1537,6 +1599,7 @@ function boot() {
         try { localStorage.setItem('lottie-theme', dark ? 'dark' : 'light'); } catch (e) {}
     });
 
+    updateParseAvailability();
     refreshIcons();
 }
 
