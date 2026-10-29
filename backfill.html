@@ -40,8 +40,8 @@
         <div class="bf-grid">
             <label class="bf-drop" id="drop-json" for="json-file">
                 <div class="bf-drop-head"><i data-lucide="file-json"></i><span data-i18n="jsonTitle">Lottie JSON</span></div>
-                <div class="bf-file" id="json-name"><i data-lucide="upload"></i><span data-i18n="pickFile">选择文件</span></div>
-                <input type="file" id="json-file" class="hidden" accept=".json,application/json">
+                <div class="bf-file" id="json-name"><i data-lucide="upload"></i><span data-i18n="pickFiles">选择文件（可多选）</span></div>
+                <input type="file" id="json-file" class="hidden" accept=".json,application/json" multiple>
             </label>
 
             <label class="bf-drop" id="drop-aep" for="aep-file">
@@ -60,6 +60,8 @@
             </button>
             <span class="bf-status" id="status-text" data-i18n="statusPick">选择两个文件</span>
         </div>
+
+        <div class="bf-files" id="file-list" hidden></div>
 
         <div class="bf-summary" id="summary"></div>
 

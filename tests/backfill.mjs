@@ -141,8 +141,8 @@ page.on('pageerror', (error) => console.log('[page exception]', error.message));
 const requestedUrls = [];
 page.on('request', (request) => requestedUrls.push(request.url()));
 
-async function uploadJson(jsonFixture) {
-    await (await page.$(SELECTORS.jsonInput)).uploadFile(jsonFixture);
+async function uploadJson(...jsonFixtures) {
+    await (await page.$(SELECTORS.jsonInput)).uploadFile(...jsonFixtures);
 }
 
 async function uploadAep() {
@@ -246,7 +246,7 @@ try {
         mjsRequests.length ? mjsRequests.join(', ') : '0 个 .mjs 请求');
 
     let out = await waitDone();
-    check('自动修复：摘要显示已修复 1 个渐变', /已修复 1 个渐变/.test(out.summary), out.summary);
+    check('自动修复：摘要显示共修复 1 个渐变', /共修复 1 个渐变/.test(out.summary), out.summary);
     check('自动修复：数量徽标 +1', out.fixedBadge === '+1', String(out.fixedBadge));
     check('预览：修复前后都渲染出 svg', out.svgBefore && out.svgAfter);
     check('预览：时间轴拿到总帧数', out.total > 1, `total=${out.total}`);
@@ -263,15 +263,16 @@ try {
             }
             return null;
         };
-        const current = walk(window.__backfillState.jsonData);
-        const original = walk(window.__backfillState.originalJson);
+        const file = window.__backfillState.files[0];
+        const current = walk(file.json);
+        const original = walk(file.original);
         const raw = (g) => (g.k && !Array.isArray(g.k) ? g.k.k : g.k);
         return {
             currentK: raw(current),
             currentP: current.p,
             originalK: raw(original),
-            aeK: window.__backfillState.rows[0].ae.k,
-            aeP: window.__backfillState.rows[0].ae.p,
+            aeK: file.rows[0].ae.k,
+            aeP: file.rows[0].ae.p,
         };
     });
     check('JSON 的 g.k 被自动替换为 AE 真值',
@@ -369,7 +370,47 @@ try {
         !!focusInfo && focusInfo.focused.some((v) => v !== '1') && focusInfo.cleared.every((v) => v === '1'),
         focusInfo ? `focused=${JSON.stringify(focusInfo.focused)} cleared=${JSON.stringify(focusInfo.cleared)}` : '');
 
-    /* ---------- 9. CDN 不可用时回退同源 ---------- */
+    /* ---------- 9. 一次上传多个 JSON ---------- */
+    await page.goto(PAGE_URL, { waitUntil: 'networkidle0' });
+    await uploadJson(FIXTURE_LOST, FIXTURE_MULTI);
+    await page.waitForFunction(() => !!document.querySelector('#stage-before svg'), { timeout: 15000 });
+    const listBefore = await page.evaluate(() => ({
+        rows: [...document.querySelectorAll('.bf-file-row')].map((el) => ({
+            name: el.querySelector('.bf-file-name').textContent,
+            active: el.classList.contains('is-active'),
+        })),
+        hidden: document.getElementById('file-list').hidden,
+    }));
+    check('多文件：文件列表显示 2 个文件', !listBefore.hidden && listBefore.rows.length === 2,
+        JSON.stringify(listBefore.rows.map((r) => r.name)));
+    check('多文件：默认选中第一个', listBefore.rows[0]?.active === true);
+
+    await uploadAep();
+    await page.click(SELECTORS.parseButton);
+    out = await waitDone();
+    check('多文件：汇总按所有文件统计', /共修复 1 个渐变/.test(out.summary), out.summary);
+    const listAfter = await page.evaluate(() => [...document.querySelectorAll('.bf-file-row')].map((el) => ({
+        status: el.querySelector('.bf-file-status').textContent.trim(),
+        active: el.classList.contains('is-active'),
+    })));
+    check('多文件：每个文件显示自己的结果',
+        /已修复 1/.test(listAfter[0]?.status || '') && /无需修改/.test(listAfter[1]?.status || ''),
+        JSON.stringify(listAfter));
+
+    const switched = await page.evaluate(async () => {
+        document.querySelectorAll('.bf-file-row')[1].click();
+        await new Promise((r) => setTimeout(r, 300));
+        return {
+            selected: window.__backfillState.selected,
+            activeIndex: [...document.querySelectorAll('.bf-file-row')].findIndex((el) => el.classList.contains('is-active')),
+            svg: !!document.querySelector('#stage-after svg'),
+        };
+    });
+    check('多文件：点击可切换预览的文件',
+        switched.selected === 1 && switched.activeIndex === 1 && switched.svg === true,
+        JSON.stringify(switched));
+
+    /* ---------- 10. CDN 不可用时回退同源 ---------- */
     await page.setRequestInterception(true);
     const blockCdn = (request) => {
         if (request.url().includes('arvinyin1.github.io')) request.abort();
@@ -380,11 +421,11 @@ try {
     await upload(FIXTURE_LOST);
     await page.click(SELECTORS.parseButton);
     out = await waitDone();
-    check('CDN 被阻断时回退同源并能完成修复', /已修复 1 个渐变/.test(out.summary), out.summary);
+    check('CDN 被阻断时回退同源并能完成修复', /共修复 1 个渐变/.test(out.summary), out.summary);
     page.off('request', blockCdn);
     await page.setRequestInterception(false);
 
-    /* ---------- 10. 截图 ---------- */
+    /* ---------- 11. 截图 ---------- */
     await page.goto(PAGE_URL, { waitUntil: 'networkidle0' });
     await upload(FIXTURE_LOST);
     await page.click(SELECTORS.parseButton);
