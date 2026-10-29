@@ -381,17 +381,22 @@ try {
     /* ---------- 9. 一次上传多个 JSON ---------- */
     await page.goto(PAGE_URL, { waitUntil: 'networkidle0' });
     await uploadJson(FIXTURE_LOST, FIXTURE_MULTI);
-    await page.waitForFunction(() => !!document.querySelector('#stage-before svg'), { timeout: 15000 });
-    const listBefore = await page.evaluate(() => ({
-        rows: [...document.querySelectorAll('.bf-file-row')].map((el) => ({
-            name: el.querySelector('.bf-file-name').textContent,
-            active: el.classList.contains('is-active'),
+    await page.waitForFunction(() => document.querySelectorAll('.bf-card').length === 2, { timeout: 15000 });
+    const beforeParse = await page.evaluate(() => ({
+        overviewVisible: !document.getElementById('overview').hidden,
+        detailHidden: document.getElementById('detail').hidden,
+        cards: [...document.querySelectorAll('.bf-card')].map((el) => ({
+            name: el.querySelector('.bf-card-name').textContent,
+            status: el.querySelector('.bf-card-status').textContent.trim(),
+            thumb: !!el.querySelector('.bf-card-stage svg'),
         })),
-        hidden: document.getElementById('file-list').hidden,
     }));
-    check('多文件：文件列表显示 2 个文件', !listBefore.hidden && listBefore.rows.length === 2,
-        JSON.stringify(listBefore.rows.map((r) => r.name)));
-    check('多文件：默认选中第一个', listBefore.rows[0]?.active === true);
+    check('多文件：上传后默认就是总览', beforeParse.overviewVisible && beforeParse.detailHidden,
+        JSON.stringify({ overview: beforeParse.overviewVisible, detailHidden: beforeParse.detailHidden }));
+    check('多文件：总览显示 2 张卡片（待解析状态 + 缩略图）',
+        beforeParse.cards.length === 2 && beforeParse.cards.every((card) => card.thumb)
+        && /待解析/.test(beforeParse.cards[0]?.status || ''),
+        JSON.stringify(beforeParse.cards));
 
     await uploadAep();
     await page.click(SELECTORS.parseButton);
@@ -437,6 +442,35 @@ try {
     });
     check('多文件：可以从细节返回总览', back.overviewVisible && back.detailHidden && back.cards === 2,
         JSON.stringify(back));
+
+    /* ---------- 9b. 文件很多时，细节视图可以整页滚动 ---------- */
+    const manyDir = path.join(ARTIFACTS, 'many');
+    fs.mkdirSync(manyDir, { recursive: true });
+    const manyFixtures = Array.from({ length: 8 }, (_, index) => {
+        const target = path.join(manyDir, `copy-${index + 1}.json`);
+        fs.copyFileSync(FIXTURE_MATCH, target);
+        return target;
+    });
+    await page.goto(PAGE_URL, { waitUntil: 'networkidle0' });
+    await uploadJson(...manyFixtures);
+    await uploadAep();
+    await page.click(SELECTORS.parseButton);
+    await waitDone();
+    await page.evaluate(() => document.querySelectorAll('.bf-card')[0].click());
+    await new Promise((r) => setTimeout(r, 500));
+    const scroll = await page.evaluate(async () => {
+        const info = {
+            overflowY: getComputedStyle(document.body).overflowY,
+            scrollHeight: document.body.scrollHeight,
+            innerHeight: window.innerHeight,
+            rows: document.querySelectorAll('.bf-file-row').length,
+        };
+        window.scrollTo(0, 400);
+        await new Promise((r) => setTimeout(r, 120));
+        return { ...info, scrollY: window.scrollY };
+    });
+    check('文件多时页面可以向下滚动', scroll.overflowY === 'auto' && scroll.scrollY > 0,
+        JSON.stringify(scroll));
 
     /* ---------- 10. CDN 不可用时回退同源 ---------- */
     await page.setRequestInterception(true);

@@ -94,7 +94,7 @@ tests/
 
 **降级是显式记录的**：用例详情里带 `[降级]`，控制台末尾汇总「因基线 DOM 缺稳定钩子而降级的断言」，`artifacts/last-run.json` 里有 `degradations` 与 `hookProbe`（每个钩子是否就位）。改版后钩子就位时会自动走 hook 路径，不再产生降级记录；若某条用例仍降级，说明对应钩子还没接上。
 
-## 回填页测试（`backfill.mjs`，39 条）
+## 回填页测试（`backfill.mjs`，40 条）
 
 `backfill.html` 用 Pyodide 在浏览器里跑 Python 解析 `.aep`，需要 http(s) 加载 wasm / zip，
 所以这套测试**自带一个静态文件服务器**（随机端口），不走 `file://`。

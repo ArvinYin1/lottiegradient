@@ -74,6 +74,7 @@ const i18n = {
         reasonMissing: '工程中未找到',
         reasonNoArray: '无法解析',
         backToOverview: '返回总览',
+        filePending: '待解析',
         focusLabel: '聚焦',
         focusAll: '全部渐变',
         focusOption: '{n}. {name}',
@@ -139,6 +140,7 @@ const i18n = {
         reasonMissing: 'Not found in project',
         reasonNoArray: 'Unreadable',
         backToOverview: 'Back to overview',
+        filePending: 'Not parsed',
         focusLabel: 'Focus',
         focusAll: 'All gradients',
         focusOption: '{n}. {name}',
@@ -943,6 +945,7 @@ function clearCardAnims() {
 
 function cardStatusText(file) {
     if (file.error) return t('fileFailed');
+    if (!file.parsed) return t('filePending');
     let text = file.appliedCount ? t('fileFixed', { n: file.appliedCount }) : t('fileOk');
     const skipped = skippedRows(file).length;
     if (skipped) text += ` · ${t('fileSkipped', { n: skipped })}`;
@@ -1330,9 +1333,14 @@ async function addJsonFiles(fileList) {
     $('fixed-count').hidden = true;
     clearFocusSelect();
 
-    showDetail(Math.max(0, state.selected));
-    const file = currentFile();
-    if (file && file.error) destroyPreview();
+    // 多文件默认进总览；单文件直接进细节（总览一张卡片没意义）
+    if (state.files.length > 1) {
+        showOverview();
+    } else {
+        showDetail(0);
+        const file = currentFile();
+        if (file && file.error) destroyPreview();
+    }
 
     const failed = parsed.filter((item) => item.error);
     if (failed.length) toast(t('toastFailed', { msg: failed.map((f) => f.name).join(', ') }), 'error');

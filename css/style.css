@@ -1680,6 +1680,16 @@ html.dark .badge--warn { color: #fbbf24; }
 .bf-summary:empty { display: none; }
 .bf-summary strong { color: var(--foreground); font-variant-numeric: tabular-nums; }
 
+/* 主站是固定视口布局（body overflow:hidden），回填页文件多时要能整页滚 */
+body.bf-page { overflow-y: auto; }
+body.bf-page header.topbar { position: sticky; top: 0; z-index: 30; }
+
+.bf-files {
+  max-height: 34vh;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
 /* 带 display 的元素会盖掉 hidden 属性，这里统一兜住 */
 #fixed-count[hidden],
 .bf-files[hidden],
