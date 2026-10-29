@@ -37,7 +37,7 @@ Although there are some solutions online, they don't always work in certain expo
 | 🔄 **渐变同步** | 导入其他 JSON 文件的渐变配置进行批量同步 |
 | 💾 **一键导出** | 导出修复后的 JSON 文件，直接投入使用 |
 | 🔍 **渐变搜索** | 快速定位动画中的特定渐变 |
-| 🔁 **从 AE 工程回填** | 带上 `.aep` 与 JSON（可多选，一次修同一工程导出的多个动画），读取真实色标并自动修复，附修复前/后对比播放 |
+| 🛠️ **渐变修复** | Lottie 渐变丢失/变黑白/错位时，带上 `.aep` 与 JSON（可多选），从工程里读真实色标自动修复，附修复前/后对比播放 |
 
 ---
 
@@ -49,11 +49,11 @@ Although there are some solutions online, they don't always work in certain expo
 | 🔄 **Gradient Sync** | Import gradient configs from other JSON files for batch syncing |
 | 💾 **One-click Export** | Export fixed JSON files ready for production |
 | 🔍 **Gradient Search** | Quickly locate specific gradients in animations |
-| 🔁 **Backfill from AE** | Load a `.aep` plus one or more JSON files, read the real stops (alpha included), auto-fix them and preview before/after |
+| 🛠️ **Gradient Fix** | When gradients are lost, black-and-white or shifted, load a `.aep` plus one or more JSON files, auto-fix from the project and preview before/after |
 
 ---
 
-> 渐变回填页首次使用需加载约 15 MB 的浏览器内 Python 运行时（之后走缓存），页面会显示加载进度。
+> 首页（渐变修复）首次使用需加载约 15 MB 的浏览器内 Python 运行时（之后走缓存），页面会显示加载进度。
 
 ## 快速开始 / Quick Start
 
@@ -111,7 +111,7 @@ Click the "Export JSON" button to download the fixed animation file.
 - **样式**：手写 CSS 设计系统（shadcn 风格 token + 深浅主题）
 - **动画渲染**：Lottie Web (Bodymovin)，自托管
 - **图标 / GIF**：Lucide、gif.js，自托管
-- **渐变回填**：Pyodide + py-aep（浏览器内跑 Python 解析 `.aep`，按需加载）
+- **渐变修复**：Pyodide + py-aep（浏览器内跑 Python 解析 `.aep`，按需加载）
 
 ---
 
@@ -132,7 +132,7 @@ git clone https://github.com/ArvinYin1/lottiegradient.git
 # 进入目录
 cd lottiegradient
 
-# 首页（渐变回填）要加载 wasm，必须走本地服务器
+# 首页（渐变修复）要加载 wasm，必须走本地服务器
 python3 -m http.server 8080
 open http://localhost:8080/
 
@@ -164,9 +164,9 @@ open http://localhost:8080/
 - **GitHub Pages**：推送到 `main` 分支后自动更新，备用地址 https://arvinyin1.github.io/lottiegradient/
 - **自建服务器**：通过仓库根目录的 `deploy.sh` 用 rsync over SSH 同步到 nginx 站点目录（HTTPS 由 Let's Encrypt 自动续期）
 
-> **回填页运行时来源**：默认从 GitHub Pages（CDN）加载 Pyodide，失败自动回落同源 `js/vendor/`；自建服务器带宽有限时可显著提速。需要强制同源时给页面加 `?local=1`。
+> **首页运行时来源**：默认从 GitHub Pages（CDN）加载 Pyodide，失败自动回落同源 `js/vendor/`；自建服务器带宽有限时可显著提速。需要强制同源时给页面加 `?local=1`。
 
-> **nginx MIME 建议**（回填页已在前端兜底，配了可启用 wasm 流式编译并省一次内存拷贝）：
+> **nginx MIME 建议**（首页已在前端兜底，配了可启用 wasm 流式编译并省一次内存拷贝）：
 > ```nginx
 > types { application/wasm wasm; }
 > gzip on; gzip_types application/wasm application/javascript;

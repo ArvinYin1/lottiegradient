@@ -96,7 +96,7 @@ tests/
 
 ## 回填页测试（`backfill.mjs`，52 条）
 
-首页 `index.html`（渐变回填）用 Pyodide 在浏览器里跑 Python 解析 `.aep`，需要 http(s) 加载 wasm / zip，
+首页 `index.html`（渐变修复）用 Pyodide 在浏览器里跑 Python 解析 `.aep`，需要 http(s) 加载 wasm / zip，
 所以这套测试**自带一个静态文件服务器**（随机端口），不走 `file://`。
 
 ```bash

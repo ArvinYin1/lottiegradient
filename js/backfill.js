@@ -1,5 +1,5 @@
 /**
- * 渐变回填 · backfill.html
+ * 渐变修复 · index.html
  * ------------------------------------------------------------
  * 用 Pyodide 在浏览器里跑 py-aep，从 .aep 读出真实渐变色标，
  * 与 Bodymovin 导出的 Lottie JSON 逐条比对，由用户确认后回填。
@@ -25,7 +25,7 @@ const EXTRACT_PY = new URL('pyaep/extract.py', LOCAL_VENDOR).href;
 
 const i18n = {
     zh: {
-        backfill: '渐变回填',
+        backfill: '渐变修复',
         help: '说明',
         theme: '切换主题',
         backToEditor: '编辑器',
@@ -94,17 +94,17 @@ const i18n = {
         toastApplied: '已修复 {n} 个渐变',
         toastNothing: '渐变已经一致，无需修改',
         toastFailed: '解析失败：{msg}',
-        helpTitle: '关于渐变回填',
+        helpTitle: '关于渐变修复',
         helpDesc: '自动修复 + 前后对比',
         help1Title: '它做什么',
-        help1Body: '从 After Effects 工程里读出真实的渐变（色标位置、颜色、透明度），自动替换到你的 Lottie JSON 中，并把修复前后的动画并排播放给你看。支持一次选多个 JSON（同一个工程导出的多个动画）批量修复。文件不会上传，解析全部在本机浏览器里完成。',
+        help1Body: 'Lottie 里的渐变丢失、变黑白或颜色错位时，这里可以直接从 After Effects 工程里读出真实的渐变（色标位置、颜色、透明度），自动替换回你的 Lottie JSON，并把修复前后的动画并排播放给你看。支持一次选多个 JSON（同一个工程导出的多个动画）批量修复。文件不会上传，解析全部在本机浏览器里完成。',
         help2Title: '匹配规则',
         help2Body: '每个文件单独匹配：先按「合成 / 图层 / 组 / 渐变名」完整路径精确匹配；路径对不上时退回「同名 + 出现顺序」匹配。匹配上的渐变会被直接改写，不需要手动挑选。',
         help3Title: '不会处理的情况',
         help3Body: '关键帧渐变、工程里找不到对应渐变的项不会改动，会汇总在「未处理项」里供你确认。工程未存盘时无法解析。'
     },
     en: {
-        backfill: 'Gradient backfill',
+        backfill: 'Gradient Fix',
         help: 'Help',
         theme: 'Toggle theme',
         backToEditor: 'Editor',
@@ -173,10 +173,10 @@ const i18n = {
         toastApplied: 'Fixed {n} gradients',
         toastNothing: 'All gradients already match',
         toastFailed: 'Failed: {msg}',
-        helpTitle: 'About gradient backfill',
+        helpTitle: 'About gradient fix',
         helpDesc: 'Auto-fix with before/after preview',
         help1Title: 'What it does',
-        help1Body: 'Reads the real gradients from the After Effects project (stop positions, colors, alpha), applies them to your Lottie JSON automatically, and plays the before/after animations side by side. You can pick several JSON files at once (multiple animations exported from one project). Files never leave your machine.',
+        help1Body: 'When gradients in a Lottie file are lost, turn black and white, or come out with wrong colors, this tool reads the real gradients from the After Effects project (stop positions, colors, alpha), applies them to your Lottie JSON, and plays the before/after animations side by side. You can pick several JSON files at once. Files never leave your machine.',
         help2Title: 'Matching',
         help2Body: 'Each file is matched on its own: first an exact match on the full "comp / layer / group / gradient" path; if that fails it falls back to "same name + occurrence order". Matched gradients are rewritten directly — no manual selection.',
         help3Title: 'Not handled',
